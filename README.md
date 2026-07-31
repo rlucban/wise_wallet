@@ -1,5 +1,5 @@
 # WiseWallet
-
+ATOG
 Personal finance management app built with Expo SDK 54 + React Native. Offline-first with optional cloud backup via Supabase.
 
 ## Tech Stack
