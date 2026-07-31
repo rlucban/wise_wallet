@@ -25,7 +25,7 @@ Personal finance management app built with Expo SDK 54 + React Native. Offline-f
 │  ┌──────────────┐   ┌──────────────────┐   ┌─────────────────────────┐ │
 │  │   Screens     │   │    Components     │   │        Hooks           │ │
 │  │  (Expo Router)│──▶│ (TransactionList, │──▶│ (useTransactions,      │ │
-│  │  19 screens)  │   │  SummaryCard, …)  │   │  useSavings, useDues)  │ │
+│  │  17 screens)  │   │  SummaryCard, …)  │   │  useSavings, useDues)  │ │
 │  └──────────────┘   └──────────────────┘   └───────┬─────────────────┘ │
 │                                                     │                   │
 │  ┌──────────────────────────────────────────────────┴─────────────────┐ │
@@ -118,7 +118,7 @@ DbRecoveryProvider                         # Self-healing on DB corruption
     AuthProvider                            # activeUserId, JWT, login/logout
       UserProfileProvider                   # name, isFirstRun, theme prefs
         SystemResetManager                  # Server-triggered data wipe
-        ProviderComposer [7 contexts]       # Theme, Language, Passcode,
+        ProviderComposer [6 contexts]       # Theme, Language, Passcode,
                                             # Currency, Categories,
                                             # Transactions
           AuthLoader                        # Init DB per user
@@ -135,7 +135,6 @@ DbRecoveryProvider                         # Self-healing on DB corruption
 | Reports | Income vs expense pie chart, expense by category, period filtering (weekly/monthly/annually), CSV/PDF export |
 | Scheduled (Dues) | Recurring and one-time scheduled payments with auto-process option |
 | Allocations (Savings) | Savings goals/tracking with balance allocation |
-| Subscriptions | Recurring bill tracking |
 | Calendar | View transactions by date |
 | Learning | Financial literacy articles (Budgeting 101, Understanding Debt, Saving for the Future) |
 | Cloud Sync | Auto-backup toggle, conflict resolution (merge LWW / keep local / keep cloud), manual backup/restore |
@@ -152,7 +151,7 @@ DbRecoveryProvider                         # Self-healing on DB corruption
 
 - Node.js 20+
 - npm
-- Expo CLI (`npm install -g expo-cli`)
+- Expo CLI (via `npx expo`, no global install required)
 
 ### Install & Run
 
@@ -165,7 +164,7 @@ npm run ios      # iOS Simulator (Mac only)
 
 ### Backend (optional, for cloud sync)
 
-The app points to `https://wallet-api-xi-plum.vercel.app/api` by default (set in `.env`). A local `json-server` is available for development:
+The app points to `https://wallet-atog-api.vercel.app/api` by default (set in `.env`). A local `json-server` is available for development:
 
 ```bash
 npm run server   # Runs json-server on port 3000
@@ -177,11 +176,13 @@ Set `EXPO_PUBLIC_API_URL=http://localhost:3000` in `.env` to use the local serve
 
 ```
 wise-wallet/
-├── app/                    # Expo Router screens + layouts (19 routes)
+├── app/                    # Expo Router screens + layouts (17 routes)
 │   ├── (tabs)/             # Tab navigator (Dashboard, Reports, Learning, Settings)
+│   │   ├── _layout.tsx     # Bottom tabs (Home, Reports, Learning, Settings)
 │   │   ├── index.tsx       # Dashboard — FlashList with widgets in ListHeaderComponent
 │   │   ├── reports.tsx     # Income/expense charts with period filtering
 │   │   ├── learning.tsx    # Financial literacy articles
+│   │   ├── learning-detail.tsx # Individual article viewer
 │   │   └── settings.tsx    # All settings panels
 │   ├── _layout.tsx         # Root layout with full provider tree
 │   ├── add-transaction.tsx # Add transaction form with receipt image picker
@@ -201,7 +202,7 @@ wise-wallet/
 │   ├── SummaryCard.tsx     # Balance summary with allocation bar
 │   ├── EmptyState.tsx      # Reusable empty state with icon
 │   ├── ProviderComposer.tsx# Flattens deep provider nesting with reduceRight
-│   ├── SmartInsights.tsx   # AI-powered spending insights
+│   ├── SmartInsights.tsx   # Rule-based spending insights
 │   ├── CloudLinkBanner.tsx # Cloud sync status banner
 │   ├── SkeletonLoader.tsx  # Loading skeleton screens
 │   ├── FinancialTip.tsx
@@ -228,7 +229,7 @@ wise-wallet/
 │   ├── useInsights.ts      # Composes transactions + dues data
 │   ├── useCloudLink.ts     # Cloud sync pairing logic
 │   └── useSyncStatus.ts    # Sync queue status polling
-├── repositories/           # Repository pattern (9 repos)
+├── repositories/           # Repository pattern (8 concrete + 1 abstract base)
 │   ├── base.storage.ts     # Abstract base: getAll, getById, upsert, upsertBulk, deleteById
 │   ├── transaction.repo.ts # + getByDateRange
 │   ├── category.repo.ts    # + getByType
@@ -239,7 +240,7 @@ wise-wallet/
 │   ├── payment-method.repo.ts
 │   └── profile.repo.ts     # Single-object storage (not array-based)
 ├── utils/                  # Core utilities
-│   ├── db.ts               # Legacy CRUD (settings, auth, export/import, mergeLWW) — 358 lines
+│   ├── db.ts               # Legacy CRUD (settings, auth, export/import, mergeLWW) — 434 lines
 │   ├── storage.ts          # getPrefixedKey, getItem, setItem, deduplicate, timestamps
 │   ├── cache.ts            # In-memory cache for activeUserId + settings
 │   ├── secureStorage.ts    # expo-secure-store wrapper with AsyncStorage fallback
@@ -247,14 +248,15 @@ wise-wallet/
 │   ├── syncQueue.ts        # Queue CRUD: enqueue, dequeue, retry with exponential backoff + jitter
 │   ├── syncProcessor.ts    # Queue processing: enqueueAndTrigger, processSyncQueue
 │   ├── exportUtils.ts      # CSV/PDF export helpers
+│   ├── notifications.ts    # Due-date notification scheduling (expo-notifications)
 │   └── uuid.ts             # UUID generation
 ├── types/                  # TypeScript interfaces
 │   ├── index.ts            # Entity types: Transaction, Category, Due, SavingsItem, …
-│   └── repositories.ts     # Repository interfaces + extension interfaces
+│   ├── repositories.ts     # Repository interfaces + extension interfaces
+│   └── react-native-vector-icons.d.ts # Vector icons type declarations
 ├── assets/                 # Fonts, images, icons
-├── tests-e2e/              # Playwright e2e tests
-├── docs/                   # Architecture plans & documentation
-│   .github/workflows/ci.yml # GitHub Actions: lint + typecheck on push/PR
+├── ARCHITECTURE_REVIEW.md  # In-depth architecture analysis
+└── .github/workflows/ci.yml # GitHub Actions: lint + typecheck on push/PR
 ```
 
 ## Known Limitations
@@ -263,5 +265,5 @@ wise-wallet/
 - No error tracking (Sentry)
 - Transactions use a different sync pattern (inline merge) than other entities (queue-based)
 - Search/filter for transactions not implemented
-- Push notifications not configured (expo-notifications installed but unused)
+- Due-date notifications scheduled locally via expo-notifications; cloud push (FCM/APNs) not configured
 - Educational videos section is a placeholder
