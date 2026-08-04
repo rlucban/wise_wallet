@@ -2,12 +2,17 @@ import { useState, useCallback, useMemo } from "react";
 import { View, ScrollView, Dimensions } from "react-native";
 import { Appbar, Text, Card, useTheme, Button, Menu } from "react-native-paper";
 import { useFocusEffect } from "expo-router";
-import { PieChart } from "react-native-chart-kit";
 import { useTransactions } from "../../hooks/useTransactions";
 import { useCurrency } from "../../context/CurrencyContext";
+import { DonutChart } from "../../components/DonutChart";
+import { MonthlyTrendChart } from "../../components/MonthlyTrendChart";
 import { PaymentMethodChart } from "../../components/PaymentMethodChart";
+import { FinancialTip } from "../../components/FinancialTip";
 import { exportToCSV, exportToPDF } from "../../utils/exportUtils";
-import { isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
+import { getPeriodFinancialTips } from "../../utils/financialLiteracy";
+import { isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format, subMonths } from "date-fns";
+
+const TREND_MONTHS = 6;
 
 export default function ReportsScreen() {
   const theme = useTheme();
@@ -53,24 +58,34 @@ export default function ReportsScreen() {
   const income = filteredTransactions.filter(t => t.type === "income").reduce((sum, t) => sum + (t.amount || 0), 0);
   const expense = filteredTransactions.filter(t => t.type === "expense").reduce((sum, t) => sum + (t.amount || 0), 0);
 
-  const pieData = [
-    {
-      name: "Income",
-      population: income,
-      color: theme.colors.primary,
-      legendFontColor: theme.colors.onSurfaceVariant,
-      legendFontSize: 12
-    },
-    {
-      name: "Expense",
-      population: expense,
-      color: theme.colors.error,
-      legendFontColor: theme.colors.onSurfaceVariant,
-      legendFontSize: 12
-    }
-  ];
+  // Monthly trend (last 6 months) for Income vs Expense bar chart
+  const trend = useMemo(() => {
+    const months = Array.from({ length: TREND_MONTHS }, (_, i) => {
+      const d = subMonths(new Date(), TREND_MONTHS - 1 - i);
+      return { key: format(d, "yyyy-MM"), label: format(d, "MMM") };
+    });
+    const indexByKey = new Map(months.map((m, i) => [m.key, i]));
+    const incomeByMonth = new Array<number>(TREND_MONTHS).fill(0);
+    const expenseByMonth = new Array<number>(TREND_MONTHS).fill(0);
 
-  // Group by category for Category Pie Chart
+    filteredTransactions.forEach((t) => {
+      const idx = indexByKey.get(format(new Date(t.date), "yyyy-MM"));
+      if (idx === undefined) return;
+      if (t.type === "income") {
+        incomeByMonth[idx] += t.amount || 0;
+      } else {
+        expenseByMonth[idx] += t.amount || 0;
+      }
+    });
+
+    return {
+      labels: months.map((m) => m.label),
+      income: incomeByMonth,
+      expense: expenseByMonth,
+    };
+  }, [filteredTransactions]);
+
+  // Group by category for Category Donut Chart
   const categoryDataMap = filteredTransactions
     .filter(t => t.type === "expense")
     .reduce((acc: Record<string, number>, t) => {
@@ -83,12 +98,10 @@ export default function ReportsScreen() {
     theme.colors.primary, theme.colors.error, theme.colors.tertiary,
     theme.colors.secondary, theme.colors.onSurfaceVariant, theme.colors.outline,
   ];
-  const categoryPieData = Object.keys(categoryDataMap).map((cat, i) => ({
+  const categorySegments = Object.keys(categoryDataMap).map((cat, i) => ({
     name: cat,
-    population: categoryDataMap[cat],
+    value: categoryDataMap[cat],
     color: CATEGORY_COLORS[i % CATEGORY_COLORS.length],
-    legendFontColor: theme.colors.onSurfaceVariant,
-    legendFontSize: 11
   }));
 
   return (
@@ -132,51 +145,63 @@ export default function ReportsScreen() {
           </Card>
         </View>
 
+        <FinancialTip
+          title="💡 Period Insight"
+          dateBased={false}
+          extraTips={getPeriodFinancialTips(period, income, expense, formatAmount)}
+          showFooter={false}
+          style={{ margin: 0, marginBottom: 16 }}
+        />
+
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700" }}>Income vs Expense</Text>
-            {income === 0 && expense === 0 ? (
-                <View style={{ height: 200, justifyContent: "center", alignItems: "center" }}>
-                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>No data for this period</Text>
-                </View>
-            ) : (
-                <PieChart
-                    data={pieData}
-                    width={screenWidth - 64}
-                    height={200}
-                    chartConfig={{
-                        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                    }}
-                    accessor={"population"}
-                    backgroundColor={"transparent"}
-                    paddingLeft={"15"}
-                    center={[10, 0]}
-                    absolute
-                />
-            )}
+            <DonutChart
+              data={[
+                { name: "Income", value: income, color: theme.colors.primary },
+                { name: "Expense", value: expense, color: theme.colors.error },
+              ]}
+              width={screenWidth - 64}
+              height={200}
+              formatValue={formatAmount}
+              centerValue={formatAmount(income - expense)}
+              centerCaption="Net"
+              emptyMessage="No data for this period"
+              mutedColor={theme.colors.onSurfaceVariant}
+              textColor={theme.colors.onSurface}
+            />
           </Card.Content>
         </Card>
 
-        {categoryPieData.length > 0 && (
-          <Card style={{ marginBottom: 16 }}>
-            <Card.Content>
-              <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700" }}>Expense by Category</Text>
-              <PieChart
-                data={categoryPieData}
-                width={screenWidth - 64}
-                height={200}
-                chartConfig={{
-                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                }}
-                accessor={"population"}
-                backgroundColor={"transparent"}
-                paddingLeft={"15"}
-                center={[10, 0]}
-                absolute
-              />
-            </Card.Content>
-          </Card>
-        )}
+        <Card style={{ marginBottom: 16 }}>
+          <Card.Content>
+            <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700" }}>Monthly Income vs Expense</Text>
+            <MonthlyTrendChart
+              labels={trend.labels}
+              income={trend.income}
+              expense={trend.expense}
+              width={screenWidth - 64}
+              formatValue={formatAmount}
+            />
+          </Card.Content>
+        </Card>
+
+        <Card style={{ marginBottom: 16 }}>
+          <Card.Content>
+            <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700" }}>Expense by Category</Text>
+            <DonutChart
+              data={categorySegments}
+              width={screenWidth - 64}
+              height={200}
+              formatValue={formatAmount}
+              centerValue={formatAmount(expense)}
+              centerCaption="Total Expenses"
+              emptyMessage="No expenses recorded in this period"
+              mutedColor={theme.colors.onSurfaceVariant}
+              textColor={theme.colors.onSurface}
+            />
+          </Card.Content>
+        </Card>
 
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>

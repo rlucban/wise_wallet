@@ -3,7 +3,8 @@ import { View, ScrollView } from "react-native";
 import { Appbar, List, IconButton, FAB, Portal, Modal, TextInput, Button, SegmentedButtons, useTheme, Card } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { useCategoriesData, useCategoriesActions } from "../context/CategoriesContext";
-import { TransactionType } from "../types";
+import { TransactionType, Category } from "../types";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function CategorySettings() {
   const router = useRouter();
@@ -13,6 +14,13 @@ export default function CategorySettings() {
   const [type, setType] = useState<TransactionType>("expense");
   const [modalVisible, setModalVisible] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    await deleteCategory(deleteTarget.id.toString());
+    setDeleteTarget(null);
+  };
 
   const filteredCategories = categories.filter((c) => c.type === type);
 
@@ -22,6 +30,11 @@ export default function CategorySettings() {
       setNewCatName("");
       setModalVisible(false);
     }
+  };
+
+  const handleClose = () => {
+    setNewCatName("");
+    setModalVisible(false);
   };
 
   return (
@@ -53,7 +66,7 @@ export default function CategorySettings() {
                   {...props}
                   icon="delete-outline"
                   iconColor={theme.colors.error}
-                  onPress={() => deleteCategory(cat.id.toString())}
+                  onPress={() => setDeleteTarget(cat)}
                 />
               )}
             />
@@ -64,10 +77,18 @@ export default function CategorySettings() {
       <Portal>
         <Modal
           visible={modalVisible}
-          onDismiss={() => setModalVisible(false)}
+          onDismiss={handleClose}
           contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}
         >
-          <List.Subheader>Add {type === "income" ? "Income" : "Expense"} Category</List.Subheader>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <List.Subheader style={{ margin: 0, padding: 0 }}>
+              Add {type === "income" ? "Income" : "Expense"} Category
+            </List.Subheader>
+            <IconButton
+              icon="close"
+              onPress={handleClose}
+            />
+          </View>
           <TextInput
             label="Category Name"
             value={newCatName}
@@ -80,6 +101,19 @@ export default function CategorySettings() {
           </Button>
         </Modal>
       </Portal>
+
+      <ConfirmDialog
+        visible={!!deleteTarget}
+        title="Delete Category?"
+        message={
+          deleteTarget
+            ? `Are you sure you want to delete the category "${deleteTarget.name}"? This action cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       <FAB
         icon="plus"

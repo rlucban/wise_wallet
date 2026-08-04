@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { Image } from "expo-image";
 import {
@@ -22,6 +22,9 @@ import { Calendar } from "react-native-calendars";
 import { useTransactions } from "../hooks/useTransactions";
 import { Category, TransactionType, PaymentMethod, PaymentMethodInfo } from "../types";
 import { useCategoriesData } from "../context/CategoriesContext";
+import { getTimeOfMonthTip } from "../utils/financialLiteracy";
+import { ensureOthersOption, isOthersCategory } from "../utils/categoryOptions";
+import { formatNumberInput, parseAmount } from "../utils/amount";
 
 export default function AddTransaction() {
   const router = useRouter();
@@ -32,6 +35,7 @@ export default function AddTransaction() {
   const [note, setNote] = useState("");
   const [type, setType] = useState<TransactionType>("expense");
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [customCategory, setCustomCategory] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [establishment, setEstablishment] = useState("");
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
@@ -92,6 +96,8 @@ export default function AddTransaction() {
     }
   };
 
+  const categoryOptions = useMemo(() => ensureOthersOption(availableCategories, type), [availableCategories, type]);
+
   const validate = (): string | null => {
     const next: Record<string, string> = {};
     const trimmed = amount.trim();
@@ -99,7 +105,7 @@ export default function AddTransaction() {
     if (!trimmed) {
       next.amount = "Please enter an amount.";
     } else {
-      const num = parseFloat(trimmed);
+      const num = parseAmount(trimmed);
       if (isNaN(num) || num <= 0) {
         next.amount = "Please enter a valid amount greater than 0.";
       } else if (num > 999999999.99) {
@@ -109,6 +115,8 @@ export default function AddTransaction() {
 
     if (!selectedCategory) {
       next.category = "Please select a category.";
+    } else if (isOthersCategory(selectedCategory) && !customCategory.trim()) {
+      next.category = "Please specify a category.";
     }
 
     if (note.length > 500) {
@@ -142,7 +150,10 @@ export default function AddTransaction() {
       return;
     }
 
-    const numAmount = parseFloat(amount.trim());
+    const numAmount = parseAmount(amount);
+    const category: Category | null = isOthersCategory(selectedCategory) && customCategory.trim()
+      ? { ...(selectedCategory as Category), name: customCategory.trim(), updatedAt: Date.now() }
+      : selectedCategory;
     setLoading(true);
     try {
       await addTransaction({
@@ -150,7 +161,7 @@ export default function AddTransaction() {
         date: date.toISOString(),
         note: note,
         type,
-        category: selectedCategory ?? undefined,
+        category: category ?? undefined,
         paymentMethod,
         establishment: establishment || undefined,
         receiptUrl: receiptImage || undefined,
@@ -180,6 +191,7 @@ export default function AddTransaction() {
           onValueChange={(val) => {
             setType(val as TransactionType);
             setSelectedCategory(null);
+            setCustomCategory("");
           }}
           buttons={[
             { value: "expense", label: "Expense", icon: "arrow-down" },
@@ -192,11 +204,7 @@ export default function AddTransaction() {
           label="Amount"
           value={amount}
           onChangeText={(val) => {
-            const cleaned = val
-              .replace(/[^0-9.]/g, "")
-              .replace(/(\..*)\./g, "$1")
-              .replace(/^0+(?=\d)/, "");
-            setAmount(cleaned);
+            setAmount(formatNumberInput(val));
             clearError("amount");
           }}
           keyboardType="numeric"
@@ -215,13 +223,16 @@ export default function AddTransaction() {
           mode="outlined"
           editable={false}
           right={<TextInput.Icon icon="calendar" onPress={() => setShowCalendar(true)} />}
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 8 }}
         />
+
+        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontStyle: "italic", marginBottom: 16 }}>
+          💡 {getTimeOfMonthTip(date).title}: {getTimeOfMonthTip(date).message}
+        </Text>
 
         <Text variant="labelLarge" style={{ marginBottom: 8 }}>Category</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
-          {availableCategories
-            .filter((cat: Category) => cat.type === type)
+          {categoryOptions
             .map((cat: Category) => (
               <Chip
                 key={cat.id}
@@ -235,6 +246,16 @@ export default function AddTransaction() {
               </Chip>
             ))}
          </View>
+         {isOthersCategory(selectedCategory) && (
+           <TextInput
+             label="Specify Category"
+             value={customCategory}
+             onChangeText={(t) => { setCustomCategory(t); clearError("category"); }}
+             mode="outlined"
+             placeholder="e.g., Pet Care, Gym, Gifts"
+             style={{ marginBottom: 8 }}
+           />
+         )}
          <HelperText type="error" visible={!!errors.category} style={{ marginBottom: 8 }}>
            {errors.category}
          </HelperText>

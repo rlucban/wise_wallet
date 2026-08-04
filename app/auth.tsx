@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Text, TextInput, Button, Card, HelperText, Dialog, Portal } from 'react-native-paper';
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useFocusEffect } from 'expo-router';
 import { useAuthData, useAuthActions } from '../context/AuthContext';
 import { useUserProfileData } from '../context/UserProfileContext';
@@ -28,6 +29,7 @@ export default function AuthScreen() {
     const [loading, setLoading] = useState(false);
     const [nameError, setNameError] = useState("");
     const [pinError, setPinError] = useState("");
+    const [showPin, setShowPin] = useState(false);
 
     const [dialog, setDialog] = useState<{
         visible: boolean;
@@ -341,6 +343,7 @@ export default function AuthScreen() {
             >
                 <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
                     <View style={styles.container}>
+                        <MaterialCommunityIcons name="wallet" size={42} color="#fff" style={styles.logo} />
                         <Text style={styles.appName}>WiseWallet</Text>
                         <Text style={styles.tagline}>{token === 'offline_token' ? 'Link Your Account' : 'Welcome Back'}</Text>
                         {token === 'offline_token' && (
@@ -351,8 +354,8 @@ export default function AuthScreen() {
 
                         <Card style={styles.card}>
                             <Card.Content>
+                                <Text style={styles.fieldLabel}>Email or Username</Text>
                                 <TextInput
-                                    label="Email or Username"
                                     value={name}
                                     onChangeText={(text) => { setName(text); setNameError(""); }}
                                     style={styles.input}
@@ -364,45 +367,59 @@ export default function AuthScreen() {
                                     autoCapitalize="none"
                                     keyboardType="email-address"
                                     placeholder="Enter email or username"
+                                    left={<TextInput.Icon icon="account-outline" color="#1a237e" />}
                                 />
                                 <HelperText type="error" visible={!!nameError}>
                                     {nameError}
                                 </HelperText>
 
+                                <Text style={styles.fieldLabel}>PIN</Text>
                                 <TextInput
-                                    label="PIN (4-digits)"
                                     value={passcode}
                                     onChangeText={(text) => { setPasscode(text); setPinError(""); }}
                                     keyboardType="numeric"
-                                    secureTextEntry
+                                    secureTextEntry={!showPin}
                                     style={styles.input}
                                     textColor="#1a237e"
                                     mode="outlined"
                                     outlineColor="#e0e0e0"
                                     activeOutlineColor="#3949ab"
                                     error={!!pinError}
+                                    placeholder="Enter 4-digit PIN"
+                                    left={<TextInput.Icon icon="lock-outline" color="#1a237e" />}
+                                    right={
+                                        <TextInput.Icon
+                                            icon={showPin ? "eye-off-outline" : "eye-outline"}
+                                            color="#1a237e"
+                                            onPress={() => setShowPin((s) => !s)}
+                                        />
+                                    }
                                 />
                                 <HelperText type="error" visible={!!pinError}>
                                     {pinError}
                                 </HelperText>
 
-                                <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+                                <View style={{ marginTop: 12 }}>
                                     <Button
                                         mode="contained"
                                         onPress={() => handleLogin(false)}
                                         loading={loading}
                                         disabled={loading}
-                                        style={[styles.createBtn, { flex: 1, marginTop: 0 }]}
+                                        style={styles.createBtn}
                                     >
                                         Login
                                     </Button>
+                                </View>
+
+                                <View style={styles.registerRow}>
+                                    <Text style={styles.registerPrompt}>Don't have an account?</Text>
                                     <Button
-                                        mode="outlined"
+                                        compact
+                                        mode="text"
                                         onPress={() => handleRegisterClick()}
-                                        loading={loading}
                                         disabled={loading}
-                                        style={[styles.createBtn, { flex: 1, marginTop: 0, backgroundColor: 'transparent', borderColor: '#3949ab' }]}
-                                        textColor="#3949ab"
+                                        style={styles.registerLink}
+                                        labelStyle={styles.registerLinkLabel}
                                     >
                                         Register
                                     </Button>
@@ -412,13 +429,13 @@ export default function AuthScreen() {
                                     <Text variant="bodySmall" style={{ color: '#666', textAlign: 'center' }}>
                                         💡 Tips:
                                     </Text>
-                                    <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 4 }}>
+                                    <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 6 }}>
                                         • Use email for cloud sync
                                     </Text>
-                                    <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center' }}>
+                                    <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 2 }}>
                                         • Use any username for offline-only
                                     </Text>
-                                    <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center' }}>
+                                    <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 2 }}>
                                         • Login auto-detects account type
                                     </Text>
                                 </View>
@@ -436,12 +453,16 @@ const styles = StyleSheet.create({
     gradient: { flex: 1 },
     scrollContainer: { flexGrow: 1, justifyContent: 'center' },
     container: { padding: 24 },
+    logo: {
+        alignSelf: 'center',
+        marginBottom: 14,
+    },
     appName: {
         fontSize: 42,
         fontWeight: "bold",
         color: "#fff",
         textAlign: 'center',
-        marginBottom: 8,
+        marginBottom: 6,
         letterSpacing: 1,
         textShadowColor: 'rgba(0, 0, 0, 0.4)',
         textShadowOffset: { width: 0, height: 2 },
@@ -451,7 +472,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: "rgba(255,255,255,0.9)",
         textAlign: 'center',
-        marginBottom: 24,
+        marginBottom: 28,
         fontWeight: '500',
         textShadowColor: 'rgba(0, 0, 0, 0.2)',
         textShadowOffset: { width: 0, height: 1 },
@@ -467,14 +488,39 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2,
         shadowRadius: 8
     },
+    fieldLabel: {
+        color: '#666',
+        fontSize: 13,
+        fontWeight: '600',
+        marginBottom: 6,
+        marginTop: 4,
+    },
     infoBox: {
-        marginTop: 12,
+        marginTop: 14,
         marginBottom: 4,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
         backgroundColor: '#f5f5f5',
         borderRadius: 8,
+        alignItems: 'center',
     },
-    createBtn: { marginTop: 20, marginBottom: 8, borderRadius: 12, paddingVertical: 4, backgroundColor: '#3949ab' },
-    input: { marginBottom: 4, backgroundColor: '#fff' }
+    createBtn: {
+        marginTop: 20,
+        marginBottom: 8,
+        borderRadius: 12,
+        paddingVertical: 4,
+        width: '100%',
+        backgroundColor: '#3949ab'
+    },
+    input: { marginBottom: 4, backgroundColor: '#fff' },
+    registerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 4,
+        marginBottom: 8,
+    },
+    registerPrompt: { color: '#666', fontSize: 14 },
+    registerLink: { margin: 0 },
+    registerLinkLabel: { color: '#3949ab', fontWeight: '600', fontSize: 14 }
 });

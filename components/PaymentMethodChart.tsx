@@ -1,6 +1,7 @@
 import { Dimensions } from "react-native";
 import { Card, Text } from "react-native-paper";
-import { PieChart } from "react-native-chart-kit";
+import { DonutChart } from "./DonutChart";
+import { useCurrency } from "../context/CurrencyContext";
 import { Transaction } from "../types";
 
 const PAYMENT_COLORS: Record<string, string> = {
@@ -12,10 +13,9 @@ const PAYMENT_COLORS: Record<string, string> = {
 
 export function PaymentMethodChart({ transactions }: { transactions: Transaction[] }) {
   const screenWidth = Dimensions.get("window").width;
+  const { formatAmount } = useCurrency();
 
   const expenses = transactions.filter((t) => t.type === "expense");
-  
-  if (expenses.length === 0) return null;
 
   // Group by payment method
   const dataMap = expenses.reduce((acc, curr) => {
@@ -25,35 +25,26 @@ export function PaymentMethodChart({ transactions }: { transactions: Transaction
     return acc;
   }, {} as Record<string, number>);
 
-  const data = Object.keys(dataMap).map((method) => ({
+  const segments = Object.keys(dataMap).map((method) => ({
     name: method.charAt(0).toUpperCase() + method.slice(1).replace("_", " "),
-    population: dataMap[method],
-    color: PAYMENT_COLORS[method.toLowerCase()] || "#" + Math.floor(Math.random()*16777215).toString(16), // Fallback to random color
-    legendFontColor: "#7F7F7F",
-    legendFontSize: 12,
+    value: dataMap[method],
+    color: PAYMENT_COLORS[method.toLowerCase()] || "#607D8B",
   }));
 
-  if (data.length === 0) return null;
+  const total = segments.reduce((sum, s) => sum + s.value, 0);
 
   return (
     <Card style={{ margin: 16, marginTop: 8 }}>
       <Card.Content>
         <Text variant="titleMedium" style={{ marginBottom: 8 }}>Payment Methods</Text>
-        <PieChart
-          data={data}
+        <DonutChart
+          data={segments}
           width={screenWidth - 64}
           height={180}
-          chartConfig={{
-            backgroundColor: "#fff",
-            backgroundGradientFrom: "#fff",
-            backgroundGradientTo: "#fff",
-            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-          }}
-          accessor={"population"}
-          backgroundColor={"transparent"}
-          paddingLeft={"15"}
-          center={[10, 0]}
-          absolute
+          formatValue={formatAmount}
+          centerValue={formatAmount(total)}
+          centerCaption="Spent"
+          emptyMessage="No expense data for this period"
         />
       </Card.Content>
     </Card>

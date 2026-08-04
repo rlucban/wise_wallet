@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
-import { Text, Appbar, Card, useTheme } from "react-native-paper";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Text, Appbar, Card, Button, useTheme } from "react-native-paper";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { getCompletedArticles, setArticleCompleted } from "../../utils/readingProgress";
 
 const LEARNING_CONTENT: Record<string, { title: string, content: string }> = {
     budgeting_101: {
@@ -55,8 +56,23 @@ export default function LearningDetail() {
     const theme = useTheme();
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
-    
+    const [completed, setCompleted] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (!id) return;
+            getCompletedArticles().then((ids) => setCompleted(ids.includes(id)));
+        }, [id])
+    );
+
     const topic = id ? LEARNING_CONTENT[id] : null;
+
+    const toggleCompleted = async () => {
+        if (!id) return;
+        const next = !completed;
+        setCompleted(next);
+        await setArticleCompleted(id, next);
+    };
 
     if (!topic) {
         return (
@@ -86,6 +102,15 @@ export default function LearningDetail() {
                         <Text variant="bodyLarge" style={styles.body}>{topic.content}</Text>
                     </Card.Content>
                 </Card>
+
+                <Button
+                    mode={completed ? "contained-tonal" : "outlined"}
+                    icon={completed ? "check-circle" : "check-circle-outline"}
+                    onPress={toggleCompleted}
+                    style={{ marginTop: 16, borderRadius: 12 }}
+                >
+                    {completed ? "Completed" : "Mark as Complete"}
+                </Button>
             </ScrollView>
         </View>
     );

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { View, ScrollView, Alert, Platform, StyleSheet } from "react-native";
-import { Appbar, List, RadioButton, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, useTheme as usePaperTheme, IconButton } from "react-native-paper";
+import { View, ScrollView, Alert, Platform, StyleSheet, TouchableOpacity } from "react-native";
+import { Appbar, List, RadioButton, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, Menu, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
@@ -8,7 +8,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
 import { setSetting, clearAllLocalData, exportData, importData, deleteUser, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
 import { useAuth } from "../../context/AuthContext";
-import { useCurrency, CURRENCIES, CurrencyCode } from "../../context/CurrencyContext";
+import { useCurrency, CURRENCIES } from "../../context/CurrencyContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -20,6 +20,7 @@ import { useSyncStatus } from "../../hooks/useSyncStatus";
 import { useNetwork } from "../../context/NetworkContext";
 import * as Crypto from 'expo-crypto';
 import { Transaction, Category, Due, SavingsItem, UserProfile } from "../../types";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 function SyncStatusCard({ autoBackup }: { autoBackup: boolean }) {
   const { isOnline, checkConnectivity, isChecking } = useNetwork();
@@ -114,7 +115,7 @@ export default function SettingsScreen() {
   const { isDarkMode, toggleTheme } = useAppTheme();
   const { profile, updateProfile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
   const { language, setLanguage, t } = useLanguage();
-  const { isPasscodeEnabled, setIsPasscodeEnabled, setPasscode, setIsUnlocked } = usePasscode();
+  const { isPasscodeEnabled, passcode, setIsPasscodeEnabled, setPasscode, setIsUnlocked } = usePasscode();
   const { activeUserId, logout, login } = useAuth();
   const { refetch: refetchTx } = useTransactionsActions();
   const { refetch: refetchCats } = useCategoriesActions();
@@ -125,13 +126,48 @@ export default function SettingsScreen() {
     router.replace("/auth");
   };
 
-  const handleTogglePasscode = (enabled: boolean) => {
-    if (enabled) {
-      setShowPinSetup(true);
-    } else {
-      setIsPasscodeEnabled(false);
-      setPasscode(null);
+  const closeChangePasscodeDialog = () => {
+    setShowChangePasscodeDialog(false);
+    setCurrentPasscodeInput("");
+    setNewPasscodeInput("");
+    setConfirmPasscodeInput("");
+    setChangePasscodeError("");
+  };
+
+  const handleChangePasscode = () => {
+    const current = currentPasscodeInput.trim();
+    const next = newPasscodeInput.trim();
+    const confirm = confirmPasscodeInput.trim();
+
+    if (!/^\d{4}$/.test(current)) {
+      setChangePasscodeError("Please enter your current 4-digit passcode.");
+      return;
     }
+    if (passcode && current !== passcode) {
+      setChangePasscodeError("Incorrect current passcode.");
+      return;
+    }
+    if (!/^\d{4}$/.test(next)) {
+      setChangePasscodeError("New passcode must be 4 digits.");
+      return;
+    }
+    if (next !== confirm) {
+      setChangePasscodeError("New passcodes do not match.");
+      return;
+    }
+    if (next === current) {
+      setChangePasscodeError("New passcode must be different from the current passcode.");
+      return;
+    }
+
+    setPasscode(next);
+    setShowChangePasscodeDialog(false);
+    setCurrentPasscodeInput("");
+    setNewPasscodeInput("");
+    setConfirmPasscodeInput("");
+    setChangePasscodeError("");
+    alert("Passcode changed successfully!");
+    setIsUnlocked(false);
   };
 
   const confirmPinSetup = () => {
@@ -159,6 +195,25 @@ export default function SettingsScreen() {
   const [showNewAccountDialog, setShowNewAccountDialog] = useState(false);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [pinInput, setPinInput] = useState("");
+  const [currencyMenuVisible, setCurrencyMenuVisible] = useState(false);
+  const [decimalMenuVisible, setDecimalMenuVisible] = useState(false);
+  const [showChangePasscodeDialog, setShowChangePasscodeDialog] = useState(false);
+  const [currentPasscodeInput, setCurrentPasscodeInput] = useState("");
+  const [newPasscodeInput, setNewPasscodeInput] = useState("");
+  const [confirmPasscodeInput, setConfirmPasscodeInput] = useState("");
+  const [changePasscodeError, setChangePasscodeError] = useState("");
+  const [deletePinInput, setDeletePinInput] = useState("");
+  const [deletePinError, setDeletePinError] = useState("");
+  const [pinVerified, setPinVerified] = useState(false);
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const [messageDialog, setMessageDialog] = useState<{
+    visible: boolean;
+    type: "success" | "error";
+    title: string;
+    message: string;
+    onClose?: () => void;
+  }>({ visible: false, type: "success", title: "", message: "" });
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
 
    const setAutoBackup = async (value: boolean) => {
      await updateProfile({ autoBackup: value });
@@ -577,7 +632,7 @@ export default function SettingsScreen() {
     }
 
     if (!pinVerified) {
-      alert("Incorrect PIN. Please try again.");
+      showMessage("error", "Incorrect PIN", "Please try again.");
       setIsSyncing(false);
       return;
     }
@@ -661,30 +716,115 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteAccount = () => {
+    setDeletePinInput("");
+    setDeletePinError("");
+    setPinVerified(false);
+    setDeleteConfirmed(false);
     setShowDeleteDialog(true);
   };
 
-  const executeDelete = async () => {
-    if (activeUserId) {
-      setIsSyncing(true);
+  const closeDeleteDialog = () => {
+    setShowDeleteDialog(false);
+    setDeletePinInput("");
+    setDeletePinError("");
+    setPinVerified(false);
+    setDeleteConfirmed(false);
+  };
+
+  const verifyAccountPin = async (pin: string): Promise<boolean> => {
+    let verified = false;
+    if (API_URL) {
       try {
-        await authFetch(`auth/account`, { method: "DELETE" });
-        await clearAllLocalData();
-        await deleteUser(activeUserId);
-        await logout();
-        router.replace("/auth");
-        alert("Account and all associated data deleted successfully.");
-      } catch (e) {
-        console.error("Delete account sync failed:", e);
-        alert("Failed to fully clear cloud data. Account was deleted locally.");
-        await clearAllLocalData();
-        await deleteUser(activeUserId);
-        await logout();
-        router.replace("/auth");
-      } finally {
-        setIsSyncing(false);
-        setShowDeleteDialog(false);
+        const res = await fetch(`${API_URL}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: profile?.name || "",
+            passcode: pin.trim(),
+            force: true,
+          }),
+        });
+        verified = res.ok;
+      } catch {
+        // server unreachable — fall through to local verification
       }
+    }
+
+    if (!verified && activeUserId) {
+      try {
+        const users = await getUsers();
+        const user = users.find((u) => u.id === activeUserId);
+        if (user) {
+          const inputHash = await Crypto.digestStringAsync(
+            Crypto.CryptoDigestAlgorithm.SHA256,
+            pin.trim()
+          );
+          verified = user.passcode === inputHash || user.passcode === pin.trim();
+        }
+      } catch {
+        // local verification failed too
+      }
+    }
+
+    return verified;
+  };
+
+  const handleVerifyDeletePin = async () => {
+    if (!deletePinInput.trim()) {
+      setDeletePinError("PIN is required");
+      return;
+    }
+    setIsSyncing(true);
+    setDeletePinError("");
+    try {
+      const verified = await verifyAccountPin(deletePinInput);
+      if (verified) {
+        setPinVerified(true);
+      } else {
+        setDeletePinError("Invalid PIN. Please try again.");
+      }
+    } catch (e) {
+      console.error("PIN verification failed:", e);
+      setDeletePinError("Could not verify your PIN. Please try again.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const showMessage = (
+    type: "success" | "error",
+    title: string,
+    message: string,
+    onClose?: () => void
+  ) => {
+    setMessageDialog({ visible: true, type, title, message, onClose });
+  };
+
+  const closeMessage = () => {
+    const { onClose } = messageDialog;
+    setMessageDialog({ visible: false, type: "success", title: "", message: "" });
+    if (onClose) onClose();
+  };
+
+  const executeDelete = async () => {
+    if (!activeUserId) return;
+    setIsSyncing(true);
+    try {
+      await authFetch(`auth/account`, { method: "DELETE" });
+      await clearAllLocalData();
+      await deleteUser(activeUserId);
+      await logout();
+      closeDeleteDialog();
+      showMessage("success", "Account Deleted", "Account and all associated data deleted successfully.", () => router.replace("/auth"));
+    } catch (e) {
+      console.error("Delete account sync failed:", e);
+      await clearAllLocalData();
+      await deleteUser(activeUserId);
+      await logout();
+      closeDeleteDialog();
+      showMessage("error", "Partial Deletion", "Failed to fully clear cloud data. Account was deleted locally.", () => router.replace("/auth"));
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -757,36 +897,17 @@ export default function SettingsScreen() {
         refetchProfile()
       ]);
 
-      alert("Cloud data restored locally and UI refreshed!");
+      showMessage("success", "Restore Complete", "Cloud data restored locally and UI refreshed!");
     } catch (e) {
       console.error(e);
-      alert("Restore failed. Make sure the API is online.");
+      showMessage("error", "Restore Failed", "Restore failed. Make sure the API is online.");
     } finally {
       setIsSyncing(false);
     }
   };
 
   const handleRestoreFromCloud = () => {
-     console.info("[Restore] Button clicked. Platform:", Platform.OS);
-    if (Platform.OS === 'web') {
-      const confirm = window.confirm("This will overwrite all your local data with the data from your cloud backup. Are you sure?");
-      if (confirm) {
-        performRestore();
-      }
-    } else {
-      Alert.alert(
-        "Restore from Cloud",
-        "This will overwrite all your local data with the data from your cloud backup. Are you sure?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Restore",
-            style: "destructive",
-            onPress: performRestore
-          }
-        ]
-      );
-    }
+    setShowRestoreConfirm(true);
   };
 
   return (
@@ -871,30 +992,55 @@ export default function SettingsScreen() {
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>{t("currency")}</Text>
-            <RadioButton.Group onValueChange={(value) => setCurrency(value as CurrencyCode)} value={currency.code}>
-              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                {Object.values(CURRENCIES).map((curr) => (
-                  <View key={curr.code} style={{ width: "50%" }}>
-                    <RadioButton.Item
-                      label={curr.code}
-                      value={curr.code}
-                      status={currency.code === curr.code ? 'checked' : 'unchecked'}
-                    />
-                  </View>
-                ))}
-              </View>
-            </RadioButton.Group>
 
-            <Divider style={{ marginVertical: 8 }} />
+            <Menu
+              visible={currencyMenuVisible}
+              onDismiss={() => setCurrencyMenuVisible(false)}
+              anchor={
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrencyMenuVisible(true)}>
+                  <TextInput
+                    label="Currency"
+                    value={`${currency.code} (${currency.symbol})`}
+                    editable={false}
+                    pointerEvents="none"
+                    mode="outlined"
+                    right={<TextInput.Icon icon="chevron-down" />}
+                  />
+                </TouchableOpacity>
+              }
+            >
+              {Object.values(CURRENCIES).map((curr) => (
+                <Menu.Item
+                  key={curr.code}
+                  title={`${curr.code} (${curr.symbol})`}
+                  onPress={() => { setCurrency(curr.code); setCurrencyMenuVisible(false); }}
+                />
+              ))}
+            </Menu>
 
-            <Text variant="titleSmall" style={{ marginTop: 8 }}>Decimal Points</Text>
-            <RadioButton.Group onValueChange={(v) => setDecimalPlaces(parseInt(v))} value={decimalPlaces.toString()}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <RadioButton.Item label="0" value="0" />
-                <RadioButton.Item label="1" value="1" />
-                <RadioButton.Item label="2" value="2" />
-              </View>
-            </RadioButton.Group>
+            <Divider style={{ marginVertical: 16 }} />
+
+            <Text variant="titleSmall" style={{ marginBottom: 8 }}>Decimal Points</Text>
+            <Menu
+              visible={decimalMenuVisible}
+              onDismiss={() => setDecimalMenuVisible(false)}
+              anchor={
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setDecimalMenuVisible(true)}>
+                  <TextInput
+                    label="Decimal Places"
+                    value={decimalPlaces.toString()}
+                    editable={false}
+                    pointerEvents="none"
+                    mode="outlined"
+                    right={<TextInput.Icon icon="chevron-down" />}
+                  />
+                </TouchableOpacity>
+              }
+            >
+              <Menu.Item title="0 (₱500)" onPress={() => { setDecimalPlaces(0); setDecimalMenuVisible(false); }} />
+              <Menu.Item title="1 (₱500.0)" onPress={() => { setDecimalPlaces(1); setDecimalMenuVisible(false); }} />
+              <Menu.Item title="2 (₱500.00)" onPress={() => { setDecimalPlaces(2); setDecimalMenuVisible(false); }} />
+            </Menu>
           </Card.Content>
         </Card>
 
@@ -957,17 +1103,34 @@ export default function SettingsScreen() {
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>Security</Text>
             <View style={{ marginBottom: 8 }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <List.Icon icon="lock-outline" color={paperTheme.colors.onSurfaceVariant} />
-                  <Text variant="bodyLarge" style={{ marginLeft: 12 }}>{t("passcode")}</Text>
-                </View>
-                <Switch value={isPasscodeEnabled} onValueChange={handleTogglePasscode} />
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <List.Icon icon="lock-outline" color={paperTheme.colors.onSurfaceVariant} />
+                <Text variant="bodyLarge" style={{ marginLeft: 12 }}>{t("passcode")}</Text>
               </View>
               <Text variant="bodySmall" style={{ marginLeft: 52, color: paperTheme.colors.outline }}>
                 Require PIN to unlock the app on startup
               </Text>
             </View>
+
+            {isPasscodeEnabled ? (
+              <Button
+                mode="outlined"
+                icon="lock-reset"
+                onPress={() => setShowChangePasscodeDialog(true)}
+                style={{ marginTop: 8 }}
+              >
+                Change Passcode
+              </Button>
+            ) : (
+              <Button
+                mode="outlined"
+                icon="lock-plus-outline"
+                onPress={() => setShowPinSetup(true)}
+                style={{ marginTop: 8 }}
+              >
+                Set Passcode
+              </Button>
+            )}
           </Card.Content>
         </Card>
 
@@ -981,17 +1144,101 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <Portal>
-        <Dialog visible={showDeleteDialog} onDismiss={() => setShowDeleteDialog(false)}>
+        <Dialog visible={showDeleteDialog} onDismiss={closeDeleteDialog}>
           <Dialog.Title>Delete Account</Dialog.Title>
           <Dialog.Content>
-            <Text style={{ color: paperTheme.colors.error }}>WARNING: This action is permanent and cannot be undone.</Text>
-            <Text style={{ marginTop: 8 }}>All your data in the cloud and on this device will be PERMANENTLY deleted. We recommend downloading a JSON backup first.</Text>
+            <Text style={{ color: paperTheme.colors.error, fontWeight: "700" }}>
+              WARNING: This action is permanent and cannot be undone.
+            </Text>
+            <Text style={{ marginTop: 8, marginBottom: 16 }}>
+              All your data in the cloud and on this device will be PERMANENTLY deleted. We recommend downloading a JSON backup first.
+            </Text>
+
+            <Text variant="labelLarge" style={{ marginBottom: 8 }}>
+              Verify your PIN
+            </Text>
+            <TextInput
+              label="Current PIN"
+              value={deletePinInput}
+              onChangeText={(t) => { setDeletePinInput(t); setDeletePinError(""); setPinVerified(false); }}
+              secureTextEntry
+              keyboardType="numeric"
+              maxLength={4}
+              error={!!deletePinError}
+              disabled={pinVerified || isSyncing}
+            />
+            {deletePinError ? (
+              <Text style={{ color: paperTheme.colors.error, marginTop: 4 }}>{deletePinError}</Text>
+            ) : null}
+
+            {pinVerified ? (
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}>
+                <IconButton icon="check-circle" iconColor={paperTheme.colors.tertiary} size={20} />
+                <Text style={{ color: paperTheme.colors.tertiary, fontWeight: "600" }}>PIN verified</Text>
+              </View>
+            ) : (
+              <Button
+                mode="outlined"
+                icon="shield-check-outline"
+                onPress={handleVerifyDeletePin}
+                loading={isSyncing}
+                disabled={isSyncing || deletePinInput.trim().length === 0}
+                style={{ marginTop: 12, alignSelf: "flex-start" }}
+              >
+                Verify PIN
+              </Button>
+            )}
+
+            {pinVerified ? (
+              <View style={{ marginTop: 8 }}>
+                <Checkbox.Item
+                  label="I understand this action is permanent and cannot be undone"
+                  status={deleteConfirmed ? "checked" : "unchecked"}
+                  onPress={() => setDeleteConfirmed(!deleteConfirmed)}
+                  labelStyle={{ fontSize: 13 }}
+                />
+              </View>
+            ) : null}
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowDeleteDialog(false)}>Cancel</Button>
-            <Button onPress={executeDelete} textColor={paperTheme.colors.error} loading={isSyncing} disabled={isSyncing}>Delete Permanently</Button>
+            <Button onPress={closeDeleteDialog}>Cancel</Button>
+            <Button
+              onPress={executeDelete}
+              textColor={paperTheme.colors.error}
+              loading={isSyncing}
+              disabled={isSyncing || !pinVerified || !deleteConfirmed}
+            >
+              Delete Permanently
+            </Button>
           </Dialog.Actions>
         </Dialog>
+
+        <Dialog visible={messageDialog.visible} onDismiss={closeMessage}>
+          <Dialog.Icon
+            icon={messageDialog.type === "success" ? "check-circle-outline" : "alert-circle-outline"}
+            color={messageDialog.type === "success" ? paperTheme.colors.tertiary : paperTheme.colors.error}
+          />
+          <Dialog.Title style={{ textAlign: "center" }}>{messageDialog.title}</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ textAlign: "center" }}>{messageDialog.message}</Text>
+          </Dialog.Content>
+          <Dialog.Actions style={{ justifyContent: "center" }}>
+            <Button mode="contained" onPress={closeMessage}>OK</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <ConfirmDialog
+          visible={showRestoreConfirm}
+          title="Restore from Cloud?"
+          message="This will overwrite all your local data with the data from your cloud backup. This action cannot be undone. Are you sure?"
+          confirmLabel="Restore"
+          icon="database-refresh-outline"
+          onConfirm={() => {
+            setShowRestoreConfirm(false);
+            performRestore();
+          }}
+          onCancel={() => setShowRestoreConfirm(false)}
+        />
 
         <Dialog visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)}>
           <Dialog.Title>Verify Account PIN</Dialog.Title>
@@ -1099,6 +1346,56 @@ export default function SettingsScreen() {
           <Dialog.Actions>
             <Button onPress={() => { setShowPinSetup(false); setPinSetupInput(""); }}>Cancel</Button>
             <Button onPress={confirmPinSetup}>Set Passcode</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showChangePasscodeDialog} onDismiss={closeChangePasscodeDialog}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+            <Dialog.Title>Change Passcode</Dialog.Title>
+            <IconButton icon="close" onPress={closeChangePasscodeDialog} />
+          </View>
+          <Dialog.Content>
+            <Text style={{ marginBottom: 16 }}>
+              {passcode ? "Enter your current passcode, then choose a new 4-digit passcode." : "Choose a new 4-digit passcode."}
+            </Text>
+            {passcode && (
+              <TextInput
+                label="Current Passcode"
+                value={currentPasscodeInput}
+                onChangeText={(t) => { setCurrentPasscodeInput(t); setChangePasscodeError(""); }}
+                secureTextEntry
+                keyboardType="numeric"
+                maxLength={4}
+                mode="outlined"
+                style={{ marginBottom: 12 }}
+              />
+            )}
+            <TextInput
+              label="New Passcode"
+              value={newPasscodeInput}
+              onChangeText={(t) => { setNewPasscodeInput(t); setChangePasscodeError(""); }}
+              secureTextEntry
+              keyboardType="numeric"
+              maxLength={4}
+              mode="outlined"
+              style={{ marginBottom: 12 }}
+            />
+            <TextInput
+              label="Confirm New Passcode"
+              value={confirmPasscodeInput}
+              onChangeText={(t) => { setConfirmPasscodeInput(t); setChangePasscodeError(""); }}
+              secureTextEntry
+              keyboardType="numeric"
+              maxLength={4}
+              mode="outlined"
+            />
+            {changePasscodeError ? (
+              <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>{changePasscodeError}</Text>
+            ) : null}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={closeChangePasscodeDialog}>Cancel</Button>
+            <Button onPress={handleChangePasscode}>Change Passcode</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>

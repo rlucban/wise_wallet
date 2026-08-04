@@ -19,6 +19,7 @@ function migrateDue(item: Due): Due {
       frequency: record.isRecurring ? "monthly" : "once",
       type: item.type || "expense",
       categoryId: item.categoryId,
+      categoryName: item.categoryName,
       autoProcess: false,
       completed: item.completed || false,
       updatedAt: nowTimestamp(),

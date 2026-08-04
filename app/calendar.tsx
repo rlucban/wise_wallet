@@ -4,11 +4,15 @@ import { Appbar, Text, List, FAB, useTheme, Card, Divider } from "react-native-p
 import { useRouter, useFocusEffect } from "expo-router";
 import { Calendar } from "react-native-calendars";
 import { useTransactions } from "../hooks/useTransactions";
+import { useCurrencyActions } from "../context/CurrencyContext";
+import { FinancialTip } from "../components/FinancialTip";
+import { getDayFinancialTips } from "../utils/financialLiteracy";
 
 export default function CalendarScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { transactions, refetch } = useTransactions();
+  const { formatAmount } = useCurrencyActions();
 
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
@@ -65,11 +69,18 @@ export default function CalendarScreen() {
               {new Date(selectedDate).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
             </Text>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ color: theme.colors.primary }}>Income: +${totalIncome.toFixed(2)}</Text>
-              <Text style={{ color: theme.colors.error }}>Expense: -${totalExpense.toFixed(2)}</Text>
+              <Text style={{ color: theme.colors.primary }}>Income: +{formatAmount(totalIncome)}</Text>
+              <Text style={{ color: theme.colors.error }}>Expense: -{formatAmount(totalExpense)}</Text>
             </View>
           </Card.Content>
         </Card>
+
+        <FinancialTip
+          date={new Date(selectedDate + "T00:00:00")}
+          extraTips={getDayFinancialTips(selectedDate, transactions, formatAmount)}
+          showFooter={false}
+          style={{ margin: 0, marginBottom: 16 }}
+        />
 
         {dayTransactions.length === 0 ? (
           <Text style={{ textAlign: "center", color: "gray", marginTop: 20 }}>
@@ -99,7 +110,7 @@ export default function CalendarScreen() {
                           color: item.type === "income" ? theme.colors.primary : theme.colors.error,
                         }}
                       >
-                        {item.type === "income" ? "+" : "-"}${item.amount?.toFixed(2) || "0.00"}
+                        {item.type === "income" ? "+" : "-"}{formatAmount(item.amount)}
                       </Text>
                     )}
                   />
