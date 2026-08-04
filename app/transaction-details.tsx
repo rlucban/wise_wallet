@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { View, ScrollView } from "react-native";
 import { Image } from "expo-image";
-import { Appbar, Text, Card, Chip, Button, Divider, useTheme, Portal, Dialog } from "react-native-paper";
+import { Appbar, Text, Card, Chip, Divider, useTheme } from "react-native-paper";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTransactions } from "../hooks/useTransactions";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { Transaction } from "../types";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function TransactionDetails() {
   const router = useRouter();
@@ -152,18 +153,14 @@ export default function TransactionDetails() {
         </Button> */}
       </ScrollView>
 
-      <Portal>
-        <Dialog visible={deleteDialogVisible} onDismiss={() => setDeleteDialogVisible(false)}>
-          <Dialog.Title>Delete Transaction?</Dialog.Title>
-          <Dialog.Content>
-            <Text>Are you sure you want to delete this transaction? This cannot be undone.</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDeleteDialogVisible(false)}>Cancel</Button>
-            <Button textColor={theme.colors.error} onPress={handleDelete}>Delete</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+      <ConfirmDialog
+        visible={deleteDialogVisible}
+        title="Delete Transaction?"
+        message="Are you sure you want to delete this transaction? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteDialogVisible(false)}
+      />
     </View>
   );
 }

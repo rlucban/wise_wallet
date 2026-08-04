@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Alert } from "react-native";
+import { View, StyleSheet, ScrollView } from "react-native";
 import { Appbar, FAB, Portal, Modal, TextInput, Button, Text, useTheme, Card, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { authFetch } from "../utils/apiClient";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 interface PaymentMethod {
     id: string;
@@ -26,6 +27,7 @@ export default function PaymentMethodsScreen() {
     const [visible, setVisible] = useState(false);
     const [name, setName] = useState("");
     const [type, setType] = useState<PaymentMethod["type"]>("bank");
+    const [deleteTarget, setDeleteTarget] = useState<PaymentMethod | null>(null);
 
     useEffect(() => {
         fetchMethods();
@@ -66,26 +68,20 @@ export default function PaymentMethodsScreen() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        Alert.alert("Delete Method", "Are you sure you want to delete this payment method?", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete",
-                style: "destructive",
-                onPress: async () => {
-                    try {
-                        const { ok } = await authFetch(`paymentMethods/${id}`, {
-                            method: "DELETE",
-                        });
-                        if (ok) {
-                            setMethods(methods.filter((m) => m.id !== id));
-                        }
-                    } catch (error) {
-                        console.error("Error deleting method:", error);
-                    }
-                },
-            },
-        ]);
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        const id = deleteTarget.id;
+        setDeleteTarget(null);
+        try {
+            const { ok } = await authFetch(`paymentMethods/${id}`, {
+                method: "DELETE",
+            });
+            if (ok) {
+                setMethods(methods.filter((m) => m.id !== id));
+            }
+        } catch (error) {
+            console.error("Error deleting method:", error);
+        }
     };
 
     return (
@@ -107,7 +103,7 @@ export default function PaymentMethodsScreen() {
                                     <Text variant="bodySmall" style={{ textTransform: "capitalize" }}>{method.type.replace("_", " ")}</Text>
                                 </View>
                             </View>
-                            <IconButton icon="delete-outline" iconColor={theme.colors.error} onPress={() => handleDelete(method.id)} />
+                            <IconButton icon="delete-outline" iconColor={theme.colors.error} onPress={() => setDeleteTarget(method)} />
                         </Card.Content>
                     </Card>
                 ))}
@@ -143,6 +139,19 @@ export default function PaymentMethodsScreen() {
                     <Button onPress={() => setVisible(false)}>Cancel</Button>
                 </Modal>
             </Portal>
+
+            <ConfirmDialog
+                visible={!!deleteTarget}
+                title="Delete Method?"
+                message={
+                    deleteTarget
+                        ? `Are you sure you want to delete the payment method "${deleteTarget.name}"? This action cannot be undone.`
+                        : ""
+                }
+                confirmLabel="Delete"
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteTarget(null)}
+            />
 
             <FAB icon="plus" style={styles.fab} onPress={() => setVisible(true)} label="Add new" />
         </View>

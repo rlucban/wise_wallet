@@ -11,7 +11,11 @@ import { useCategoriesData } from "../context/CategoriesContext";
 import { Due, DueFrequency } from "../types";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import EmptyState from "../components/EmptyState";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { scheduleDueNotifications } from "../utils/notifications";
+import { getTimeOfMonthTip, getRecurringProjectionMessage, isOverdue } from "../utils/financialLiteracy";
+import { ensureOthersOption } from "../utils/categoryOptions";
+import { formatNumberInput, parseAmount } from "../utils/amount";
 
 const FREQUENCY_LABELS: Record<DueFrequency, string> = {
   once: "Once",
@@ -36,6 +40,7 @@ export default function DuesScreen() {
 
   const [filter, setFilter] = useState<"week" | "month" | "all">("week");
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingDue, setEditingDue] = useState<Due | null>(null);
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(new Date());
@@ -44,6 +49,8 @@ export default function DuesScreen() {
   const [frequency, setFrequency] = useState<DueFrequency>("once");
   const [autoProcess, setAutoProcess] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(undefined);
+  const [customCategory, setCustomCategory] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Due | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -58,6 +65,10 @@ export default function DuesScreen() {
       });
     }
   }, [dues]);
+
+  const categoryOptions = useMemo(() => ensureOthersOption(categories, type), [categories, type]);
+  const othersCategory = useMemo(() => categoryOptions.find((c) => c.name === "Others"), [categoryOptions]);
+  const isOthersSelected = !!othersCategory && selectedCategoryId === othersCategory.id;
 
   const now = useMemo(() => new Date(), []);
   const startOfWeek = useMemo(() => {
@@ -138,15 +149,60 @@ export default function DuesScreen() {
     return items;
   }, [filteredDues]);
 
-  const handleAdd = async () => {
+  const closeModal = useCallback(() => {
+    setModalVisible(false);
+    setEditingDue(null);
+    setTitle("");
+    setAmount("");
+    setDate(new Date());
+    setFrequency("once");
+    setAutoProcess(false);
+    setSelectedCategoryId(undefined);
+    setCustomCategory("");
+  }, []);
+
+  const openAddModal = useCallback(() => {
+    setEditingDue(null);
+    setTitle("");
+    setAmount("");
+    setDate(new Date());
+    setFrequency("once");
+    setAutoProcess(false);
+    setSelectedCategoryId(undefined);
+    setCustomCategory("");
+    setModalVisible(true);
+  }, []);
+
+  const handleEdit = useCallback((due: Due) => {
+    setTitle(due.title);
+    setAmount(formatNumberInput(String(due.amount)));
+    setDate(new Date(due.date));
+    setType(due.type || "expense");
+    setFrequency(due.frequency || "once");
+    setAutoProcess(!!due.autoProcess);
+    setSelectedCategoryId(due.categoryId);
+    setCustomCategory(due.categoryName || "");
+    setEditingDue(due);
+    setModalVisible(true);
+  }, []);
+
+  const handleToggleCompleted = useCallback(async (due: Due) => {
+    await updateDue(due.id, { completed: !due.completed, updatedAt: Date.now() });
+  }, [updateDue]);
+
+  const handleSubmit = async () => {
     if (!title) return;
-    const numAmount = parseFloat(amount);
+    const numAmount = parseAmount(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
       Alert.alert("Invalid Amount", "Please enter a valid amount.");
       return;
     }
+    if (isOthersSelected && !customCategory.trim()) {
+      Alert.alert("Invalid Category", "Please specify a category.");
+      return;
+    }
 
-    await addDue({
+    const payload = {
       title,
       amount: numAmount,
       date: date.toISOString(),
@@ -154,26 +210,41 @@ export default function DuesScreen() {
       frequency,
       autoProcess,
       categoryId: selectedCategoryId,
-      completed: false,
+      categoryName: isOthersSelected ? customCategory.trim() : undefined,
       updatedAt: Date.now(),
-    });
-    setTitle("");
-    setAmount("");
-    setDate(new Date());
-    setFrequency("once");
-    setAutoProcess(false);
-    setSelectedCategoryId(undefined);
-    setModalVisible(false);
+    };
+
+    try {
+      if (editingDue) {
+        await updateDue(editingDue.id, payload);
+      } else {
+        await addDue({
+          ...payload,
+          completed: false,
+        });
+      }
+      closeModal();
+    } catch {
+      Alert.alert("Error", "Failed to save scheduled item.");
+    }
   };
 
   const recordTransaction = useCallback(async (item: Due) => {
     try {
+      const dueCategory =
+        (item.categoryId ? categories.find((c) => c.id === item.categoryId) : undefined) ||
+        (item.categoryName
+          ? { id: item.categoryId || item.title, name: item.categoryName, type: item.type || "expense", updatedAt: 0 }
+          : undefined) ||
+        categories.find((c) => c.type === (item.type || "expense")) ||
+        { id: "8", name: "Others", type: "expense", updatedAt: 0 };
+
       await addTransaction({
         title: item.title,
         amount: item.amount,
         type: item.type || "expense",
         date: new Date().toISOString(),
-        category: categories.find(c => c.type === (item.type || "expense")) || { id: "8", name: "Others", type: "expense", updatedAt: 0 },
+        category: dueCategory,
         updatedAt: Date.now(),
       });
       await updateDue(item.id, { completed: true });
@@ -194,6 +265,7 @@ export default function DuesScreen() {
           frequency: item.frequency,
           autoProcess: item.autoProcess,
           categoryId: item.categoryId,
+          categoryName: item.categoryName,
           completed: false,
           updatedAt: Date.now(),
         });
@@ -205,9 +277,11 @@ export default function DuesScreen() {
      }
    }, [addTransaction, addDue, updateDue, categories]);
 
-   const handleDelete = useCallback(async (id: string) => {
-    await deleteDue(id);
-  }, [deleteDue]);
+   const confirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    await deleteDue(deleteTarget.id);
+    setDeleteTarget(null);
+  }, [deleteDue, deleteTarget]);
 
   const renderItem = useCallback(({ item }: { item: ListItem }) => {
     if (item.kind === "upcoming-header") {
@@ -256,9 +330,27 @@ export default function DuesScreen() {
                 <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 2 }}>
                   {new Date(due.date).toLocaleDateString()}  {formatAmount(due.amount)}  {FREQUENCY_LABELS[due.frequency || "once"]}
                 </Text>
+                {getRecurringProjectionMessage(due, formatAmount) && (
+                  <Text variant="bodySmall" style={{ color: "#D97706", marginTop: 2 }}>
+                    💡 {getRecurringProjectionMessage(due, formatAmount)}
+                  </Text>
+                )}
               </View>
 
               <View style={{ flexDirection: "row", alignItems: "center" }}>
+                {isOverdue(due) && (
+                  <Text
+                    variant="labelSmall"
+                    style={{
+                      color: theme.colors.error,
+                      marginRight: 8,
+                      fontWeight: "bold",
+                      fontSize: 10,
+                    }}
+                  >
+                    OVERDUE
+                  </Text>
+                )}
                 {isToday && (
                   <Text
                     variant="labelSmall"
@@ -283,7 +375,8 @@ export default function DuesScreen() {
                 <Button mode="outlined" compact onPress={() => recordTransaction(due)} style={{ marginRight: 4 }}>
                   {due.type === "income" ? "Receive" : "Pay"}
                 </Button>
-                <IconButton icon="delete" onPress={() => handleDelete(due.id)} iconColor={theme.colors.error} size={20} />
+                <IconButton icon="pencil-outline" onPress={() => handleEdit(due)} size={20} />
+                <IconButton icon="delete" onPress={() => setDeleteTarget(due)} iconColor={theme.colors.error} size={20} />
               </View>
             </View>
           </Card.Content>
@@ -322,11 +415,21 @@ export default function DuesScreen() {
                 {new Date(due.date).toLocaleDateString()}  {formatAmount(due.amount)}
               </Text>
             </View>
+
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <IconButton
+                icon="undo"
+                size={20}
+                onPress={() => handleToggleCompleted(due)}
+              />
+              <IconButton icon="pencil-outline" size={20} onPress={() => handleEdit(due)} />
+              <IconButton icon="delete" size={20} iconColor={theme.colors.error} onPress={() => setDeleteTarget(due)} />
+            </View>
           </View>
         </Card.Content>
       </Card>
     );
-  }, [theme, formatAmount, recordTransaction, handleDelete]);
+  }, [theme, formatAmount, recordTransaction, handleEdit, handleToggleCompleted]);
 
   const ListHeader = useCallback(() => (
     <View>
@@ -381,8 +484,8 @@ export default function DuesScreen() {
       />
 
       <Portal>
-        <Modal visible={modalVisible} onDismiss={() => setModalVisible(false)} contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}>
-           <Text variant="titleLarge" style={{ marginBottom: 16 }}>New Scheduled Item</Text>
+        <Modal visible={modalVisible} onDismiss={closeModal} contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}>
+           <Text variant="titleLarge" style={{ marginBottom: 16 }}>{editingDue ? "Edit Scheduled Item" : "New Scheduled Item"}</Text>
 
            <SegmentedButtons
              value={type}
@@ -417,7 +520,7 @@ export default function DuesScreen() {
           </View>
 
           <TextInput label="Title" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
-          <TextInput label="Amount" value={amount} onChangeText={(t) => setAmount(t.replace(/[^0-9.]/g, ""))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} left={<TextInput.Affix text="₱" />} />
+          <TextInput label="Amount" value={amount} onChangeText={(t) => setAmount(formatNumberInput(t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} left={<TextInput.Affix text="₱" />} />
 
            <TextInput
              label="Date"
@@ -425,12 +528,16 @@ export default function DuesScreen() {
              mode="outlined"
              editable={false}
              right={<TextInput.Icon icon="calendar" onPress={() => setShowDatePicker(true)} />}
-             style={{ marginBottom: 16 }}
+             style={{ marginBottom: 8 }}
            />
 
+           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontStyle: "italic", marginBottom: 16 }}>
+             💡 {getTimeOfMonthTip(date).title}: {getTimeOfMonthTip(date).message}
+           </Text>
+
           <Text style={{ marginBottom: 8, fontWeight: "600" }}>Category (Optional)</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-            {categories.filter((c) => c.type === type).map((cat) => (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: isOthersSelected ? 8 : 16 }}>
+            {categoryOptions.map((cat) => (
               <Chip
                 key={cat.id}
                 selected={selectedCategoryId === cat.id}
@@ -442,9 +549,34 @@ export default function DuesScreen() {
               </Chip>
             ))}
           </View>
+          {isOthersSelected && (
+            <TextInput
+              label="Specify Category"
+              value={customCategory}
+              onChangeText={setCustomCategory}
+              mode="outlined"
+              placeholder="e.g., Pet Care, Gym, Gifts"
+              style={{ marginBottom: 16 }}
+            />
+          )}
 
-          <Button mode="contained" onPress={handleAdd} disabled={!title || !amount}>Add Due</Button>
+          <Button mode="contained" onPress={handleSubmit} disabled={!title || !amount}>{editingDue ? "Save Changes" : "Add Due"}</Button>
          </Modal>
+       </Portal>
+
+       <Portal>
+         <ConfirmDialog
+           visible={!!deleteTarget}
+           title="Delete Scheduled Item?"
+           message={
+             deleteTarget
+               ? `Are you sure you want to delete "${deleteTarget.title}" (${formatAmount(deleteTarget.amount)})? This action cannot be undone.`
+               : ""
+           }
+           confirmLabel="Delete"
+           onConfirm={confirmDelete}
+           onCancel={() => setDeleteTarget(null)}
+         />
        </Portal>
 
        <Portal>
@@ -504,7 +636,7 @@ export default function DuesScreen() {
          </Modal>
        </Portal>
 
-       <FAB icon="plus" style={{ position: "absolute", margin: 16, right: 0, bottom: 0 }} onPress={() => setModalVisible(true)} />
+       <FAB icon="plus" style={{ position: "absolute", margin: 16, right: 0, bottom: 0 }} onPress={openAddModal} />
     </View>
   );
 }

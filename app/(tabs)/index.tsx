@@ -86,22 +86,10 @@ export default function Dashboard() {
     [upcomingDues]
   );
 
-  const PAGE_SIZE = 20;
-  const [page, setPage] = useState(1);
-
   const transactionData = useMemo(() => {
     const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return sorted.slice(0, page * PAGE_SIZE);
-  }, [transactions, page]);
-
-  const hasMore = useMemo(
-    () => transactions.length > page * PAGE_SIZE,
-    [transactions, page]
-  );
-
-  const loadMore = useCallback(() => {
-    if (hasMore) setPage((p) => p + 1);
-  }, [hasMore]);
+    return sorted.slice(0, 6);
+  }, [transactions]);
 
   const renderTransactionItem = useCallback(
     ({ item }: { item: Transaction }) => (
@@ -322,7 +310,7 @@ export default function Dashboard() {
                         {d.title}
                       </Text>
                       <Text style={{ fontSize: 13, fontWeight: "700", color, marginTop: 2 }}>
-                        {isExpense ? "-" : "+"}₱{d.amount.toFixed(2)}
+                        {isExpense ? "-" : "+"}{formatAmount(d.amount)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -352,9 +340,6 @@ export default function Dashboard() {
         keyExtractor={(item: Transaction) => item.id}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={<EmptyState icon="receipt" title="No transactions yet" subtitle="Tap + to add your first transaction" />}
-        ListFooterComponent={hasMore ? <View style={{ paddingVertical: 16, alignItems: "center" }}><Text variant="bodySmall" style={{ color: theme.colors.outline }}>Scroll for more</Text></View> : null}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       />

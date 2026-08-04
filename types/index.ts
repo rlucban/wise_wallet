@@ -48,6 +48,7 @@ export interface Due extends TimestampedEntity {
   frequency?: DueFrequency;
   type: TransactionType;
   categoryId?: string;
+  categoryName?: string;
   autoProcess?: boolean;
   completed?: boolean;
 }

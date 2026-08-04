@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useUserProfileActions } from "../context/UserProfileContext";
 import { useTransactionsActions } from "../context/TransactionsContext";
+import { formatNumberInput, parseAmount } from "../utils/amount";
 
 export default function OnboardingScreen() {
     const router = useRouter();
@@ -21,7 +22,7 @@ export default function OnboardingScreen() {
         if (!name.trim()) {
             newErrors.name = "Please enter your name.";
         }
-        if (isNaN(parseFloat(balance))) {
+        if (isNaN(parseAmount(balance))) {
             newErrors.balance = "Please enter a valid number.";
         }
         setErrors(newErrors);
@@ -32,7 +33,7 @@ export default function OnboardingScreen() {
         if (!validate()) return;
         setLoading(true);
         try {
-            const initialBalance = parseFloat(balance) || 0;
+            const initialBalance = parseAmount(balance) || 0;
 
             // 1. Update Profile (Sets the current balance field)
             await completeSetup(name.trim(), initialBalance);
@@ -100,7 +101,7 @@ export default function OnboardingScreen() {
                         <TextInput
                             label="Initial Balance"
                             value={balance}
-                            onChangeText={setBalance}
+                            onChangeText={(t) => setBalance(formatNumberInput(t))}
                             mode="outlined"
                             style={styles.input}
                             textColor="#1a237e"

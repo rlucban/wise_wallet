@@ -102,7 +102,7 @@ export async function scheduleDueNotifications(dues: Due[]): Promise<void> {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: due.type === "expense" ? "📄 Bill Due" : "💰 Income Due",
-          body: `${due.title} — ${due.type === "expense" ? "-" : "+"}₱${due.amount.toFixed(2)}`,
+          body: `${due.title} — ${due.type === "expense" ? "-" : "+"}₱${due.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
           data: { dueId: due.id, screen: "dues" },
           ...(Platform.OS === "android" && { channelId: ANDROID_CHANNEL_ID }),
         },
