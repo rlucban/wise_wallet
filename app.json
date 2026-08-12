@@ -27,12 +27,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "@react-native-community/datetimepicker",
       "expo-secure-store",
       [
         "expo-notifications",

@@ -1,5 +1,5 @@
 import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View, Text, Platform, StyleSheet } from "react-native";
 import { initMasterDb, initDb } from "../utils/db";
 import { PaperProvider, Banner } from "react-native-paper";
@@ -61,6 +61,8 @@ const styles = StyleSheet.create({
 
 function SystemResetManager() {
   const router = useRouter();
+  const routerRef = useRef(router);
+  routerRef.current = router;
   const { logout: _logout } = useAuthActions();
 
   useEffect(() => {
@@ -86,7 +88,7 @@ function SystemResetManager() {
           if (Platform.OS === 'web') {
             window.location.reload();
           } else {
-            setTimeout(() => router.replace("/auth"), 0);
+            setTimeout(() => routerRef.current.replace("/auth"), 0);
             alert("A system reset was requested. You have been logged out.");
           }
         }
@@ -96,7 +98,7 @@ function SystemResetManager() {
     };
 
     checkReset();
-  }, [router]);
+  }, []);
 
   return null;
 }
