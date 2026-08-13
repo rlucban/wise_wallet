@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Platform, AppState, AppStateStatus 
 import { Text } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuthData } from '../context/AuthContext';
-import { API_URL } from '../utils/db';
+import { checkHealth } from '../context/NetworkContext';
 import { useRouter } from 'expo-router';
 
 export function CloudLinkBanner() {
@@ -12,37 +12,21 @@ export function CloudLinkBanner() {
     const router = useRouter();
     const appStateRef = useRef(AppState.currentState);
 
-    const checkConnection = async () => {
-        if (typeof navigator !== 'undefined' && !navigator.onLine) return false;
-        try {
-            const timeout = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Timeout')), 2000)
-            );
-            const response = await Promise.race([
-                fetch(`${API_URL}/system/health`), 
-                timeout
-            ]) as Response;
-            return response.ok;
-        } catch {
-            return false;
-        }
-    };
-
     useEffect(() => {
         if (token !== 'offline_token') {
             setIsVisible(false);
             return;
         }
 
-        checkConnection().then((online) => {
+        const evaluate = async () => {
+            const { online } = await checkHealth();
             setIsVisible(online);
-        });
+        };
+        evaluate();
 
         const sub = AppState.addEventListener("change", (nextState: AppStateStatus) => {
             if (appStateRef.current.match(/inactive|background/) && nextState === "active") {
-                checkConnection().then((online) => {
-                    setIsVisible(online);
-                });
+                evaluate();
             }
             appStateRef.current = nextState;
         });
@@ -63,7 +47,7 @@ export function CloudLinkBanner() {
             </View>
             <TouchableOpacity 
                 style={styles.button} 
-                onPress={() => router.push("/auth")} // Redirect to Auth screen to 're-register' or link
+                onPress={() => router.push("/auth")}
             >
                 <Text style={styles.buttonText}>LINK NOW</Text>
             </TouchableOpacity>

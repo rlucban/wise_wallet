@@ -11,13 +11,13 @@ import { CategoriesProvider } from "../context/CategoriesContext";
 import { LanguageProvider } from "../context/LanguageContext";
 import { PasscodeProvider, usePasscode } from "../context/PasscodeContext";
 import { AuthProvider, useAuthData, useAuthActions } from "../context/AuthContext";
-import { NetworkProvider, useNetwork } from "../context/NetworkContext";
+import { NetworkProvider, useNetwork, checkHealth } from "../context/NetworkContext";
 import PasscodeScreen from "./passcode-screen";
 import { DbRecoveryProvider } from "../context/DbRecoveryContext";
 import { RepositoryProvider } from "../context/RepositoryContext";
 import ProviderComposer from "../components/ProviderComposer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_URL, hardResetLocalData } from "../utils/db";
+import { hardResetLocalData } from "../utils/db";
 import { requestNotificationPermissions, scheduleDueNotifications } from "../utils/notifications";
 import { useRepositories } from "../context/RepositoryContext";
 
@@ -68,22 +68,23 @@ function SystemResetManager() {
   useEffect(() => {
     const checkReset = async () => {
       try {
-        const response = await fetch(`${API_URL}/system/health`);
-        if (!response.ok) return;
+        const { online, data } = await checkHealth();
+        if (!online) return;
 
-        const { data } = await response.json();
-        const serverEpoch = data.reset_epoch;
+        const resetEpoch = data?.reset_epoch;
+        if (typeof resetEpoch !== "number") return;
+
         const localEpochStr = await AsyncStorage.getItem("system_reset_epoch");
         const localEpoch = localEpochStr ? parseInt(localEpochStr) : null;
 
         if (localEpoch === null) {
           // New install, just save the current epoch
-          await AsyncStorage.setItem("system_reset_epoch", serverEpoch.toString());
-        } else if (serverEpoch > localEpoch) {
+          await AsyncStorage.setItem("system_reset_epoch", resetEpoch.toString());
+        } else if (resetEpoch > localEpoch) {
           // RESET TRIGGERED
           console.warn("SYSTEM RESET TRIGGERED BY SERVER");
           await hardResetLocalData();
-          await AsyncStorage.setItem("system_reset_epoch", serverEpoch.toString());
+          await AsyncStorage.setItem("system_reset_epoch", resetEpoch.toString());
           
           if (Platform.OS === 'web') {
             window.location.reload();
