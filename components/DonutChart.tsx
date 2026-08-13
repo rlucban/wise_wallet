@@ -1,5 +1,5 @@
 import React from "react";
-import { View } from "react-native";
+import { View, Image, ImageSourcePropType } from "react-native";
 import { Text } from "react-native-paper";
 import Svg, { Circle, Path, Text as SvgText } from "react-native-svg";
 
@@ -16,6 +16,7 @@ interface DonutChartProps {
   formatValue: (value: number) => string;
   centerValue?: string;
   centerCaption?: string;
+  centerImage?: ImageSourcePropType;
   emptyMessage?: string;
   mutedColor?: string;
   textColor?: string;
@@ -37,6 +38,7 @@ export function DonutChart({
   formatValue,
   centerValue,
   centerCaption,
+  centerImage,
   emptyMessage = "No data available",
   mutedColor = "#666666",
   textColor = "#333333",
@@ -94,17 +96,31 @@ export function DonutChart({
             />
           ))
         )}
-        {centerValue && (
+        {!centerImage && centerValue && (
           <SvgText x={cx} y={cy + 6} fontSize={15} fontWeight="bold" fill={textColor} textAnchor="middle">
             {centerValue}
           </SvgText>
         )}
-        {centerCaption && (
+        {!centerImage && centerCaption && (
           <SvgText x={cx} y={cy + 24} fontSize={11} fill={mutedColor} textAnchor="middle">
             {centerCaption}
           </SvgText>
         )}
       </Svg>
+      {centerImage && (
+        <Image
+          source={centerImage}
+          style={{
+            position: "absolute",
+            top: cy - innerR,
+            left: cx - innerR,
+            width: innerR * 2,
+            height: innerR * 2,
+            borderRadius: innerR,
+          }}
+          resizeMode="cover"
+        />
+      )}
       <View style={{ marginTop: 4 }}>
         {data.map((segment, i) => {
           const pct = total > 0 ? Math.round((segment.value / total) * 100) : 0;

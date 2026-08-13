@@ -164,8 +164,7 @@ export default function ReportsScreen() {
               width={screenWidth - 64}
               height={200}
               formatValue={formatAmount}
-              centerValue={formatAmount(income - expense)}
-              centerCaption="Net"
+              centerImage={require("../../assets/regina.png")}
               emptyMessage="No data for this period"
               mutedColor={theme.colors.onSurfaceVariant}
               textColor={theme.colors.onSurface}

@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import { Image } from "react-native";
 import { useTheme } from "react-native-paper";
 
 export default function TabLayout() {
@@ -39,8 +40,11 @@ export default function TabLayout() {
                 name="reports"
                 options={{
                     title: "Reports",
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="chart-bar" size={size} color={color} />
+                    tabBarIcon: ({ size }) => (
+                        <Image
+                            source={require("../../assets/regina.png")}
+                            style={{ width: size, height: size, borderRadius: size / 2 }}
+                        />
                     ),
                 }}
             />
@@ -48,8 +52,11 @@ export default function TabLayout() {
                 name="learning"
                 options={{
                     title: "Learning",
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="school" size={size} color={color} />
+                    tabBarIcon: ({ size }) => (
+                        <Image
+                            source={require("../../assets/rachel.png")}
+                            style={{ width: size, height: size, borderRadius: size / 2 }}
+                        />
                     ),
                 }}
             />
@@ -63,8 +70,11 @@ export default function TabLayout() {
                 name="settings"
                 options={{
                     title: "Settings",
-                    tabBarIcon: ({ color, size }) => (
-                        <MaterialCommunityIcons name="cog" size={size} color={color} />
+                    tabBarIcon: ({ size }) => (
+                        <Image
+                            source={require("../../assets/sean.png")}
+                            style={{ width: size, height: size, borderRadius: size / 2 }}
+                        />
                     ),
                 }}
             />
