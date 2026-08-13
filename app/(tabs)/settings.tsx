@@ -123,7 +123,7 @@ export default function SettingsScreen() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace("/auth");
+    router.replace("/login");
   };
 
   const closeChangePasscodeDialog = () => {
@@ -815,14 +815,14 @@ export default function SettingsScreen() {
       await deleteUser(activeUserId);
       await logout();
       closeDeleteDialog();
-      showMessage("success", "Account Deleted", "Account and all associated data deleted successfully.", () => router.replace("/auth"));
+      showMessage("success", "Account Deleted", "Account and all associated data deleted successfully.", () => router.replace("/login"));
     } catch (e) {
       console.error("Delete account sync failed:", e);
       await clearAllLocalData();
       await deleteUser(activeUserId);
       await logout();
       closeDeleteDialog();
-      showMessage("error", "Partial Deletion", "Failed to fully clear cloud data. Account was deleted locally.", () => router.replace("/auth"));
+      showMessage("error", "Partial Deletion", "Failed to fully clear cloud data. Account was deleted locally.", () => router.replace("/login"));
     } finally {
       setIsSyncing(false);
     }
