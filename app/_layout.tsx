@@ -89,7 +89,7 @@ function SystemResetManager() {
           if (Platform.OS === 'web') {
             window.location.reload();
           } else {
-            setTimeout(() => routerRef.current.replace("/auth"), 0);
+            setTimeout(() => routerRef.current.replace("/login"), 0);
             alert("A system reset was requested. You have been logged out.");
           }
         }
@@ -125,7 +125,7 @@ function MainLayout() {
     if (!activeUserId && !inAuthGroup) {
       // 1. Not logged in -> Go to Auth
       console.info("[Nav] Redirecting to Auth");
-      setTimeout(() => router.replace('/auth'), 0);
+      setTimeout(() => router.replace('/login'), 0);
     } else if (activeUserId) {
       if (profile?.isFirstRun && !inOnboarding) {
         // 2. Logged in but first run -> Go to Onboarding
@@ -149,7 +149,8 @@ function MainLayout() {
         <View style={{ flex: 1 }}>
           <OfflineIndicator />
           <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="auth" options={{ animation: "fade" }} />
+            <Stack.Screen name="login" options={{ animation: "fade" }} />
+            <Stack.Screen name="register" options={{ animation: "fade" }} />
             <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="add-transaction" options={{ presentation: "modal" }} />

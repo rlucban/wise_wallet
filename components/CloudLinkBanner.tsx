@@ -47,7 +47,7 @@ export function CloudLinkBanner() {
             </View>
             <TouchableOpacity 
                 style={styles.button} 
-                onPress={() => router.push("/auth")}
+                onPress={() => router.push("/login")} // Redirect to Auth screen to 're-register' or link
             >
                 <Text style={styles.buttonText}>LINK NOW</Text>
             </TouchableOpacity>
