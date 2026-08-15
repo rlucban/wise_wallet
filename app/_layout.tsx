@@ -117,7 +117,7 @@ function MainLayout() {
     if (authLoading || profileLoading || !navigationState?.key) return;
     if (activeUserId && !profile) return;
 
-    const inAuthGroup = segments[0] === 'auth';
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
     const inOnboarding = segments[0] === 'onboarding';
 
     console.info(`[Nav] State -> User: ${activeUserId}, FirstRun: ${profile?.isFirstRun}, Path: /${segments.join('/')}`);
