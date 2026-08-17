@@ -1,0 +1,97 @@
+graph TB
+    subgraph Screens["📱 Screens (app/)"]
+        Dashboard["Dashboard (index.tsx)"]
+        Notifications["Notifications"]
+        AddTx["Add Transaction"]
+        EditTx["Edit Transaction"]
+        TxDetails["Transaction Details"]
+        Dues["Dues"]
+        Savings["Savings"]
+        Reports["Reports"]
+        Calendar["Calendar"]
+        Settings["Settings"]
+        Learning["Learning"]
+        Login["Login"]
+        Register["Register"]
+        Onboarding["Onboarding"]
+        Passcode["Passcode"]
+        Help["Help"]
+        CatSettings["Category Settings"]
+        PayMethods["Payment Methods"]
+    end
+
+    subgraph Components["🧩 Components"]
+        SummaryCard["SummaryCard"]
+        SmartInsights["SmartInsights"]
+        FinancialTip["FinancialTip"]
+        DonutChart["DonutChart"]
+        MonthlyTrend["MonthlyTrendChart"]
+        BalBreakdown["BalanceBreakdown"]
+        CloudBanner["CloudLinkBanner"]
+        EmptyState["EmptyState"]
+        TxList["TransactionList"]
+        Skeleton["SkeletonLoader"]
+        PiggyBank["PiggyBank"]
+        ConfirmDlg["ConfirmDialog"]
+    end
+
+    subgraph ContextLayer["🔗 Context Providers"]
+        AuthCtx["AuthContext"]
+        TxCtx["TransactionsContext"]
+        CatCtx["CategoriesContext"]
+        ThemeCtx["ThemeContext"]
+        CurrCtx["CurrencyContext"]
+        LangCtx["LanguageContext"]
+        NetCtx["NetworkContext"]
+        PassCtx["PasscodeContext"]
+        RepoCtx["RepositoryContext"]
+        ProfileCtx["UserProfileContext"]
+        DbRecCtx["DbRecoveryContext"]
+    end
+
+    subgraph Hooks["🪝 Custom Hooks"]
+        useTx["useTransactions"]
+        useDues["useDues"]
+        useSavings["useSavings"]
+        useInsights["useInsights"]
+        useCloudLink["useCloudLink"]
+        useSyncStatus["useSyncStatus"]
+    end
+
+    subgraph Repositories["🗄️ Repositories"]
+        BaseStor["BaseAsyncStorageRepository"]
+        TxRepo["TransactionRepo"]
+        DueRepo["DueRepo"]
+        SavRepo["SavingsItemRepo"]
+        CatRepo["CategoryRepo"]
+        ProfRepo["ProfileRepo"]
+        PayRepo["PaymentMethodRepo"]
+        AgendaRepo["AgendaRepo"]
+        SubRepo["SubscriptionRepo"]
+    end
+
+    subgraph Storage["💾 Storage Layer"]
+        AsyncStor["AsyncStorage (Local)"]
+        SecureStor["SecureStorage"]
+        Supabase["Supabase (Cloud)"]
+    end
+
+    Screens --> Components
+    Screens --> ContextLayer
+    Screens --> Hooks
+
+    Components --> ContextLayer
+    Components --> Hooks
+
+    Hooks --> ContextLayer
+    Hooks --> Repositories
+
+    ContextLayer --> Repositories
+
+    Repositories --> BaseStor
+    BaseStor --> AsyncStor
+
+    AuthCtx --> SecureStor
+    AuthCtx --> AsyncStor
+
+    NetCtx --> Supabase

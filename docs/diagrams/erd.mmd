@@ -1,0 +1,91 @@
+erDiagram
+    UserProfile {
+        string name
+        boolean isFirstRun
+        number initialBalance
+        boolean isDarkMode
+        string language
+        string currency
+        number decimalPoints
+        boolean autoBackup
+    }
+
+    Category {
+        string id PK
+        string name
+        TransactionType type
+        boolean isGlobal
+        number updatedAt
+    }
+
+    Transaction {
+        string id PK
+        string title
+        number amount
+        string date
+        string note
+        string receiptUrl
+        TransactionType type
+        string paymentMethod
+        string establishment
+        string dueId FK
+        number updatedAt
+    }
+
+    Due {
+        string id PK
+        string title
+        number amount
+        string date
+        DueFrequency frequency
+        TransactionType type
+        string categoryId FK
+        string categoryName
+        boolean autoProcess
+        boolean completed
+        number updatedAt
+    }
+
+    SavingsItem {
+        string id PK
+        string title
+        number balance
+        string icon
+        string color
+        number updatedAt
+    }
+
+    PaymentMethodInfo {
+        string id PK
+        string name
+        string type
+        string icon
+    }
+
+    SplitInfo {
+        number people
+        number amountPerPerson
+        string notes
+    }
+
+    Participant {
+        string name
+        number amount
+        boolean paid
+    }
+
+    UserProfile ||--o{ Transaction : "owns"
+    UserProfile ||--o{ Due : "owns"
+    UserProfile ||--o{ SavingsItem : "owns"
+    UserProfile ||--o{ Category : "manages"
+    UserProfile ||--o{ PaymentMethodInfo : "configures"
+
+    Category ||--o{ Transaction : "categorizes"
+    Category ||--o{ Due : "categorizes"
+
+    PaymentMethodInfo ||--o{ Transaction : "used in"
+
+    Due ||--o| Transaction : "auto-processes to"
+
+    Transaction ||--o| SplitInfo : "has"
+    SplitInfo ||--o{ Participant : "includes"

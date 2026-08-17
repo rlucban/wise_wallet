@@ -117,15 +117,15 @@ function MainLayout() {
     if (authLoading || profileLoading || !navigationState?.key) return;
     if (activeUserId && !profile) return;
 
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'intro';
     const inOnboarding = segments[0] === 'onboarding';
 
     console.info(`[Nav] State -> User: ${activeUserId}, FirstRun: ${profile?.isFirstRun}, Path: /${segments.join('/')}`);
     
     if (!activeUserId && !inAuthGroup) {
       // 1. Not logged in -> Go to Auth
-      console.info("[Nav] Redirecting to Auth");
-      setTimeout(() => router.replace('/login'), 0);
+      console.info("[Nav] Redirecting to Intro");
+      setTimeout(() => router.replace('/intro'), 0);
     } else if (activeUserId) {
       if (profile?.isFirstRun && !inOnboarding) {
         // 2. Logged in but first run -> Go to Onboarding
@@ -149,6 +149,7 @@ function MainLayout() {
         <View style={{ flex: 1 }}>
           <OfflineIndicator />
           <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="intro" options={{ animation: "fade" }} />
             <Stack.Screen name="login" options={{ animation: "fade" }} />
             <Stack.Screen name="register" options={{ animation: "fade" }} />
             <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
