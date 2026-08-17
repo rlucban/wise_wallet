@@ -40,7 +40,7 @@ export default function IntroScreen() {
             <View style={styles.container}>
                 <View style={styles.content}>
                     <MaterialCommunityIcons 
-                        name={STEPS[currentStep].icon as any} 
+                        name={STEPS[currentStep].icon as keyof typeof MaterialCommunityIcons.glyphMap} 
                         size={100} 
                         color="#fff" 
                         style={styles.icon}
