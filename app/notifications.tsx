@@ -199,7 +199,6 @@ export default function NotificationsScreen() {
         data={pendingDues}
         renderItem={renderItem}
         keyExtractor={(item: Due) => item.id}
-        estimatedItemSize={76}
         ListEmptyComponent={
           <EmptyState
             icon="bell-outline"
