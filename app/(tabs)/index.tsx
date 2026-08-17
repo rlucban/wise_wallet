@@ -199,7 +199,7 @@ export default function Dashboard() {
       </View>
 
       <View style={{ paddingHorizontal: 16 }}>
-        <SmartInsights title="Notifications" />
+        <SmartInsights title="Highlights" />
       </View>
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", paddingHorizontal: 16, marginTop: 20 }}>
@@ -238,25 +238,7 @@ export default function Dashboard() {
         ))}
       </View>
 
-      {upcomingDues.length > 0 && (
-        <TouchableOpacity onPress={() => router.push("/dues")} style={{ marginTop: 16, paddingHorizontal: 20 }}>
-          <Card style={{ backgroundColor: theme.colors.surfaceVariant, borderRadius: 16 }}>
-            <Card.Content>
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-                <MaterialCommunityIcons name="calendar-clock" size={20} color={theme.colors.primary} />
-                <Text variant="titleSmall" style={{ fontWeight: "700", marginLeft: 8 }}>Next 7 Days</Text>
-              </View>
-              <Text variant="bodyMedium">
-                {upcomingDues.length} due{upcomingDues.length > 1 ? "s" : ""}: {formatAmount(totalExpenses)} in expenses
-                {totalIncome > 0 ? `, ${formatAmount(totalIncome)} in income` : ""}
-              </Text>
-              <Text variant="labelSmall" style={{ color: theme.colors.outline, marginTop: 4 }}>Tap to view all dues</Text>
-            </Card.Content>
-          </Card>
-        </TouchableOpacity>
-      )}
-
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 8, paddingHorizontal: 20 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 16, paddingHorizontal: 20 }}>
         <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onBackground }}>Recent Activity</Text>
         <TouchableOpacity onPress={() => router.push("/reports")}>
           <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: "600" }}>See All</Text>

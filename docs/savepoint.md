@@ -25,4 +25,5 @@ WiseWallet is a React Native app built using Expo Router. It currently has featu
 - Updated tab icons to outlined variants (`home-variant-outline`, `chart-box-outline`, `cog-outline`, `school-outline`) with filled versions on active state; active tint color set to dark navy blue `#1B3F7A`.
 - Updated Allocations screen (`app/savings.tsx`) FAB to be a clean circular `+` button without the text label.
 - Harmonized Recent Activity item styling across `app/(tabs)/index.tsx` and `components/TransactionList.tsx` using `getCategoryBadge` with category-specific icons (Food, Bills, Transport, Shopping, Entertainment, Salary/Income) and soft color-tinted 12px squircle backgrounds to blend seamlessly with the system design language.
-- Changed the dashboard banner section title from "Reminders" to "Notifications" in `app/(tabs)/index.tsx`.
+- Changed the dashboard banner section title from "Reminders" to "Highlights" in `app/(tabs)/index.tsx`.
+- Removed the "Next 7 Days" upcoming dues banner card from the Dashboard screen (`app/(tabs)/index.tsx`).
