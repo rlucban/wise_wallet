@@ -1,0 +1,23 @@
+Here is the prompt for the "App Reset Hack" feature execution:
+
+The goal is to provide a backend-controlled "hard reset" mechanism that forces connected client mobile apps to completely wipe their local storage and redirect to the login screen. This is a hack for development/QA purposes.
+
+To avoid race conditions where a boolean flag resets before other devs online receive it, we will use an epoch/version-based approach instead of a simple boolean.
+
+### 1. Backend Changes (wallet-api)
+- `supabase_schema.sql`: Add a single-row "systemSettings" table holding an integer value, such as `reset_epoch`.
+- Create a new endpoint `GET /api/system/health` (in a new `systemRoutes.js` and `systemController.js`).
+- The health endpoint should return the current `reset_epoch` from the `systemSettings` table.
+- Provide a secret endpoint (or SQL script instructions) to bump the `reset_epoch` number. For now, just providing the table structure so the dev can update the integer via Supabase Studio manually is fine.
+
+### 2. Frontend Changes (wallet)
+- In the React Native app, we will use Standard `AsyncStorage` (outside of the secure/db scope) to save the `last_seen_reset_epoch`. Let's store this under the key `'system_reset_epoch'`.
+- Create a global check (e.g., in a `useSystemCheck` hook or inside `_layout.tsx`) that runs when the app starts or comes to the foreground.
+- It hits `GET /api/health` or `GET /api/system/health`.
+- If the server's `reset_epoch` integer is greater than the locally stored `system_reset_epoch`:
+    - Wait, we don't want to reset immediately if the user just installed the app. If the local `system_reset_epoch` is null/undefined (new install), we just save the server's current epoch and proceed normally.
+    - If the local epoch exists, AND the server's epoch is greater:
+         1. Call the `clearAllLocalData` and wipe master tables (like the Delete Account flow, minus calling the API to delete).
+         2. Update the local `system_reset_epoch` to match.
+         3. Redirect the user to the `/auth` route forcefully (using `router.replace`).
+         4. Alert the user that a forced system reset occurred.
