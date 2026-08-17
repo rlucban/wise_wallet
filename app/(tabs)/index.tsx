@@ -1,10 +1,10 @@
 import { View, TouchableOpacity, Platform } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { FAB, Text, Card, IconButton, Menu, Divider } from "react-native-paper";
+import { FAB, Text, Card, IconButton } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useFocusEffect } from "expo-router";
-import { useState, useCallback, useMemo } from "react";
-import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import { useCallback, useMemo } from "react";
+import { startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import { useThemeData } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useTransactions } from "../../hooks/useTransactions";
@@ -29,7 +29,6 @@ export default function Dashboard() {
   const { dues, refetch: refetchDues } = useDues();
   const { formatAmount } = useCurrencyActions();
   const { theme } = useThemeData();
-  const [menuVisible, setMenuVisible] = useState(false);
   const weekRange = useMemo(() => {
     const now = new Date();
     return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
@@ -261,75 +260,33 @@ export default function Dashboard() {
             <Text variant="titleLarge" style={{ fontWeight: "700" }}>{profile?.name || "User"}</Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Menu
-              visible={menuVisible}
-              onDismiss={() => setMenuVisible(false)}
-              contentStyle={{ minWidth: 200 }}
-              anchor={
-                <View>
-                  <IconButton icon="bell-outline" size={24} onPress={() => setMenuVisible(true)} />
-                  {pendingDues.length > 0 && (
-                    <View style={{
-                      position: "absolute", top: 4, right: 4,
-                      backgroundColor: theme.colors.error, borderRadius: 10,
-                      width: 18, height: 18, justifyContent: "center", alignItems: "center",
-                    }}>
-                      <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>
-                        {pendingDues.length}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              }
-            >
-              <Menu.Item
-                title="Upcoming Dues"
-                disabled
-                titleStyle={{ fontWeight: "700", fontSize: 13 }}
+            <View style={{ position: "relative" }}>
+              <IconButton
+                icon="bell-outline"
+                size={24}
+                onPress={() => router.push("/notifications")}
               />
-              <Divider />
-              {pendingDues.length === 0 ? (
-                <Menu.Item title="No dues this week" disabled />
-              ) : (
-                pendingDues.slice(0, 3).map((d) => {
-                  const isExpense = d.type === "expense";
-                  const color = isExpense ? theme.colors.error : "#4caf50";
-                  return (
-                    <TouchableOpacity
-                      key={d.id}
-                      onPress={() => { setMenuVisible(false); router.push("/dues"); }}
-                      style={{
-                        paddingHorizontal: 16, paddingVertical: 8,
-                        borderBottomWidth: 1, borderBottomColor: theme.colors.outlineVariant || "#eee",
-                      }}
-                    >
-                      <Text style={{ fontSize: 11, color, fontWeight: "600" }}>
-                        {format(new Date(d.date), "EEE, MMM d")}
-                      </Text>
-                      <Text style={{ fontSize: 14, fontWeight: "600", marginTop: 2 }}>
-                        {d.title}
-                      </Text>
-                      <Text style={{ fontSize: 13, fontWeight: "700", color, marginTop: 2 }}>
-                        {isExpense ? "-" : "+"}{formatAmount(d.amount)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
               {pendingDues.length > 0 && (
-                <>
-                  <Divider />
-                  <TouchableOpacity
-                    onPress={() => { setMenuVisible(false); router.push("/dues"); }}
-                    style={{ paddingVertical: 10, alignItems: "center" }}
-                  >
-                    <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: "600" }}>
-                      See All...
-                    </Text>
-                  </TouchableOpacity>
-                </>
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                    backgroundColor: theme.colors.error,
+                    borderRadius: 10,
+                    width: 18,
+                    height: 18,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>
+                    {pendingDues.length}
+                  </Text>
+                </View>
               )}
-            </Menu>
+            </View>
           </View>
         </View>
       </View>

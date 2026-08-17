@@ -1,0 +1,61 @@
+graph TB
+    User(["👤 User"])
+
+    subgraph WiseWallet System
+        P1["1.0 Authentication"]
+        P2["2.0 Transaction Management"]
+        P3["3.0 Dues / Scheduled Management"]
+        P4["4.0 Savings / Goals Management"]
+        P5["5.0 Reporting & Analytics"]
+        P6["6.0 Notifications"]
+        P7["7.0 Settings & Profile"]
+        P8["8.0 Cloud Sync"]
+    end
+
+    DS1[("D1: Transactions Store")]
+    DS2[("D2: Dues Store")]
+    DS3[("D3: Savings Store")]
+    DS4[("D4: Categories Store")]
+    DS5[("D5: User Profile Store")]
+    DS6[("D6: Payment Methods Store")]
+    Cloud[("☁️ Supabase")]
+
+    User -- "Credentials" --> P1
+    P1 -- "Auth Token / User ID" --> User
+    P1 -- "Store Token" --> DS5
+
+    User -- "Transaction Data" --> P2
+    P2 -- "Confirmation" --> User
+    P2 -- "Read/Write" --> DS1
+    P2 -- "Lookup Category" --> DS4
+    P2 -- "Lookup Payment Method" --> DS6
+
+    User -- "Due Data" --> P3
+    P3 -- "Confirmation" --> User
+    P3 -- "Read/Write" --> DS2
+    P3 -- "Auto-Process to Transaction" --> DS1
+
+    User -- "Savings Goal Data" --> P4
+    P4 -- "Goal Progress" --> User
+    P4 -- "Read/Write" --> DS3
+
+    P5 -- "Charts / Summaries" --> User
+    P5 -- "Read Transactions" --> DS1
+    P5 -- "Read Dues" --> DS2
+    P5 -- "Read Savings" --> DS3
+
+    P6 -- "Pending Dues List" --> User
+    P6 -- "Read Pending" --> DS2
+
+    User -- "Preferences" --> P7
+    P7 -- "Updated Settings" --> User
+    P7 -- "Read/Write" --> DS5
+    P7 -- "Manage" --> DS4
+    P7 -- "Manage" --> DS6
+
+    P8 -- "Push Local Changes" --> Cloud
+    Cloud -- "Pull Remote Data" --> P8
+    P8 -- "Sync" --> DS1
+    P8 -- "Sync" --> DS2
+    P8 -- "Sync" --> DS3
+    P8 -- "Sync" --> DS5

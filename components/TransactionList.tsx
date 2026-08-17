@@ -7,11 +7,18 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import EmptyState from "./EmptyState";
 import { FlashList } from "@shopify/flash-list";
 
-const PAYMENT_ICONS: Record<string, string> = {
-  cash: "cash",
-  card: "credit-card",
-  bank_transfer: "bank",
-  e_wallet: "wallet",
+const getCategoryIcon = (category?: string | { name?: string }): string => {
+  const name = (typeof category === 'string' ? category : category?.name ?? "").trim().toLowerCase();
+
+  if (name.includes("food")) return "silverware-fork-knife";
+  if (name.includes("bill")) return "receipt";
+  if (name.includes("transport")) return "car";
+  if (name.includes("shop")) return "shopping";
+  if (name.includes("entertain")) return "movie";
+  if (name.includes("scatter") || name.includes("game")) return "dice-5";
+  if (name.includes("salary") || name.includes("income")) return "cash-multiple";
+
+  return "dots-horizontal"; // Fallback for Others
 };
 
 export function TransactionList({ transactions }: { transactions: Transaction[] }) {
@@ -54,9 +61,9 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
         marginRight: 16
       }}>
         <MaterialCommunityIcons
-          name={PAYMENT_ICONS[item.paymentMethod || "cash"]}
+          name={getCategoryIcon(item.category)}
           size={24}
-          color={theme.colors.primary}
+          color="#1E293B"
         />
       </View>
 
