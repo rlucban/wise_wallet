@@ -10,6 +10,7 @@ import { TransactionType, PaymentMethod, Category } from "../types";
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
 import { ensureOthersOption, isOthersCategory } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { API_URL } from "../utils/db";
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: "1", name: "Food", type: "expense", updatedAt: 0 },
@@ -54,8 +55,12 @@ export default function EditTransaction() {
   }, []);
 
   const fetchCategories = async () => {
+    if (!API_URL) {
+      setAvailableCategories(DEFAULT_CATEGORIES);
+      return;
+    }
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000"}/categories`);
+      const response = await fetch(`${API_URL}/categories`);
       const data = await response.json();
       if (data && data.length > 0) {
         setAvailableCategories(data);
