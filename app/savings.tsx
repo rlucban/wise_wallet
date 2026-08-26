@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import EmptyState from "../components/EmptyState";
-import { View, ScrollView, Alert } from "react-native";
+import { View, ScrollView } from "react-native";
 import { Appbar, Text, FAB, Portal, Modal, TextInput, Button, Card, IconButton, Snackbar, useTheme } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSavings } from "../hooks/useSavings";
@@ -40,6 +40,8 @@ export default function SavingsScreen() {
     const [transferAmount, setTransferAmount] = useState("");
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [createError, setCreateError] = useState<string | null>(null);
+    const [transferInError, setTransferInError] = useState<string | null>(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -50,12 +52,12 @@ export default function SavingsScreen() {
     const handleAddItem = async () => {
         const cleanBalance = parseFloat(balance.toString().replace(/[^0-9.]/g, "")) || 0;
         if (!title || isNaN(cleanBalance) || cleanBalance <= 0) {
-            Alert.alert("Invalid Input", "Please provide a title and amount.");
+            setCreateError("Please provide a name and an amount greater than 0.");
             return;
         }
 
         if (cleanBalance > availableBalance) {
-            Alert.alert("Insufficient Balance", `You only have ${formatAmount(availableBalance)} available to allocate.`);
+            setCreateError(`Insufficient balance — you only have ${formatAmount(availableBalance)} available to allocate.`);
             return;
         }
 
@@ -68,6 +70,7 @@ export default function SavingsScreen() {
             setModalVisible(false);
             setTitle("");
             setBalance("");
+            setCreateError(null);
         } catch (e) {
             console.error("Failed to add savings item:", e);
             setToastMessage("Failed to save allocation. Please try again.");
@@ -82,7 +85,7 @@ export default function SavingsScreen() {
         if (!item) return;
 
         if (numAmount > availableBalance) {
-            Alert.alert("Insufficient Balance", `You only have ${formatAmount(availableBalance)} available to allocate.`);
+            setTransferInError(`Insufficient balance — you only have ${formatAmount(availableBalance)} available to allocate.`);
             return;
         }
 
@@ -106,8 +109,9 @@ export default function SavingsScreen() {
             setTransferInModalVisible(false);
             setTransferAmount("");
             setSelectedItemId(null);
+            setTransferInError(null);
         } catch {
-            Alert.alert("Error", "Failed to transfer funds.");
+            setToastMessage("Failed to transfer funds. Please try again.");
         }
     };
 
@@ -116,12 +120,7 @@ export default function SavingsScreen() {
         if (isNaN(numAmount) || numAmount <= 0 || !selectedItemId) return;
 
         const item = items.find(g => g.id === selectedItemId);
-        if (!item) return;
-
-        if (numAmount > item.balance) {
-            Alert.alert("Insufficient Balance", `You only have ${formatAmount(item.balance)} in this savings item.`);
-            return;
-        }
+        if (!item || numAmount > item.balance) return;
 
         try {
             await updateItem(selectedItemId, {
@@ -144,7 +143,7 @@ export default function SavingsScreen() {
             setTransferAmount("");
             setSelectedItemId(null);
         } catch {
-            Alert.alert("Error", "Failed to transfer funds.");
+            setToastMessage("Failed to transfer funds. Please try again.");
         }
     };
 
@@ -243,6 +242,7 @@ export default function SavingsScreen() {
                                         <IconButton icon="arrow-collapse-down" size={20} onPress={() => {
                                             setSelectedItemId(item.id);
                                             setTransferAmount("");
+                                            setTransferInError(null);
                                             setTransferInModalVisible(true);
                                         }} />
                                         <IconButton icon="arrow-collapse-up" size={20} disabled={item.balance <= 0} iconColor={item.balance <= 0 ? "gray" : undefined} onPress={() => {
@@ -260,20 +260,37 @@ export default function SavingsScreen() {
             </ScrollView>
 
             <Portal>
-                <Modal visible={modalVisible} onDismiss={() => setModalVisible(false)} contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}>
+                <Modal visible={modalVisible} onDismiss={() => { setModalVisible(false); setCreateError(null); }} contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}>
                      <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>New Allocation</Text>
-                    <TextInput label="Name" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} placeholder="e.g. Education Fund" />
-                    <TextInput label="Initial Balance" value={balance} onChangeText={(t) => setBalance(formatNumberInput(t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} />
+                    {createError && (
+                        <View style={{ backgroundColor: theme.colors.errorContainer, borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onErrorContainer }}>
+                                {createError}
+                            </Text>
+                        </View>
+                    )}
+                    <TextInput label="Name" value={title} onChangeText={(t) => { setTitle(t); setCreateError(null); }} mode="outlined" style={{ marginBottom: 12 }} placeholder="e.g. Education Fund" />
+                    <TextInput label="Initial Balance" value={balance} onChangeText={(t) => { setBalance(formatNumberInput(t)); setCreateError(null); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} error={!!createError} />
                     <Text variant="bodySmall" style={{ color: "gray", marginBottom: 12 }}>
                         Allocating money sets it aside — it decreases your Available to Spend but does not change your Total Balance.
                     </Text>
-                    <Button mode="contained" onPress={handleAddItem}>Create</Button>
+                    <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
+                        <Button mode="text" onPress={() => { setModalVisible(false); setCreateError(null); }}>Cancel</Button>
+                        <Button mode="contained" onPress={handleAddItem}>Create</Button>
+                    </View>
                 </Modal>
 
-                <Modal visible={transferInModalVisible} onDismiss={() => setTransferInModalVisible(false)} contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}>
+                <Modal visible={transferInModalVisible} onDismiss={() => { setTransferInModalVisible(false); setTransferInError(null); }} contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}>
                     <Text variant="titleLarge" style={{ marginBottom: 16 }}>Transfer Money In</Text>
                     <Text variant="bodySmall" style={{ color: "gray", marginBottom: 12 }}>This creates an expense transaction — money leaves your main balance.</Text>
-                    <TextInput label="Amount" value={transferAmount} onChangeText={(t) => setTransferAmount(formatNumberInput(t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} />
+                    {transferInError && (
+                        <View style={{ backgroundColor: theme.colors.errorContainer, borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onErrorContainer }}>
+                                {transferInError}
+                            </Text>
+                        </View>
+                    )}
+                    <TextInput label="Amount" value={transferAmount} onChangeText={(t) => { setTransferAmount(formatNumberInput(t)); setTransferInError(null); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} error={!!transferInError} />
                     <Button mode="contained" onPress={handleTransferIn} disabled={!transferAmount}>Confirm</Button>
                 </Modal>
 
@@ -325,6 +342,7 @@ export default function SavingsScreen() {
                 onPress={() => {
                     setTitle("");
                     setBalance("");
+                    setCreateError(null);
                     setModalVisible(true);
                 }}
             />
