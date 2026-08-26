@@ -1,6 +1,6 @@
 import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Platform, StyleSheet } from "react-native";
+import { View, Text, Platform, StyleSheet, ActivityIndicator } from "react-native";
 import { initMasterDb, initDb } from "../utils/db";
 import { PaperProvider, Banner } from "react-native-paper";
 import { ThemeProvider, useThemeData } from "../context/ThemeContext";
@@ -141,6 +141,15 @@ function MainLayout() {
 
   if (isPasscodeEnabled && !isUnlocked) {
       return <PasscodeScreen />;
+  }
+
+  const bootstrapping = authLoading || profileLoading || (!!activeUserId && !profile);
+  if (bootstrapping) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: theme.colors.background }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
   return (
