@@ -21,6 +21,8 @@ import { hardResetLocalData } from "../utils/db";
 import { requestNotificationPermissions, scheduleDueNotifications } from "../utils/notifications";
 import { useRepositories } from "../context/RepositoryContext";
 
+import { SystemAlertsProvider } from "../context/SystemAlertsContext";
+
 function OfflineIndicator() {
   const { isOnline, checkConnectivity } = useNetwork();
   const [showBanner, setShowBanner] = useState(true);
@@ -255,6 +257,7 @@ export default function RootLayout() {
                 LanguageProvider,
                 PasscodeProvider,
                 CurrencyProvider,
+                SystemAlertsProvider,
               ]}
             >
               <AuthLoader>

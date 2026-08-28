@@ -7,6 +7,7 @@ import {
 import { authFetch } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
 import { useUserProfile } from "./UserProfileContext";
+import { useSystemAlerts } from "./SystemAlertsContext";
 import { useRepositories } from "./RepositoryContext";
 import { generateUUID } from "../utils/uuid";
 import * as FileSystem from 'expo-file-system/legacy';
@@ -46,7 +47,7 @@ const addCategoryFallback = (t: Transaction): Transaction => ({
 
 export function TransactionsProvider({ children }: { children: ReactNode }) {
     const { activeUserId } = useAuth();
-    const { profile: _profile } = useUserProfile();
+    const { profile } = useUserProfile();
     const { transactions: txRepo } = useRepositories();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
@@ -117,10 +118,28 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         }
     }, [activeUserId, txRepo, uploadReceiptIfNeeded]);
 
+    const { checkNegativeBalance } = useSystemAlerts();
+
     useEffect(() => {
         if (!activeUserId) return;
         fetchTransactions();
     }, [activeUserId, fetchTransactions]);
+
+    useEffect(() => {
+        if (!activeUserId || loading) return;
+        const initialBalance = Number(profile?.initialBalance || 0);
+        const income = transactions
+            .filter((t) => t.type === "income" && t.title !== "Opening Balance")
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+        const expense = transactions
+            .filter((t) => t.type === "expense")
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+        const balance = initialBalance + income - expense;
+
+        if (balance < 0) {
+            checkNegativeBalance(balance);
+        }
+    }, [activeUserId, profile, transactions, loading, checkNegativeBalance]);
 
     const addTransaction = useCallback(async (transaction: Omit<Transaction, "id">) => {
         try {

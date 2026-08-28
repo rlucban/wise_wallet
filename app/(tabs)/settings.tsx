@@ -989,60 +989,7 @@ export default function SettingsScreen() {
           </Card.Content>
         </Card>
 
-        <Card style={{ marginBottom: 16 }}>
-          <Card.Content>
-            <Text variant="titleMedium" style={{ marginBottom: 16 }}>{t("currency")}</Text>
 
-            <Menu
-              visible={currencyMenuVisible}
-              onDismiss={() => setCurrencyMenuVisible(false)}
-              anchor={
-                <TouchableOpacity activeOpacity={0.7} onPress={() => setCurrencyMenuVisible(true)}>
-                  <TextInput
-                    label="Currency"
-                    value={`${currency.code} (${currency.symbol})`}
-                    editable={false}
-                    pointerEvents="none"
-                    mode="outlined"
-                    right={<TextInput.Icon icon="chevron-down" />}
-                  />
-                </TouchableOpacity>
-              }
-            >
-              {Object.values(CURRENCIES).map((curr) => (
-                <Menu.Item
-                  key={curr.code}
-                  title={`${curr.code} (${curr.symbol})`}
-                  onPress={() => { setCurrency(curr.code); setCurrencyMenuVisible(false); }}
-                />
-              ))}
-            </Menu>
-
-            <Divider style={{ marginVertical: 16 }} />
-
-            <Text variant="titleSmall" style={{ marginBottom: 8 }}>Decimal Points</Text>
-            <Menu
-              visible={decimalMenuVisible}
-              onDismiss={() => setDecimalMenuVisible(false)}
-              anchor={
-                <TouchableOpacity activeOpacity={0.7} onPress={() => setDecimalMenuVisible(true)}>
-                  <TextInput
-                    label="Decimal Places"
-                    value={decimalPlaces.toString()}
-                    editable={false}
-                    pointerEvents="none"
-                    mode="outlined"
-                    right={<TextInput.Icon icon="chevron-down" />}
-                  />
-                </TouchableOpacity>
-              }
-            >
-              <Menu.Item title="0 (₱500)" onPress={() => { setDecimalPlaces(0); setDecimalMenuVisible(false); }} />
-              <Menu.Item title="1 (₱500.0)" onPress={() => { setDecimalPlaces(1); setDecimalMenuVisible(false); }} />
-              <Menu.Item title="2 (₱500.00)" onPress={() => { setDecimalPlaces(2); setDecimalMenuVisible(false); }} />
-            </Menu>
-          </Card.Content>
-        </Card>
 
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>

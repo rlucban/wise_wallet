@@ -91,3 +91,14 @@ export interface UserProfile {
   decimalPoints: number;
   autoBackup: boolean;
 }
+
+export interface SystemAlert extends TimestampedEntity {
+  id: string;
+  type: "Warning" | "Budget Alert";
+  title: string;
+  message: string;
+  date: string;
+  read: boolean;
+  balanceAtTrigger?: number;
+}
+

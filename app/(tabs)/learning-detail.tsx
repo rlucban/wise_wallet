@@ -1,10 +1,9 @@
-import React, { useState, useCallback } from "react";
+import React from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
-import { Text, Appbar, Card, Button, useTheme } from "react-native-paper";
-import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
-import { getCompletedArticles, setArticleCompleted } from "../../utils/readingProgress";
+import { Text, Appbar, Card, useTheme } from "react-native-paper";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
-const LEARNING_CONTENT: Record<string, { title: string, content: string }> = {
+const LEARNING_CONTENT: Record<string, { title: string; content: string }> = {
     budgeting_101: {
         title: "Budgeting 101",
         content: `Budgeting is the foundation of financial health. It involves tracking your income and expenses to ensure you're living within your means and saving for your goals.
@@ -49,6 +48,53 @@ How to Save Effectively:
 2. Automate It: Set up automatic transfers to your savings account.
 3. Review and Trim: Look at your subscriptions and small daily habits.
 4. Invest: For long-term goals, consider low-cost index funds or cooperative placements to beat inflation.`
+    },
+    understanding_interest_rates: {
+        title: "Understanding Interest Rates & Loans",
+        content: `Interest is the cost of borrowing money or the reward for saving it. Knowing how interest works empowers you to make smarter debt management decisions.
+
+Key Concepts:
+1. Principal: The original amount borrowed or invested.
+2. Interest Rate: The percentage charged or earned over time.
+3. Fixed vs. Variable Rates:
+   - Fixed Rate: Remains constant throughout the loan term, ensuring predictable payments.
+   - Variable Rate: Fluctuation based on market benchmarks, which can increase payments.
+4. Annual Percentage Rate (APR): The total yearly cost of borrowing, including interest and fees.
+
+Strategies for Managing Loans:
+- Always compare APRs when shopping for personal loans or credit lines.
+- Make extra payments towards principal to reduce total lifetime interest cost.
+- Avoid late payments to prevent high penalty charges.`
+    },
+    emergency_fund_essentials: {
+        title: "Emergency Fund Essentials",
+        content: `An emergency fund is a dedicated cash cushion set aside exclusively for unexpected financial shocks.
+
+Target Fund Size:
+- Students: Aim for ₱5,000 – ₱15,000 to cover sudden tech repairs or travel emergencies.
+- Workers / Earners: Aim for 3 to 6 months of essential living expenses (Rent, Food, Utilities).
+
+Where to Store Emergency Savings:
+1. High-Yield Savings Accounts: Easily accessible with modest return.
+2. Digital Banks: Secure, liquid, and higher interest rates than traditional savings.
+3. Cash Reserves: Keep a small, safe portion physically accessible for immediate liquidity.
+
+Rules of Engagement:
+- Only touch emergency funds for genuine emergencies (job loss, medical bills, urgent car/home repairs).
+- Replenish the fund immediately after using a portion.`
+    },
+    smart_expense_tracking: {
+        title: "Smart Expense Tracking & Categorization",
+        content: `Consistently tracking daily spending habits transforms passive financial awareness into active money control.
+
+Effective Tracking Steps:
+1. Record Transactions Daily: Log every purchase immediately after making it.
+2. Categorize Expenses: Separate spending into Needs (Food, Bills) vs Wants (Entertainment, Dining).
+3. Review Monthly Summaries: Identify recurring unnecessary spending leaks.
+4. Adjust Spending Targets: Use historical spend data to set realistic category limits.
+
+Pro Tip:
+Combine daily tracking in WiseWallet with automated alerts to stay well within your available budget before overspending occurs!`
     }
 };
 
@@ -56,29 +102,18 @@ export default function LearningDetail() {
     const theme = useTheme();
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
-    const [completed, setCompleted] = useState(false);
-
-    useFocusEffect(
-        useCallback(() => {
-            if (!id) return;
-            getCompletedArticles().then((ids) => setCompleted(ids.includes(id)));
-        }, [id])
-    );
 
     const topic = id ? LEARNING_CONTENT[id] : null;
 
-    const toggleCompleted = async () => {
-        if (!id) return;
-        const next = !completed;
-        setCompleted(next);
-        await setArticleCompleted(id, next);
+    const handleBack = () => {
+        router.push('/(tabs)/learning');
     };
 
     if (!topic) {
         return (
             <View style={styles.container}>
-                <Appbar.Header>
-                    <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.Header style={{ backgroundColor: theme.colors.background, elevation: 0 }}>
+                    <Appbar.BackAction onPress={handleBack} />
                     <Appbar.Content title="Error" />
                 </Appbar.Header>
                 <View style={styles.center}>
@@ -91,7 +126,7 @@ export default function LearningDetail() {
     return (
         <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
             <Appbar.Header style={{ backgroundColor: theme.colors.background, elevation: 0 }}>
-                <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.BackAction onPress={handleBack} />
                 <Appbar.Content title="Learning" />
             </Appbar.Header>
 
@@ -102,15 +137,6 @@ export default function LearningDetail() {
                         <Text variant="bodyLarge" style={styles.body}>{topic.content}</Text>
                     </Card.Content>
                 </Card>
-
-                <Button
-                    mode={completed ? "contained-tonal" : "outlined"}
-                    icon={completed ? "check-circle" : "check-circle-outline"}
-                    onPress={toggleCompleted}
-                    style={{ marginTop: 16, borderRadius: 12 }}
-                >
-                    {completed ? "Completed" : "Mark as Complete"}
-                </Button>
             </ScrollView>
         </View>
     );
@@ -119,7 +145,7 @@ export default function LearningDetail() {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    content: { padding: 16 },
+    content: { padding: 16, width: "100%", maxWidth: 800, alignSelf: "center" },
     card: { borderRadius: 20 },
     title: { fontWeight: "bold", marginBottom: 16, color: "#1B3F7A" },
     body: { lineHeight: 26, opacity: 0.85 },
