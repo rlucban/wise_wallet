@@ -1,6 +1,8 @@
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
-import { Due, DueFrequency } from "../types";
+import { Due, DueFrequency, SystemAlert } from "../types";
+import { getItem, setItem, getPrefixedKey, nowTimestamp } from "./storage";
+import { generateUUID } from "./uuid";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -125,3 +127,84 @@ export async function cancelAllNotifications(): Promise<void> {
     console.warn("Failed to cancel notifications:", e);
   }
 }
+
+export async function getSystemAlerts(userId?: string): Promise<SystemAlert[]> {
+  const key = await getPrefixedKey("system_alerts", userId);
+  return getItem<SystemAlert[]>(key, []);
+}
+
+export async function saveSystemAlerts(alerts: SystemAlert[], userId?: string): Promise<void> {
+  const key = await getPrefixedKey("system_alerts", userId);
+  await setItem(key, alerts);
+}
+
+export async function markAlertAsRead(alertId: string, userId?: string): Promise<SystemAlert[]> {
+  const alerts = await getSystemAlerts(userId);
+  const updated = alerts.map((a) => (a.id === alertId ? { ...a, read: true, updatedAt: nowTimestamp() } : a));
+  await saveSystemAlerts(updated, userId);
+  return updated;
+}
+
+export async function markAllAlertsAsRead(userId?: string): Promise<SystemAlert[]> {
+  const alerts = await getSystemAlerts(userId);
+  const updated = alerts.map((a) => ({ ...a, read: true, updatedAt: nowTimestamp() }));
+  await saveSystemAlerts(updated, userId);
+  return updated;
+}
+
+export async function clearAllAlerts(userId?: string): Promise<void> {
+  const key = await getPrefixedKey("system_alerts", userId);
+  await setItem(key, []);
+}
+
+export async function checkAndTriggerNegativeBalanceAlert(
+  currentBalance: number,
+  formatAmount: (val: number) => string,
+  userId?: string
+): Promise<SystemAlert | null> {
+  if (currentBalance >= 0) return null;
+
+  const alerts = await getSystemAlerts(userId);
+  const negativeAlerts = alerts.filter((a) => a.title.includes("Negative Balance Alert"));
+
+  if (negativeAlerts.length > 0) {
+    const latestAlert = [...negativeAlerts].sort((a, b) => b.updatedAt - a.updatedAt)[0];
+    if (latestAlert.balanceAtTrigger !== undefined && currentBalance >= latestAlert.balanceAtTrigger && !latestAlert.read) {
+      return null;
+    }
+  }
+
+  const formattedCurrent = formatAmount(currentBalance);
+  const newAlert: SystemAlert = {
+    id: generateUUID(),
+    type: "Budget Alert",
+    title: "Negative Balance Alert ⚠️",
+    message: `Your available balance has dropped below ₱0.00 (Current: ${formattedCurrent}). Please review your expenses or add income to rebalance.`,
+    date: new Date().toISOString(),
+    read: false,
+    balanceAtTrigger: currentBalance,
+    updatedAt: nowTimestamp(),
+  };
+
+  const updatedAlerts = [newAlert, ...alerts];
+  await saveSystemAlerts(updatedAlerts, userId);
+
+  if (Platform.OS !== "web") {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: newAlert.title,
+          body: newAlert.message,
+          data: { screen: "notifications" },
+          ...(Platform.OS === "android" && { channelId: ANDROID_CHANNEL_ID }),
+        },
+        trigger: null,
+      });
+    } catch (e) {
+      console.warn("Failed to trigger local notification:", e);
+    }
+  }
+
+  return newAlert;
+}
+

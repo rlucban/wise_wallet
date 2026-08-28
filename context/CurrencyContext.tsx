@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useMemo, useCallback, useRef, ReactNode } from "react";
+import React, { createContext, useContext, useMemo, useCallback, ReactNode } from "react";
 
-export type CurrencyCode = "USD" | "PHP";
+export type CurrencyCode = "PHP";
 
 interface CurrencyConfig {
   code: CurrencyCode;
@@ -9,7 +9,6 @@ interface CurrencyConfig {
 }
 
 const CURRENCIES: Record<CurrencyCode, CurrencyConfig> = {
-  USD: { code: "USD", symbol: "$", name: "US Dollar" },
   PHP: { code: "PHP", symbol: "₱", name: "Philippine Peso" },
 };
 
@@ -27,48 +26,37 @@ interface CurrencyActions {
 const CurrencyDataContext = createContext<CurrencyData | undefined>(undefined);
 const CurrencyActionsContext = createContext<CurrencyActions | undefined>(undefined);
 
-import { useUserProfile } from "./UserProfileContext";
-
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const { profile, updateProfile } = useUserProfile();
-
-  const currencyCode = (profile?.currency as CurrencyCode) || "PHP";
-  const decimalPlaces = profile?.decimalPoints ?? 2;
-  const currency = CURRENCIES[currencyCode];
-
-  const currencyRef = useRef(currency);
-  currencyRef.current = currency;
-  const decimalPlacesRef = useRef(decimalPlaces);
-  decimalPlacesRef.current = decimalPlaces;
+  const currency = CURRENCIES.PHP;
+  const decimalPlaces = 2;
 
   const formatAmount = useCallback((amount: number | undefined | null): string => {
     const value = amount ?? 0;
-    const cur = currencyRef.current;
-    const dp = decimalPlacesRef.current;
-    return `${cur.symbol}${value.toLocaleString("en-US", {
-      minimumFractionDigits: dp,
-      maximumFractionDigits: dp
+    return `₱${value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     })}`;
   }, []);
 
-  const setCurrency = useCallback((code: CurrencyCode) => {
-    updateProfile({ currency: code });
-  }, [updateProfile]);
+  const setCurrency = useCallback((_code: CurrencyCode) => {}, []);
+  const setDecimalPlaces = useCallback((_places: number) => {}, []);
 
-  const setDecimalPlaces = useCallback((places: number) => {
-    updateProfile({ decimalPoints: places });
-  }, [updateProfile]);
+  const dataValue = useMemo(
+    () => ({
+      currency,
+      decimalPlaces,
+    }),
+    [currency, decimalPlaces]
+  );
 
-  const dataValue = useMemo(() => ({
-    currency,
-    decimalPlaces,
-  }), [currency, decimalPlaces]);
-
-  const actionsValue = useMemo(() => ({
-    setCurrency,
-    setDecimalPlaces,
-    formatAmount,
-  }), [setCurrency, setDecimalPlaces, formatAmount]);
+  const actionsValue = useMemo(
+    () => ({
+      setCurrency,
+      setDecimalPlaces,
+      formatAmount,
+    }),
+    [setCurrency, setDecimalPlaces, formatAmount]
+  );
 
   return (
     <CurrencyDataContext.Provider value={dataValue}>

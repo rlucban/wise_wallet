@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { Card, Text, IconButton, Button } from "react-native-paper";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useInsights, Insight } from "../hooks/useInsights";
 
 export function SmartInsights() {
@@ -60,12 +61,7 @@ export function SmartInsights() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text variant="titleMedium" style={styles.headerText}>Smart Insights</Text>
-        <IconButton 
-          icon={showDismissed ? "eye-off-outline" : "history"} 
-          size={20} 
-          onPress={() => setShowDismissed(!showDismissed)}
-        />
+        <Text variant="titleMedium" style={styles.headerText}>Highlights</Text>
       </View>
       
       {displayInsights.map((insight) => {
@@ -96,7 +92,8 @@ export function SmartInsights() {
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 16,
+    marginTop: 12,
+    marginBottom: 4,
   },
   header: {
     flexDirection: "row",
@@ -108,7 +105,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   card: {
-    marginBottom: 12,
+    marginBottom: 6,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.05)",

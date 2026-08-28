@@ -1,15 +1,20 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { View, TouchableOpacity, Platform } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { Appbar, Text, Menu } from "react-native-paper";
+import { Appbar, Text, Menu, Badge } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
 import { format, isToday } from "date-fns";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import { Due } from "../types";
+import { Due, SystemAlert } from "../types";
 import { useDues } from "../hooks/useDues";
+import { useSystemAlerts } from "../context/SystemAlertsContext";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { useThemeData } from "../context/ThemeContext";
 import EmptyState from "../components/EmptyState";
+
+type NotificationItem =
+  | { type: "system_alert"; data: SystemAlert }
+  | { type: "due"; data: Due };
 
 const getCategoryBadge = (categoryName?: string, title?: string): { color: string; icon: string } => {
   const cat = (categoryName ?? "").toLowerCase();
@@ -77,28 +82,133 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const { theme } = useThemeData();
   const { dues, refetch: refetchDues } = useDues();
+  const { alerts, refetchAlerts, markAsRead, markAllAsRead, clearAlerts } = useSystemAlerts();
   const { formatAmount } = useCurrencyActions();
   const [menuVisible, setMenuVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       refetchDues();
-    }, [refetchDues])
+      refetchAlerts();
+    }, [refetchDues, refetchAlerts])
   );
 
-  const pendingDues = useMemo(
-    () =>
-      dues
-        .filter((d) => !d.completed)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
-    [dues]
-  );
+  const notificationItems = useMemo<NotificationItem[]>(() => {
+    const systemItems: NotificationItem[] = alerts.map((a) => ({
+      type: "system_alert",
+      data: a,
+    }));
+
+    const dueItems: NotificationItem[] = dues
+      .filter((d) => !d.completed)
+      .map((d) => ({
+        type: "due",
+        data: d,
+      }));
+
+    return [...systemItems, ...dueItems].sort((a, b) => {
+      const timeA = a.type === "system_alert" ? new Date(a.data.date).getTime() : new Date(a.data.date).getTime();
+      const timeB = b.type === "system_alert" ? new Date(b.data.date).getTime() : new Date(b.data.date).getTime();
+      return timeB - timeA;
+    });
+  }, [alerts, dues]);
 
   const renderItem = useCallback(
-    ({ item }: { item: Due }) => {
-      const badge = getCategoryBadge(item.categoryName, item.title);
-      const title = formatDueTitle(item, formatAmount);
-      const formattedDate = formatDueDate(item.date);
+    ({ item }: { item: NotificationItem }) => {
+      if (item.type === "system_alert") {
+        const alert = item.data;
+        const formattedDate = formatDueDate(alert.date);
+
+        return (
+          <TouchableOpacity
+            onPress={() => {
+              if (!alert.read) {
+                markAsRead(alert.id);
+              }
+            }}
+            activeOpacity={0.7}
+            style={{
+              backgroundColor: alert.read ? theme.colors.surface : theme.colors.errorContainer + "33",
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 12,
+              marginHorizontal: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              borderWidth: alert.read ? 0 : 1,
+              borderColor: theme.colors.error,
+              ...Platform.select({
+                web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)" },
+                default: {
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                },
+              }),
+            }}
+          >
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                backgroundColor: "#DC2626",
+                justifyContent: "center",
+                alignItems: "center",
+                marginRight: 16,
+              }}
+            >
+              <MaterialCommunityIcons name="alert-circle" size={24} color="#FFFFFF" />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Text
+                  variant="bodyMedium"
+                  style={{
+                    fontWeight: "700",
+                    color: theme.colors.error,
+                    fontSize: 14,
+                  }}
+                >
+                  {alert.title}
+                </Text>
+                {!alert.read && <Badge size={8} style={{ backgroundColor: theme.colors.error }} />}
+              </View>
+
+              <Text
+                variant="bodySmall"
+                style={{
+                  color: theme.colors.onSurface,
+                  marginTop: 4,
+                  fontSize: 13,
+                  lineHeight: 18,
+                }}
+              >
+                {alert.message}
+              </Text>
+
+              <Text
+                variant="bodySmall"
+                style={{
+                  color: theme.colors.outline,
+                  marginTop: 6,
+                  fontSize: 11,
+                }}
+              >
+                {formattedDate}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      }
+
+      const due = item.data;
+      const badge = getCategoryBadge(due.categoryName, due.title);
+      const title = formatDueTitle(due, formatAmount);
+      const formattedDate = formatDueDate(due.date);
 
       return (
         <TouchableOpacity
@@ -113,7 +223,7 @@ export default function NotificationsScreen() {
             flexDirection: "row",
             alignItems: "center",
             ...Platform.select({
-              web: { boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)' },
+              web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)" },
               default: {
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 1 },
@@ -164,7 +274,7 @@ export default function NotificationsScreen() {
         </TouchableOpacity>
       );
     },
-    [theme, router, formatAmount]
+    [theme, router, formatAmount, markAsRead]
   );
 
   return (
@@ -188,6 +298,20 @@ export default function NotificationsScreen() {
           <Menu.Item
             onPress={() => {
               setMenuVisible(false);
+              markAllAsRead();
+            }}
+            title="Mark All System Alerts as Read"
+          />
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false);
+              clearAlerts();
+            }}
+            title="Clear System Alerts"
+          />
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false);
               router.push("/dues");
             }}
             title="Manage Dues"
@@ -196,14 +320,16 @@ export default function NotificationsScreen() {
       </Appbar.Header>
 
       <FlashList
-        data={pendingDues}
+        data={notificationItems}
         renderItem={renderItem}
-        keyExtractor={(item: Due) => item.id}
+        keyExtractor={(item: NotificationItem) =>
+          item.type === "system_alert" ? `alert_${item.data.id}` : `due_${item.data.id}`
+        }
         ListEmptyComponent={
           <EmptyState
             icon="bell-outline"
             title="No notifications"
-            subtitle="You're all caught up on your dues!"
+            subtitle="You're all caught up on alerts and dues!"
           />
         }
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }}
