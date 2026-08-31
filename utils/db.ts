@@ -1,14 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Category, Transaction, Agenda, Subscription, SavingsItem, Due, UserProfile, PaymentMethodInfo } from '../types';
+import { Category, Transaction, SavingsItem, Due, UserProfile } from '../types';
 import { AsyncStorageTransactionRepository } from '../repositories/transaction.repo';
 import { AsyncStorageCategoryRepository } from '../repositories/category.repo';
 import { AsyncStorageDueRepository } from '../repositories/due.repo';
 import { AsyncStorageSavingsItemRepository } from '../repositories/savings-item.repo';
-import { AsyncStorageSubscriptionRepository } from '../repositories/subscription.repo';
-import { AsyncStorageAgendaRepository } from '../repositories/agenda.repo';
-import { AsyncStoragePaymentMethodRepository } from '../repositories/payment-method.repo';
 import { AsyncStorageProfileRepository } from '../repositories/profile.repo';
 import { nowTimestamp, getPrefixedKey, getItem, setItem, deduplicate } from './storage';
 import { getCachedSetting, setCachedSetting, clearSettingsCache } from './cache';
@@ -17,9 +14,6 @@ const transactionRepo = new AsyncStorageTransactionRepository();
 const categoryRepo = new AsyncStorageCategoryRepository();
 const dueRepo = new AsyncStorageDueRepository();
 const savingsItemRepo = new AsyncStorageSavingsItemRepository();
-const subscriptionRepo = new AsyncStorageSubscriptionRepository();
-const agendaRepo = new AsyncStorageAgendaRepository();
-const paymentMethodRepo = new AsyncStoragePaymentMethodRepository();
 const profileRepo = new AsyncStorageProfileRepository();
 
 function getUpdatedAt(item: Record<string, unknown>): number {
@@ -72,16 +66,6 @@ export const GLOBAL_CATEGORIES: Category[] = [
   { id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19', name: 'Others', type: 'income', isGlobal: true, updatedAt: 0 },
 ];
 
-export const GLOBAL_PAYMENT_METHODS = [
-  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Cash', type: 'cash', icon: 'cash' },
-  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', name: 'BPI Debit', type: 'bank', icon: 'bank' },
-  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', name: 'UnionBank', type: 'bank', icon: 'bank' },
-  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', name: 'GCash', type: 'e_wallet', icon: 'wallet' },
-  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15', name: 'Maya', type: 'e_wallet', icon: 'wallet' },
-  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16', name: 'Visa Card', type: 'card', icon: 'credit-card' },
-  { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17', name: 'Others', type: 'other', icon: 'dots-horizontal' },
-];
-
 export const CURRENT_SEED_VERSION = 1;
 
 // --- Lifecycle & Initialization (Stubs for compatibility) ---
@@ -113,13 +97,7 @@ const seedDefaults = async (userId: string) => {
     const mergedCats = deduplicate([...existingCats, ...GLOBAL_CATEGORIES]);
     await setItem(catKey, mergedCats);
 
-    // 2. Merge Payment Methods
-    const pmKey = `user_${userId}_paymentMethods`;
-    const existingPMs = await getItem<PaymentMethodInfo[]>(pmKey, []);
-    const mergedPMs = deduplicate([...existingPMs, ...GLOBAL_PAYMENT_METHODS]);
-    await setItem(pmKey, mergedPMs);
-
-    // 3. Update local version tracking
+    // 2. Update local version tracking
     await setSetting(versionKey, CURRENT_SEED_VERSION.toString());
     console.info(`Database seeded to version ${CURRENT_SEED_VERSION}`);
   }
@@ -149,7 +127,6 @@ export const clearAllLocalData = async () => {
 
   if (userId) {
     await setItem(`user_${userId}_categories`, GLOBAL_CATEGORIES);
-    await setItem(`user_${userId}_paymentMethods`, GLOBAL_PAYMENT_METHODS);
   }
 };
 
@@ -200,12 +177,6 @@ export const saveUserProfile = async (profile: Partial<UserProfile>, overrideUse
   await profileRepo.upsert({ ...current, ...profile } as UserProfile);
 };
 
-// --- Payment Methods ---
-
-export const getPaymentMethods = async () => {
-  return paymentMethodRepo.getAll();
-};
-
 // --- Categories CRUD ---
 
 export const getCategories = async (): Promise<Category[]> => {
@@ -220,18 +191,6 @@ export const getTransactions = async (): Promise<Transaction[]> => {
     ...t,
     category: t.category || { id: 'uncategorized', name: 'Others', type: t.type || 'expense', updatedAt: 0 },
   }));
-};
-
-// --- Agendas CRUD ---
-
-export const getAgendas = async (): Promise<Agenda[]> => {
-  return agendaRepo.getAll();
-};
-
-// --- Subscriptions CRUD ---
-
-export const getSubscriptions = async (): Promise<Subscription[]> => {
-  return subscriptionRepo.getAll();
 };
 
 // --- Dues CRUD ---
@@ -341,9 +300,6 @@ export const exportData = async () => {
   const rawTransactions = await getTransactions();
   const dues = await getDues();
   const savingsItems = await getSavingsItems();
-  const subscriptions = await getSubscriptions();
-  const agendas = await getAgendas();
-  const paymentMethods = await getPaymentMethods();
 
   // Enhance transactions with Base64 images for self-contained backup
   const transactions = await Promise.all(rawTransactions.map(async (t) => {
@@ -367,9 +323,6 @@ export const exportData = async () => {
     transactions,
     dues,
     savingsItems,
-    subscriptions,
-    agendas,
-    paymentMethods,
   });
 };
 
@@ -418,17 +371,5 @@ export const importData = async (jsonString: string) => {
   if (data.savingsItems) {
     const savingsFullKey = await getPrefixedKey('savingsItems');
     await setItem(savingsFullKey, data.savingsItems);
-  }
-  if (data.subscriptions) {
-    const subscriptionsFullKey = await getPrefixedKey('subscriptions');
-    await setItem(subscriptionsFullKey, data.subscriptions);
-  }
-  if (data.agendas) {
-    const agendasFullKey = await getPrefixedKey('agendas');
-    await setItem(agendasFullKey, data.agendas);
-  }
-  if (data.paymentMethods) {
-    const paymentMethodsFullKey = await getPrefixedKey('paymentMethods');
-    await setItem(paymentMethodsFullKey, data.paymentMethods);
   }
 };

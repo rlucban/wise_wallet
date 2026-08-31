@@ -3,9 +3,6 @@ import type {
   Category,
   Due,
   SavingsItem,
-  Subscription,
-  Agenda,
-  PaymentMethodInfo,
   UserProfile,
   TransactionType,
 } from './index';
@@ -29,11 +26,5 @@ export interface CategoryRepository extends Repository<Category> {
 export interface DueRepository extends Repository<Due> {}
 
 export interface SavingsItemRepository extends Repository<SavingsItem> {}
-
-export interface SubscriptionRepository extends Repository<Subscription> {}
-
-export interface AgendaRepository extends Repository<Agenda> {}
-
-export interface PaymentMethodRepository extends Repository<PaymentMethodInfo> {}
 
 export interface ProfileRepository extends Repository<UserProfile> {}

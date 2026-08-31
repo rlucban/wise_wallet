@@ -40,7 +40,7 @@
 
 ```
 Pattern A (queue-based):
-  Categories, Dues, Savings, Profile, Subscriptions, Agendas
+  Categories, Dues, Savings, Profile
   └─ Each mutation → enqueueSync() → processSyncQueue() → exponential backoff retry
 
 Pattern B (bulk):
