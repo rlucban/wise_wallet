@@ -1,202 +1,228 @@
 -- ============================================================
 -- WiseWallet — Supabase Schema
--- Derived from existing DB dump + client types
+-- Matches backend wallet-api repository .from() table names
 -- ============================================================
 
 -- ─── DROP (clean slate) ─────────────────────────────────────
 
--- Legacy tables (superseded by snake_case versions)
+-- Legacy tables (superseded)
 DROP TABLE IF EXISTS public.savingsGoals CASCADE;
-DROP TABLE IF EXISTS public.profiles CASCADE;
 DROP TABLE IF EXISTS public.allocations CASCADE;
-DROP TABLE IF EXISTS public.systemSettings CASCADE;
-
--- Duplicate tables (camelCase → snake_case migration)
-DROP TABLE IF EXISTS public.savingsItems CASCADE;
-DROP TABLE IF EXISTS public.paymentMethods CASCADE;
 
 -- Dead entities (removed from codebase)
 DROP TABLE IF EXISTS public.subscriptions CASCADE;
 DROP TABLE IF EXISTS public.agendas CASCADE;
 
--- Active tables (recreated below)
-DROP TABLE IF EXISTS public.system_settings CASCADE;
-DROP TABLE IF EXISTS public.payment_methods CASCADE;
+-- snake_case duplicates (backend uses camelCase)
+DROP TABLE IF EXISTS public.user_profiles CASCADE;
 DROP TABLE IF EXISTS public.savings_items CASCADE;
+DROP TABLE IF EXISTS public.payment_methods CASCADE;
+DROP TABLE IF EXISTS public.system_settings CASCADE;
+
+-- Active tables (recreated below)
+DROP TABLE IF EXISTS public.systemSettings CASCADE;
+DROP TABLE IF EXISTS public.paymentMethods CASCADE;
+DROP TABLE IF EXISTS public.savingsItems CASCADE;
 DROP TABLE IF EXISTS public.dues CASCADE;
 DROP TABLE IF EXISTS public.transactions CASCADE;
 DROP TABLE IF EXISTS public.categories CASCADE;
-DROP TABLE IF EXISTS public.user_profiles CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
 DROP TABLE IF EXISTS public.users CASCADE;
-
-DROP TYPE IF EXISTS public.transaction_type CASCADE;
-DROP TYPE IF EXISTS public.due_frequency CASCADE;
-DROP TYPE IF EXISTS public.payment_method_type CASCADE;
-
--- ─── ENUMS ──────────────────────────────────────────────────
-
-CREATE TYPE public.transaction_type AS ENUM ('income', 'expense');
-CREATE TYPE public.due_frequency AS ENUM ('once', 'weekly', 'biweekly', 'monthly', 'yearly');
-CREATE TYPE public.payment_method_type AS ENUM ('cash', 'card', 'bank', 'e_wallet', 'other');
 
 -- ─── TABLES ─────────────────────────────────────────────────
 
 -- 1. Users (auth accounts)
-CREATE TABLE public.users (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        TEXT NOT NULL,
-    passcode    TEXT NOT NULL,          -- SHA-256 hash
-    device_id   TEXT,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE "users" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "name" TEXT NOT NULL UNIQUE,
+  "passcode" TEXT NOT NULL,
+  "currentSessionId" TEXT,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX idx_users_name ON public.users (lower(name));
-
--- 2. User Profiles
-CREATE TABLE public.user_profiles (
-    user_id          UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
-    name             TEXT NOT NULL DEFAULT '',
-    is_first_run     BOOLEAN NOT NULL DEFAULT true,
-    initial_balance  NUMERIC(12,2) NOT NULL DEFAULT 0,
-    is_dark_mode     BOOLEAN NOT NULL DEFAULT false,
-    language         TEXT NOT NULL DEFAULT 'en',
-    currency         TEXT NOT NULL DEFAULT 'PHP',
-    decimal_points   INTEGER NOT NULL DEFAULT 2,
-    auto_backup      BOOLEAN NOT NULL DEFAULT true,
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+-- 2. Profiles
+CREATE TABLE "profiles" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "userId" UUID REFERENCES "users"("id") ON DELETE CASCADE,
+  "name" TEXT,
+  "isFirstRun" BOOLEAN DEFAULT TRUE,
+  "initialBalance" NUMERIC DEFAULT 0,
+  "balance" NUMERIC DEFAULT 0,
+  "isDarkMode" BOOLEAN DEFAULT FALSE,
+  "language" TEXT DEFAULT 'en',
+  "currency" TEXT DEFAULT 'PHP',
+  "decimalPoints" INTEGER DEFAULT 2,
+  "autoBackup" BOOLEAN DEFAULT TRUE,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 3. Categories
-CREATE TABLE public.categories (
-    id         UUID PRIMARY KEY,
-    user_id    UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    name       TEXT NOT NULL,
-    type       public.transaction_type NOT NULL,
-    is_global  BOOLEAN NOT NULL DEFAULT false,
-    updated_at BIGINT NOT NULL DEFAULT 0           -- epoch millis
+CREATE TABLE "categories" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "userId" UUID REFERENCES "users"("id") ON DELETE CASCADE,
+  "name" TEXT NOT NULL,
+  "type" TEXT NOT NULL CHECK ("type" IN ('income', 'expense')),
+  "isGlobal" BOOLEAN DEFAULT FALSE,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW()
 );
-
-CREATE INDEX idx_categories_user ON public.categories (user_id);
 
 -- 4. Transactions
-CREATE TABLE public.transactions (
-    id              UUID PRIMARY KEY,
-    user_id         UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    title           TEXT,
-    amount          NUMERIC(12,2) NOT NULL,
-    category        JSONB,                          -- embedded Category object
-    date            TEXT NOT NULL,                   -- ISO date string
-    note            TEXT,
-    receipt_url     TEXT,
-    type            public.transaction_type NOT NULL,
-    payment_method  TEXT,
-    establishment   TEXT,
-    split_info      JSONB,                          -- { people, amountPerPerson, notes, participants }
-    due_id          UUID,
-    updated_at      BIGINT NOT NULL DEFAULT 0
+CREATE TABLE "transactions" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "userId" UUID REFERENCES "users"("id") ON DELETE CASCADE,
+  "amount" NUMERIC NOT NULL,
+  "date" TIMESTAMPTZ NOT NULL,
+  "note" TEXT,
+  "type" TEXT NOT NULL CHECK ("type" IN ('income', 'expense')),
+  "categoryId" UUID REFERENCES "categories"("id"),
+  "paymentMethod" TEXT,
+  "establishment" TEXT,
+  "receiptUrl" TEXT,
+  "splitInfo" JSONB,
+  "dueId" UUID REFERENCES "dues"("id"),
+  "savingsItemId" UUID REFERENCES "savingsItems"("id"),
+  "createdAt" TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_transactions_user ON public.transactions (user_id);
-CREATE INDEX idx_transactions_date  ON public.transactions (user_id, date);
-
--- 5. Dues (bills / scheduled payments)
-CREATE TABLE public.dues (
-    id           UUID PRIMARY KEY,
-    user_id      UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    title        TEXT NOT NULL,
-    amount       NUMERIC(12,2) NOT NULL,
-    date         TEXT NOT NULL,
-    frequency    public.due_frequency DEFAULT 'once',
-    type         public.transaction_type NOT NULL,
-    category_id  UUID,
-    category_name TEXT,
-    auto_process BOOLEAN NOT NULL DEFAULT false,
-    completed    BOOLEAN NOT NULL DEFAULT false,
-    updated_at   BIGINT NOT NULL DEFAULT 0
+-- 5. Dues (replaces agendas)
+CREATE TABLE "dues" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "userId" UUID REFERENCES "users"("id") ON DELETE CASCADE,
+  "title" TEXT NOT NULL,
+  "amount" NUMERIC NOT NULL,
+  "date" TIMESTAMPTZ NOT NULL,
+  "frequency" TEXT CHECK ("frequency" IN ('once', 'weekly', 'biweekly', 'monthly', 'yearly')),
+  "type" TEXT NOT NULL DEFAULT 'expense' CHECK ("type" IN ('income', 'expense')),
+  "categoryId" UUID REFERENCES "categories"("id"),
+  "autoProcess" BOOLEAN DEFAULT FALSE,
+  "completed" BOOLEAN DEFAULT FALSE,
+  "savingsItemId" UUID REFERENCES "savingsItems"("id"),
+  "createdAt" TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_dues_user ON public.dues (user_id);
-
--- 6. Savings Items (goals)
-CREATE TABLE public.savings_items (
-    id         UUID PRIMARY KEY,
-    user_id    UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    title      TEXT NOT NULL,
-    balance    NUMERIC(12,2) NOT NULL DEFAULT 0,
-    icon       TEXT,
-    color      TEXT,
-    updated_at BIGINT NOT NULL DEFAULT 0
+-- 6. Savings Items (replaces savingsGoals)
+CREATE TABLE "savingsItems" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "userId" UUID REFERENCES "users"("id") ON DELETE CASCADE,
+  "title" TEXT NOT NULL,
+  "balance" NUMERIC DEFAULT 0,
+  "icon" TEXT,
+  "color" TEXT,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_savings_items_user ON public.savings_items (user_id);
-
--- 7. Payment Methods
-CREATE TABLE public.payment_methods (
-    id      UUID PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-    name    TEXT NOT NULL,
-    type    public.payment_method_type NOT NULL,
-    icon    TEXT
+-- 7. Payment Methods (lookup)
+CREATE TABLE "paymentMethods" (
+  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  "userId" UUID REFERENCES "users"("id") ON DELETE CASCADE,
+  "name" TEXT NOT NULL,
+  "type" TEXT NOT NULL,
+  "icon" TEXT,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_payment_methods_user ON public.payment_methods (user_id);
-
--- 8. System Settings (key-value, server-controlled)
-CREATE TABLE public.system_settings (
-    key          TEXT PRIMARY KEY,
-    value        TEXT NOT NULL,
-    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+-- 8. System Settings
+CREATE TABLE "systemSettings" (
+  "id" INTEGER PRIMARY KEY DEFAULT 1,
+  "reset_epoch" INTEGER DEFAULT 1,
+  "updatedAt" TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ─── SEED DATA ──────────────────────────────────────────────
+
+INSERT INTO "paymentMethods" ("id", "name", "type", "icon") VALUES
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Cash', 'cash', 'cash'),
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12', 'BPI Debit', 'bank', 'bank'),
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13', 'UnionBank', 'bank', 'bank'),
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14', 'GCash', 'e_wallet', 'wallet'),
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15', 'Maya', 'e_wallet', 'wallet'),
+('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16', 'Visa Card', 'card', 'credit-card')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "categories" ("id", "userId", "name", "type", "isGlobal") VALUES
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11', NULL, 'Food', 'expense', true),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12', NULL, 'Bills', 'expense', true),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13', NULL, 'Transport', 'expense', true),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b14', NULL, 'Shopping', 'expense', true),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b15', NULL, 'Entertainment', 'expense', true),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b16', NULL, 'Salary', 'income', true),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b17', NULL, 'Freelance', 'income', true),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b18', NULL, 'Others', 'expense', true),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19', NULL, 'Others', 'income', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO "systemSettings" ("id", "reset_epoch") VALUES (1, 1)
+ON CONFLICT (id) DO NOTHING;
 
 -- ─── ROW-LEVEL SECURITY ─────────────────────────────────────
 
-ALTER TABLE public.user_profiles    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.categories       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.transactions     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.dues             ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.savings_items    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.payment_methods  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.system_settings  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.users            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "users" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "profiles" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "categories" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "transactions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "dues" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "savingsItems" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "paymentMethods" ENABLE ROW LEVEL SECURITY;
 
--- Policies: users can only read/write their own rows
-CREATE POLICY "Users can manage own profile"
-    ON public.user_profiles FOR ALL
-    USING (user_id = auth.uid()::uuid);
+-- Policies
+CREATE POLICY "Users can view own data" ON "users"
+  FOR SELECT USING (auth.uid() = id);
 
-CREATE POLICY "Users can manage own categories"
-    ON public.categories FOR ALL
-    USING (user_id = auth.uid()::uuid);
+CREATE POLICY "Profiles are private" ON "profiles"
+  FOR ALL USING (auth.uid() = "userId");
 
-CREATE POLICY "Users can manage own transactions"
-    ON public.transactions FOR ALL
-    USING (user_id = auth.uid()::uuid);
+CREATE POLICY "Categories visibility" ON "categories"
+  FOR SELECT USING (auth.uid() = "userId" OR "isGlobal" = true);
 
-CREATE POLICY "Users can manage own dues"
-    ON public.dues FOR ALL
-    USING (user_id = auth.uid()::uuid);
+CREATE POLICY "Categories management" ON "categories"
+  FOR ALL USING (auth.uid() = "userId");
 
-CREATE POLICY "Users can manage own savings"
-    ON public.savings_items FOR ALL
-    USING (user_id = auth.uid()::uuid);
+CREATE POLICY "Transactions are private" ON "transactions"
+  FOR ALL USING (auth.uid() = "userId");
 
-CREATE POLICY "Users can manage own payment methods"
-    ON public.payment_methods FOR ALL
-    USING (user_id = auth.uid()::uuid);
+CREATE POLICY "Dues are private" ON "dues"
+  FOR ALL USING (auth.uid() = "userId");
 
--- System settings: readable by all authenticated users
-CREATE POLICY "Authenticated users can read system settings"
-    ON public.system_settings FOR SELECT
-    USING (auth.role() = 'authenticated');
+CREATE POLICY "Savings items are private" ON "savingsItems"
+  FOR ALL USING (auth.uid() = "userId");
 
--- ─── SEED: System Settings ──────────────────────────────────
+CREATE POLICY "Payment methods are private" ON "paymentMethods"
+  FOR ALL USING (auth.uid() = "userId" OR "userId" IS NULL);
 
-INSERT INTO public.system_settings (key, value) VALUES
-    ('reset_epoch', '0')
-ON CONFLICT (key) DO NOTHING;
+-- System Settings: RLS disabled (publicly readable)
+ALTER TABLE "systemSettings" DISABLE ROW LEVEL SECURITY;
 
--- ─── STORAGE BUCKET ─────────────────────────────────────────
--- Run via Supabase dashboard or CLI:
---   supabase storage create-bucket receipts --public
+-- ─── STORAGE ────────────────────────────────────────────────
+
+DO $$
+BEGIN
+    INSERT INTO storage.buckets (id, name, public)
+    VALUES ('receipts', 'receipts', false)
+    ON CONFLICT (id) DO NOTHING;
+END $$;
+
+DROP POLICY IF EXISTS "Storage - Individual Access" ON storage.objects;
+DROP POLICY IF EXISTS "Storage - Individual Upload" ON storage.objects;
+DROP POLICY IF EXISTS "Storage - Individual Deletion" ON storage.objects;
+
+CREATE POLICY "Storage - Individual Access" ON storage.objects
+FOR SELECT USING (
+  bucket_id = 'receipts'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "Storage - Individual Upload" ON storage.objects
+FOR INSERT WITH CHECK (
+  bucket_id = 'receipts'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+CREATE POLICY "Storage - Individual Deletion" ON storage.objects
+FOR DELETE USING (
+  bucket_id = 'receipts'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
 
 -- ─── DONE ───────────────────────────────────────────────────
