@@ -189,25 +189,6 @@ CREATE POLICY "Authenticated users can read system settings"
     ON public.system_settings FOR SELECT
     USING (auth.role() = 'authenticated');
 
--- ─── SEED: Default Categories ───────────────────────────────
-
--- Inserted per-user by the backend on registration.
--- IDs match utils/db.ts GLOBAL_CATEGORIES.
-
-INSERT INTO public.categories (id, user_id, name, type, is_global, updated_at) VALUES
--- Expense
-('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11', '00000000-0000-0000-0000-000000000000', 'Food',         'expense', true, 0),
-('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12', '00000000-0000-0000-0000-000000000000', 'Bills',        'expense', true, 0),
-('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13', '00000000-0000-0000-0000-000000000000', 'Transport',    'expense', true, 0),
-('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b14', '00000000-0000-0000-0000-000000000000', 'Shopping',     'expense', true, 0),
-('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b15', '00000000-0000-0000-0000-000000000000', 'Entertainment','expense', true, 0),
-('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b18', '00000000-0000-0000-0000-000000000000', 'Others',       'expense', true, 0),
--- Income
-('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b16', '00000000-0000-0000-0000-000000000000', 'Salary',       'income',  true, 0),
-('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b17', '00000000-0000-0000-0000-000000000000', 'Freelance',    'income',  true, 0),
-('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19', '00000000-0000-0000-0000-000000000000', 'Others',       'income',  true, 0)
-ON CONFLICT (id) DO NOTHING;
-
 -- ─── SEED: System Settings ──────────────────────────────────
 
 INSERT INTO public.system_settings (key, value) VALUES
