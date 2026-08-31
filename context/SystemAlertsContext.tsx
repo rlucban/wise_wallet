@@ -63,7 +63,7 @@ export function SystemAlertsProvider({ children }: { children: ReactNode }) {
 
   const clearAlerts = useCallback(async () => {
     if (!activeUserId) return;
-    await clearAllAlertsHelper(activeUserId);
+    await clearAlertsHelper(activeUserId);
     setAlerts([]);
   }, [activeUserId]);
 
