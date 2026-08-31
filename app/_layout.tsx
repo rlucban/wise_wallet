@@ -161,8 +161,6 @@ function MainLayout() {
             <Stack.Screen name="transaction-details" options={{ title: "Details" }} />
             <Stack.Screen name="budgets" />
             <Stack.Screen name="calendar" />
-            <Stack.Screen name="agenda" />
-            <Stack.Screen name="subscriptions" />
             <Stack.Screen name="savings" />
             <Stack.Screen name="payment-methods" options={{ animation: "slide_from_right" }} />
           </Stack>

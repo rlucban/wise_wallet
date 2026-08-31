@@ -61,22 +61,6 @@ export interface SavingsItem extends TimestampedEntity {
   color?: string;
 }
 
-export interface Agenda extends TimestampedEntity {
-  id: string;
-  title?: string;
-  amount?: number;
-  date?: string;
-  frequency?: DueFrequency;
-  type?: TransactionType;
-  categoryId?: string;
-  autoProcess?: boolean;
-  completed?: boolean;
-}
-
-export interface Subscription extends TimestampedEntity {
-  id: string;
-}
-
 export interface Budget extends TimestampedEntity {
   id: string;
 }

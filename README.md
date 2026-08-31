@@ -229,15 +229,12 @@ wise-wallet/
 │   ├── useInsights.ts      # Composes transactions + dues data
 │   ├── useCloudLink.ts     # Cloud sync pairing logic
 │   └── useSyncStatus.ts    # Sync queue status polling
-├── repositories/           # Repository pattern (8 concrete + 1 abstract base)
+├── repositories/           # Repository pattern (5 concrete + 1 abstract base)
 │   ├── base.storage.ts     # Abstract base: getAll, getById, upsert, upsertBulk, deleteById
 │   ├── transaction.repo.ts # + getByDateRange
 │   ├── category.repo.ts    # + getByType
 │   ├── due.repo.ts
 │   ├── savings-item.repo.ts
-│   ├── subscription.repo.ts
-│   ├── agenda.repo.ts
-│   ├── payment-method.repo.ts
 │   └── profile.repo.ts     # Single-object storage (not array-based)
 ├── utils/                  # Core utilities
 │   ├── db.ts               # Legacy CRUD (settings, auth, export/import, mergeLWW) — 434 lines

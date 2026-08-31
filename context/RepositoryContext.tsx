@@ -4,18 +4,12 @@ import type {
   CategoryRepository,
   DueRepository,
   SavingsItemRepository,
-  SubscriptionRepository,
-  AgendaRepository,
-  PaymentMethodRepository,
   ProfileRepository,
 } from "../types/repositories";
 import { AsyncStorageTransactionRepository } from "../repositories/transaction.repo";
 import { AsyncStorageCategoryRepository } from "../repositories/category.repo";
 import { AsyncStorageDueRepository } from "../repositories/due.repo";
 import { AsyncStorageSavingsItemRepository } from "../repositories/savings-item.repo";
-import { AsyncStorageSubscriptionRepository } from "../repositories/subscription.repo";
-import { AsyncStorageAgendaRepository } from "../repositories/agenda.repo";
-import { AsyncStoragePaymentMethodRepository } from "../repositories/payment-method.repo";
 import { AsyncStorageProfileRepository } from "../repositories/profile.repo";
 
 export interface Repositories {
@@ -23,9 +17,6 @@ export interface Repositories {
   categories: CategoryRepository;
   dues: DueRepository;
   savingsItems: SavingsItemRepository;
-  subscriptions: SubscriptionRepository;
-  agendas: AgendaRepository;
-  paymentMethods: PaymentMethodRepository;
   profiles: ProfileRepository;
 }
 
@@ -37,9 +28,6 @@ export function RepositoryProvider({ children }: { children: ReactNode }) {
     categories: new AsyncStorageCategoryRepository(),
     dues: new AsyncStorageDueRepository(),
     savingsItems: new AsyncStorageSavingsItemRepository(),
-    subscriptions: new AsyncStorageSubscriptionRepository(),
-    agendas: new AsyncStorageAgendaRepository(),
-    paymentMethods: new AsyncStoragePaymentMethodRepository(),
     profiles: new AsyncStorageProfileRepository(),
   }), []);
 
