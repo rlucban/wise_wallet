@@ -5,6 +5,11 @@
 
 -- ─── DROP (clean slate) ─────────────────────────────────────
 
+-- Removed entities (dead code cleanup)
+DROP TABLE IF EXISTS public.subscriptions CASCADE;
+DROP TABLE IF EXISTS public.agendas CASCADE;
+
+-- Active tables
 DROP TABLE IF EXISTS public.system_settings CASCADE;
 DROP TABLE IF EXISTS public.payment_methods CASCADE;
 DROP TABLE IF EXISTS public.savings_items CASCADE;
