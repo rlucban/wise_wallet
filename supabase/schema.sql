@@ -1,15 +1,25 @@
 -- ============================================================
 -- WiseWallet — Supabase Schema
--- Generated from client types + API endpoints
+-- Derived from existing DB dump + client types
 -- ============================================================
 
 -- ─── DROP (clean slate) ─────────────────────────────────────
 
--- Removed entities (dead code cleanup)
+-- Legacy tables (superseded by snake_case versions)
+DROP TABLE IF EXISTS public.savingsGoals CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+DROP TABLE IF EXISTS public.allocations CASCADE;
+DROP TABLE IF EXISTS public.systemSettings CASCADE;
+
+-- Duplicate tables (camelCase → snake_case migration)
+DROP TABLE IF EXISTS public.savingsItems CASCADE;
+DROP TABLE IF EXISTS public.paymentMethods CASCADE;
+
+-- Dead entities (removed from codebase)
 DROP TABLE IF EXISTS public.subscriptions CASCADE;
 DROP TABLE IF EXISTS public.agendas CASCADE;
 
--- Active tables
+-- Active tables (recreated below)
 DROP TABLE IF EXISTS public.system_settings CASCADE;
 DROP TABLE IF EXISTS public.payment_methods CASCADE;
 DROP TABLE IF EXISTS public.savings_items CASCADE;
@@ -131,7 +141,7 @@ CREATE TABLE public.payment_methods (
 
 CREATE INDEX idx_payment_methods_user ON public.payment_methods (user_id);
 
--- 8. System Settings (single-row, server-controlled)
+-- 8. System Settings (key-value, server-controlled)
 CREATE TABLE public.system_settings (
     key          TEXT PRIMARY KEY,
     value        TEXT NOT NULL,
@@ -147,9 +157,7 @@ ALTER TABLE public.dues             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.savings_items    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.payment_methods  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_settings  ENABLE ROW LEVEL SECURITY;
-
--- Users table: service-role only (auth handled by backend)
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users            ENABLE ROW LEVEL SECURITY;
 
 -- Policies: users can only read/write their own rows
 CREATE POLICY "Users can manage own profile"
@@ -183,21 +191,22 @@ CREATE POLICY "Authenticated users can read system settings"
 
 -- ─── SEED: Default Categories ───────────────────────────────
 
--- These are inserted per-user by the backend on registration.
--- Below are the global defaults matching utils/db.ts GLOBAL_CATEGORIES.
+-- Inserted per-user by the backend on registration.
+-- IDs match utils/db.ts GLOBAL_CATEGORIES.
 
--- Expense categories
--- 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11' — Food
--- 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12' — Bills
--- 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13' — Transport
--- 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b14' — Shopping
--- 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b15' — Entertainment
--- 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b18' — Others (expense)
---
--- Income categories
--- 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b16' — Salary
--- 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b17' — Freelance
--- 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19' — Others (income)
+INSERT INTO public.categories (id, user_id, name, type, is_global, updated_at) VALUES
+-- Expense
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b11', '00000000-0000-0000-0000-000000000000', 'Food',         'expense', true, 0),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b12', '00000000-0000-0000-0000-000000000000', 'Bills',        'expense', true, 0),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b13', '00000000-0000-0000-0000-000000000000', 'Transport',    'expense', true, 0),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b14', '00000000-0000-0000-0000-000000000000', 'Shopping',     'expense', true, 0),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b15', '00000000-0000-0000-0000-000000000000', 'Entertainment','expense', true, 0),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b18', '00000000-0000-0000-0000-000000000000', 'Others',       'expense', true, 0),
+-- Income
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b16', '00000000-0000-0000-0000-000000000000', 'Salary',       'income',  true, 0),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b17', '00000000-0000-0000-0000-000000000000', 'Freelance',    'income',  true, 0),
+('b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19', '00000000-0000-0000-0000-000000000000', 'Others',       'income',  true, 0)
+ON CONFLICT (id) DO NOTHING;
 
 -- ─── SEED: System Settings ──────────────────────────────────
 
@@ -205,9 +214,8 @@ INSERT INTO public.system_settings (key, value) VALUES
     ('reset_epoch', '0')
 ON CONFLICT (key) DO NOTHING;
 
--- ─── STORAGE BUCKET (run via Supabase dashboard or CLI) ─────
--- supabase storage create-bucket receipts --public
--- Or via SQL:
--- INSERT INTO storage.buckets (id, name, public) VALUES ('receipts', 'receipts', true);
+-- ─── STORAGE BUCKET ─────────────────────────────────────────
+-- Run via Supabase dashboard or CLI:
+--   supabase storage create-bucket receipts --public
 
 -- ─── DONE ───────────────────────────────────────────────────
