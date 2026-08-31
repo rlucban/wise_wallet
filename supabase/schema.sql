@@ -3,31 +3,34 @@
 -- Matches backend wallet-api repository .from() table names
 -- ============================================================
 
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- ─── DROP (clean slate) ─────────────────────────────────────
 
 -- Legacy tables (superseded)
-DROP TABLE IF EXISTS public.savingsGoals CASCADE;
-DROP TABLE IF EXISTS public.allocations CASCADE;
+DROP TABLE IF EXISTS "savingsGoals" CASCADE;
+DROP TABLE IF EXISTS "allocations" CASCADE;
+DROP TABLE IF EXISTS "budgets" CASCADE;
 
 -- Dead entities (removed from codebase)
-DROP TABLE IF EXISTS public.subscriptions CASCADE;
-DROP TABLE IF EXISTS public.agendas CASCADE;
+DROP TABLE IF EXISTS "subscriptions" CASCADE;
+DROP TABLE IF EXISTS "agendas" CASCADE;
 
 -- snake_case duplicates (backend uses camelCase)
-DROP TABLE IF EXISTS public.user_profiles CASCADE;
-DROP TABLE IF EXISTS public.savings_items CASCADE;
-DROP TABLE IF EXISTS public.payment_methods CASCADE;
-DROP TABLE IF EXISTS public.system_settings CASCADE;
+DROP TABLE IF EXISTS "user_profiles" CASCADE;
+DROP TABLE IF EXISTS "savings_items" CASCADE;
+DROP TABLE IF EXISTS "payment_methods" CASCADE;
+DROP TABLE IF EXISTS "system_settings" CASCADE;
 
 -- Active tables (recreated below)
-DROP TABLE IF EXISTS public.systemSettings CASCADE;
-DROP TABLE IF EXISTS public.paymentMethods CASCADE;
-DROP TABLE IF EXISTS public.savingsItems CASCADE;
-DROP TABLE IF EXISTS public.dues CASCADE;
-DROP TABLE IF EXISTS public.transactions CASCADE;
-DROP TABLE IF EXISTS public.categories CASCADE;
-DROP TABLE IF EXISTS public.profiles CASCADE;
-DROP TABLE IF EXISTS public.users CASCADE;
+DROP TABLE IF EXISTS "systemSettings" CASCADE;
+DROP TABLE IF EXISTS "paymentMethods" CASCADE;
+DROP TABLE IF EXISTS "savingsItems" CASCADE;
+DROP TABLE IF EXISTS "dues" CASCADE;
+DROP TABLE IF EXISTS "transactions" CASCADE;
+DROP TABLE IF EXISTS "categories" CASCADE;
+DROP TABLE IF EXISTS "profiles" CASCADE;
+DROP TABLE IF EXISTS "users" CASCADE;
 
 -- ─── TABLES ─────────────────────────────────────────────────
 
@@ -166,7 +169,18 @@ ALTER TABLE "dues" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "savingsItems" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "paymentMethods" ENABLE ROW LEVEL SECURITY;
 
--- Policies
+-- Drop existing policies to allow re-runs
+DROP POLICY IF EXISTS "Users can view own data" ON "users";
+DROP POLICY IF EXISTS "Profiles are private" ON "profiles";
+DROP POLICY IF EXISTS "Categories visibility" ON "categories";
+DROP POLICY IF EXISTS "Categories management" ON "categories";
+DROP POLICY IF EXISTS "Transactions are private" ON "transactions";
+DROP POLICY IF EXISTS "Dues are private" ON "dues";
+DROP POLICY IF EXISTS "Savings items are private" ON "savingsItems";
+DROP POLICY IF EXISTS "Payment methods are private" ON "paymentMethods";
+DROP POLICY IF EXISTS "Anyone can read system settings" ON "systemSettings";
+
+-- Create Policies
 CREATE POLICY "Users can view own data" ON "users"
   FOR SELECT USING (auth.uid() = id);
 
@@ -192,6 +206,7 @@ CREATE POLICY "Payment methods are private" ON "paymentMethods"
   FOR ALL USING (auth.uid() = "userId" OR "userId" IS NULL);
 
 -- System Settings: RLS disabled (publicly readable)
+DROP POLICY IF EXISTS "Anyone can read system settings" ON "systemSettings";
 ALTER TABLE "systemSettings" DISABLE ROW LEVEL SECURITY;
 
 -- ─── STORAGE ────────────────────────────────────────────────
