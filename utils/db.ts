@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import { Category, Transaction, SavingsItem, Due, UserProfile } from '../types';
 import { AsyncStorageTransactionRepository } from '../repositories/transaction.repo';
 import { AsyncStorageCategoryRepository } from '../repositories/category.repo';

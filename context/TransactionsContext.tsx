@@ -10,7 +10,7 @@ import { useUserProfile } from "./UserProfileContext";
 import { useSystemAlerts } from "./SystemAlertsContext";
 import { useRepositories } from "./RepositoryContext";
 import { generateUUID } from "../utils/uuid";
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import { enqueueAndTrigger, processSyncQueue } from "../utils/syncProcessor";
 
 interface TransactionsData {
