@@ -15,19 +15,11 @@ import {
   Card,
   HelperText,
 } from "react-native-paper";
-<<<<<<< HEAD
 import { useRouter } from "expo-router";
-=======
-import { useRouter, useLocalSearchParams } from "expo-router";
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 import { authFetch } from "../utils/apiClient";
 import * as ImagePicker from "expo-image-picker";
 import { Calendar } from "react-native-calendars";
 import { useTransactions } from "../hooks/useTransactions";
-<<<<<<< HEAD
-=======
-import { useSavings } from "../hooks/useSavings";
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 import { Category, TransactionType, PaymentMethod, PaymentMethodInfo } from "../types";
 import { useCategoriesData } from "../context/CategoriesContext";
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
@@ -36,14 +28,7 @@ import { formatNumberInput, parseAmount } from "../utils/amount";
 
 export default function AddTransaction() {
   const router = useRouter();
-<<<<<<< HEAD
   const { addTransaction } = useTransactions();
-=======
-  const params = useLocalSearchParams<{ allocationId?: string; allocation_id?: string }>();
-  const targetAllocationId = params.allocationId || params.allocation_id;
-  const { addTransaction } = useTransactions();
-  const { items: savingsItems, updateItem: updateSavingsItem } = useSavings();
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
   const { categories: availableCategories } = useCategoriesData();
 
   const [amount, setAmount] = useState("");
@@ -120,19 +105,11 @@ export default function AddTransaction() {
     if (!trimmed) {
       next.amount = "Please enter an amount.";
     } else {
-<<<<<<< HEAD
       const num = parseAmount(trimmed);
       if (isNaN(num) || num <= 0) {
         next.amount = "Please enter a valid amount greater than 0.";
       } else if (num > 999999999.99) {
         next.amount = "Amount must be less than 1 billion.";
-=======
-      const num = parseFloat(trimmed.replace(/,/g, '').trim());
-      if (isNaN(num) || num <= 0) {
-        next.amount = "Please enter a valid amount greater than 0.";
-      } else if (num > 1000000) {
-        next.amount = "Amount cannot exceed ₱1,000,000.00";
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
       }
     }
 
@@ -173,16 +150,7 @@ export default function AddTransaction() {
       return;
     }
 
-<<<<<<< HEAD
     const numAmount = parseAmount(amount);
-=======
-    const numAmount = parseFloat(amount.toString().replace(/,/g, '').trim());
-    if (isNaN(numAmount) || numAmount <= 0 || numAmount > 1000000) {
-      Alert.alert("Invalid Amount", "Please enter a valid amount up to ₱1,000,000.00.");
-      return;
-    }
-
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     const category: Category | null = isOthersCategory(selectedCategory) && customCategory.trim()
       ? { ...(selectedCategory as Category), name: customCategory.trim(), updatedAt: Date.now() }
       : selectedCategory;
@@ -197,34 +165,12 @@ export default function AddTransaction() {
         paymentMethod,
         establishment: establishment || undefined,
         receiptUrl: receiptImage || undefined,
-<<<<<<< HEAD
         updatedAt: Date.now(),
       });
 
       router.back();
     } catch (e) {
       console.warn("Failed to save transaction:", e);
-=======
-        allocationId: targetAllocationId || undefined,
-        allocation_id: targetAllocationId || undefined,
-        updatedAt: Date.now(),
-      });
-
-      if (targetAllocationId) {
-        const targetItem = savingsItems.find((s) => s.id === targetAllocationId);
-        if (targetItem) {
-          const updatedBalance = type === "expense"
-            ? Math.max(0, targetItem.balance - numAmount)
-            : targetItem.balance + numAmount;
-          await updateSavingsItem(targetAllocationId, { balance: updatedBalance });
-        }
-      }
-
-      router.back();
-    } catch (e) {
-      console.warn("Failed to save transaction:", e);
-      Alert.alert("Error", "Failed to save transaction. Please try again.");
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     } finally {
       setLoading(false);
     }

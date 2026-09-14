@@ -114,7 +114,6 @@ function MainLayout() {
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
-<<<<<<< HEAD
 
   useEffect(() => {
     if (authLoading || profileLoading || !navigationState?.key) return;
@@ -141,45 +140,6 @@ function MainLayout() {
       }
     }
   }, [activeUserId, authLoading, profileLoading, profile, segments, navigationState?.key, router]);
-=======
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<string | null>(null);
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem('hasCompletedOnboarding').then((value) => {
-      setHasCompletedOnboarding(value);
-      setOnboardingChecked(true);
-    });
-  }, [activeUserId]);
-
-  useEffect(() => {
-    if (authLoading || !navigationState?.key || !onboardingChecked) return;
-
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'intro';
-
-    console.info(`[Nav] State -> User: ${activeUserId}, OnboardingDone: ${hasCompletedOnboarding}, Path: /${segments.join('/')}`);
-
-    if (activeUserId) {
-      if (inAuthGroup || segments[0] === 'onboarding') {
-        console.info("[Nav] Authenticated user in auth/onboarding -> Redirecting to Dashboard");
-        setTimeout(() => router.replace('/'), 0);
-      }
-    } else {
-      if (profileLoading) return;
-      if (hasCompletedOnboarding === 'true') {
-        if (segments[0] !== 'login' && segments[0] !== 'register') {
-          console.info("[Nav] Not authenticated, onboarding done -> Redirecting to Login");
-          setTimeout(() => router.replace('/login'), 0);
-        }
-      } else {
-        if (segments[0] !== 'intro') {
-          console.info("[Nav] Not authenticated, no onboarding -> Redirecting to Intro");
-          setTimeout(() => router.replace('/intro'), 0);
-        }
-      }
-    }
-  }, [activeUserId, authLoading, profileLoading, segments, navigationState?.key, router, hasCompletedOnboarding, onboardingChecked]);
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 
   if (isPasscodeEnabled && !isUnlocked) {
       return <PasscodeScreen />;

@@ -26,10 +26,6 @@ function migrateSavingsItem(item: SavingsItem): SavingsItem {
 function titleDeduplicate(items: SavingsItem[]): SavingsItem[] {
   const seen = new Set<string>();
   return items.filter((g) => {
-<<<<<<< HEAD
-=======
-    if (!g || !g.title) return false;
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     const key = g.title.toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
@@ -65,25 +61,10 @@ export function useSavings() {
                         }
 
                         for (const localItem of deduped) {
-<<<<<<< HEAD
                             if (remoteMap.has(localItem.id)) continue;
                             if (remoteTitleMap.has(localItem.title.toLowerCase())) continue;
                             mergedMap.set(localItem.id, localItem);
                             await enqueueAndTrigger('savingsItems', 'create', localItem.id, localItem as unknown as Record<string, unknown>);
-=======
-                            const remoteById = remoteMap.get(localItem.id);
-                            const remoteByTitle = remoteTitleMap.get(localItem.title.toLowerCase());
-                            const remote = remoteById || remoteByTitle;
-
-                            if (remote) {
-                                if ((localItem.updatedAt || 0) >= (remote.updatedAt || 0)) {
-                                    mergedMap.set(remote.id || localItem.id, { ...remote, ...localItem });
-                                }
-                            } else {
-                                mergedMap.set(localItem.id, localItem);
-                                await enqueueAndTrigger('savingsItems', 'create', localItem.id, localItem as unknown as Record<string, unknown>);
-                            }
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
                         }
 
                         const merged = Array.from(mergedMap.values());
@@ -107,7 +88,6 @@ export function useSavings() {
 
     const addItem = async (item: Omit<SavingsItem, "id">) => {
         try {
-<<<<<<< HEAD
             const existing = items.find(g => g.title.toLowerCase() === item.title.toLowerCase());
             if (existing) {
                 await updateItem(existing.id, item);
@@ -115,9 +95,6 @@ export function useSavings() {
             }
 
             const newItem = { ...item, id: generateUUID() } as SavingsItem;
-=======
-            const newItem = { ...item, id: generateUUID(), updatedAt: Date.now() } as SavingsItem;
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 
             await repos.savingsItems.upsert(newItem);
             setItems((prev) => [...prev, newItem]);
@@ -136,7 +113,6 @@ export function useSavings() {
     const updateItem = async (id: string, updates: Partial<SavingsItem>) => {
         try {
             const existing = await repos.savingsItems.getById(id);
-<<<<<<< HEAD
             if (existing) {
                 await repos.savingsItems.upsert({ ...existing, ...updates } as SavingsItem);
             }
@@ -145,25 +121,10 @@ export function useSavings() {
             const autoBackup = await getSetting('autoBackup');
             if (API_URL && autoBackup !== 'false') {
                 const syncData = { ...updates, userId: activeUserId };
-=======
-            const updatedPayload = { ...updates, updatedAt: Date.now() };
-            if (existing) {
-                await repos.savingsItems.upsert({ ...existing, ...updatedPayload } as SavingsItem);
-            }
-            setItems((prev) => prev.map((g) => (g.id === id ? { ...g, ...updatedPayload } : g)));
-
-            const autoBackup = await getSetting('autoBackup');
-            if (API_URL && autoBackup !== 'false') {
-                const syncData = { ...updatedPayload, userId: activeUserId };
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
                 await enqueueAndTrigger('savingsItems', 'update', id, syncData);
             }
         } catch (error) {
             console.error("Error updating savings item:", error);
-<<<<<<< HEAD
-=======
-            throw error;
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
         }
     };
 
@@ -178,10 +139,6 @@ export function useSavings() {
             }
         } catch (error) {
             console.error("Error deleting savings item:", error);
-<<<<<<< HEAD
-=======
-            throw error;
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
         }
     };
 

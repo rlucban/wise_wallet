@@ -48,10 +48,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [handleAuthFailure]);
 
   const login = useCallback(async (userId: string, token: string) => {
-<<<<<<< HEAD
-=======
-    await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     await setSecureItem('authToken', token);
     await AsyncStorage.setItem('activeUserId', String(userId));
     setActiveUserId(String(userId));
@@ -60,10 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-<<<<<<< HEAD
-=======
-    await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     await AsyncStorage.removeItem('activeUserId');
     await removeSecureItem('authToken');
     setActiveUserId(null);

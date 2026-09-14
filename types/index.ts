@@ -38,11 +38,6 @@ export interface Transaction extends TimestampedEntity {
     participants?: { name: string; amount: number; paid: boolean }[];
   };
   dueId?: string;
-<<<<<<< HEAD
-=======
-  allocationId?: string;
-  allocation_id?: string;
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 }
 
 export interface Due extends TimestampedEntity {

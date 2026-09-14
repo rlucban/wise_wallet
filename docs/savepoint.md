@@ -38,37 +38,6 @@ WiseWallet is a React Native app built using Expo Router. It currently has featu
   - Removed logo icon and history button from the Highlights header text.
   - Grouped the "Upcoming Due" alert card and "Next 7 Days" dues summary card sequentially together right under "Highlights" with tight vertical card spacing (`marginTop: 2`), removing excessive empty whitespace.
   - Positioned Quick Action buttons ("Scheduled", "Allocations") below the grouped Highlights section.
-<<<<<<< HEAD
-=======
-- Allocation Transactions / Deposit / Withdraw Fix (`app/savings.tsx`, `app/add-transaction.tsx`, `types/index.ts`, `context/TransactionsContext.tsx`):
-  - Added optional `allocationId` and `allocation_id` fields to `Transaction` interface and updated `sanitizeTransaction` in `TransactionsContext.tsx` to retain both fields bidirectionally for local storage and Supabase payload sync.
-  - Updated `app/savings.tsx` (Deposit / Transfer In, Withdraw / Transfer Out, Delete Allocation Return): attached `allocationId` / `allocation_id` to generated transactions, sanitized inputs using `parseFloat(input.toString().replace(/,/g, '').trim())`, validated strict positive amounts and ₱99.9M (99,999,999.99) cap, added explicit try-catch error alerts, and immediately refreshed both `useSavings` and `useTransactions` states.
-- Fixed Allocation Transactions & State Sync (`hooks/useSavings.ts`, `app/add-transaction.tsx`):
-  - Corrected `fetchItems` data merging logic in `hooks/useSavings.ts` to prevent remote API sync from dropping or overwriting newly created/updated local allocation items.
-  - Ensured `addItem` and `updateItem` in `hooks/useSavings.ts` explicitly set `updatedAt: Date.now()` so local balance changes take priority during data sync.
-- Fixed Allocation Item Saving & Validation (`app/savings.tsx`, `hooks/useSavings.ts`):
-  - Updated `handleAddItem` in `app/savings.tsx` to allow creating allocations with ₱0 initial balance (defaulting to ₱0 if blank/zero) and only checking available balance when `cleanBalance > 0`.
-  - Added inline `addError` red text validation inside the New Allocation modal so users on Web get clear feedback when available balance is exceeded (e.g. ₱0 available).
-  - Added null safety check to `titleDeduplicate` in `hooks/useSavings.ts` (`if (!g || !g.title) return false;`).
-  - Added success toast feedback upon creating an allocation item.
-- Enforced ₱1,000,000.00 (1M) Maximum Transaction Amount Cap & Input Clamping (`utils/amount.ts`, `app/add-transaction.tsx`, `app/edit-transaction.tsx`, `app/onboarding.tsx`, `app/savings.tsx`, `app/dues.tsx`):
-  - Exported `MAX_TRANSACTION_AMOUNT = 1000000;` constant in `utils/amount.ts`.
-  - Updated `formatNumberInput` to automatically clamp input to 1,000,000 max and at most 2 decimal places, preventing users from typing billions or trillions.
-  - Updated amount input validations across Add Transaction, Edit Transaction, Onboarding initial balance, Allocations (creation and transfers), and Scheduled Dues to cap at ₱1,000,000.00 with the message: "Amount cannot exceed ₱1,000,000.00".
-- Fixed Missing Icons in Dashboard Recent Activity (`app/(tabs)/index.tsx`):
-  - Integrated `getCategoryIcon` in `app/(tabs)/index.tsx` to map category names to distinct MaterialCommunityIcons (e.g., `receipt` for Bills, `cash-multiple` for Salary, `silverware-fork-knife` for Food) instead of strict lowercase payment method lookups that returned undefined blank boxes.
-
-
-
-
-
-
-
-
-
-
-
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 
 
 

@@ -4,10 +4,6 @@ import { Text, Button } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-<<<<<<< HEAD
-=======
-import AsyncStorage from "@react-native-async-storage/async-storage";
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 
 const STEPS = [
     {
@@ -39,14 +35,6 @@ export default function IntroScreen() {
         }
     };
 
-<<<<<<< HEAD
-=======
-    const finishIntro = async (targetRoute: "/register" | "/login") => {
-        await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
-        router.replace(targetRoute);
-    };
-
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     return (
         <LinearGradient colors={["#1a237e", "#283593", "#3949ab"]} style={styles.gradient}>
             <View style={styles.container}>
@@ -80,11 +68,7 @@ export default function IntroScreen() {
                                 mode="contained" 
                                 style={[styles.actionButton, { backgroundColor: "#fff" }]}
                                 labelStyle={{ color: "#1a237e", fontWeight: "bold" }}
-<<<<<<< HEAD
                                 onPress={() => router.replace("/register")}
-=======
-                                onPress={() => finishIntro("/register")}
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
                             >
                                 Get Started
                             </Button>
@@ -93,11 +77,7 @@ export default function IntroScreen() {
                         <View style={styles.navGroup}>
                             <Button 
                                 mode="text" 
-<<<<<<< HEAD
                                 onPress={() => router.replace("/login")}
-=======
-                                onPress={() => finishIntro("/login")}
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
                                 labelStyle={{ color: "rgba(255,255,255,0.7)" }}
                             >
                                 Skip

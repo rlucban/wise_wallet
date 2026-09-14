@@ -7,7 +7,6 @@ import * as ImagePicker from "expo-image-picker";
 import { Calendar } from "react-native-calendars";
 import { useTransactions } from "../hooks/useTransactions";
 import { TransactionType, PaymentMethod, Category } from "../types";
-<<<<<<< HEAD
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
 import { ensureOthersOption, isOthersCategory } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
@@ -23,12 +22,6 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: "8", name: "Others", type: "expense", updatedAt: 0 },
   { id: "9", name: "Others", type: "income", updatedAt: 0 },
 ];
-=======
-import { useCategoriesData } from "../context/CategoriesContext";
-import { getTimeOfMonthTip } from "../utils/financialLiteracy";
-import { ensureOthersOption, isOthersCategory } from "../utils/categoryOptions";
-import { formatNumberInput } from "../utils/amount";
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: string }[] = [
   { value: "cash", label: "Cash", icon: "cash" },
@@ -42,10 +35,6 @@ export default function EditTransaction() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { transactions, updateTransaction } = useTransactions();
-<<<<<<< HEAD
-=======
-  const { categories: availableCategories } = useCategoriesData();
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -58,7 +47,6 @@ export default function EditTransaction() {
   const [date, setDate] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
   const [loading, setLoading] = useState(false);
-<<<<<<< HEAD
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
 
   useEffect(() => {
@@ -79,8 +67,6 @@ export default function EditTransaction() {
       setAvailableCategories(DEFAULT_CATEGORIES);
     }
   };
-=======
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 
   useEffect(() => {
     const tx = transactions.find((t) => t.id === id);
@@ -140,22 +126,11 @@ export default function EditTransaction() {
   const categoryOptions = useMemo(() => ensureOthersOption(availableCategories, type), [availableCategories, type]);
 
   const handleSave = async () => {
-<<<<<<< HEAD
     const numAmount = parseAmount(amount);
-=======
-    const numAmount = parseFloat(amount.replace(/,/g, '').trim());
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     if (isNaN(numAmount) || numAmount <= 0) {
       Alert.alert("Invalid Amount", "Please enter a valid amount greater than 0.");
       return;
     }
-<<<<<<< HEAD
-=======
-    if (numAmount > 1000000) {
-      Alert.alert("Amount Limit", "Amount cannot exceed ₱1,000,000.00");
-      return;
-    }
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     if (!selectedCategory || !id) return;
     if (isOthersCategory(selectedCategory) && !customCategory.trim()) {
       Alert.alert("Invalid Category", "Please specify a category.");

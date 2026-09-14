@@ -197,13 +197,6 @@ export default function DuesScreen() {
       Alert.alert("Invalid Amount", "Please enter a valid amount.");
       return;
     }
-<<<<<<< HEAD
-=======
-    if (numAmount > 1000000) {
-      Alert.alert("Amount Limit", "Amount cannot exceed ₱1,000,000.00");
-      return;
-    }
->>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     if (isOthersSelected && !customCategory.trim()) {
       Alert.alert("Invalid Category", "Please specify a category.");
       return;
