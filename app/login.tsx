@@ -64,6 +64,10 @@ export default function LoginScreen() {
                 );
 
                 if (localUser.passcode === hashedInput || localUser.passcode === passcode.trim()) {
+<<<<<<< HEAD
+=======
+                    await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
                     await login(localUser.id as string, "local_token");
                 } else {
                     showAlert("Error", "Invalid PIN");
@@ -154,6 +158,10 @@ export default function LoginScreen() {
 
                 await addUser(data.user.id, name.trim(), passcode.trim());
                 await saveUserProfile({ name: name.trim(), isFirstRun: false, initialBalance: 0 }, data.user.id);
+<<<<<<< HEAD
+=======
+                await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
                 await login(data.user.id, data.token);
             } else if (response.status === 401) {
                 console.info("Cloud login returned 401 - checking local users...");

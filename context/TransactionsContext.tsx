@@ -37,6 +37,15 @@ const sanitizeTransaction = (t: Transaction): Transaction => {
     if (withTimestamp.category === undefined) withTimestamp.category = {
         id: 'uncategorized', name: 'Others', type: t.type || 'expense', updatedAt: 0,
     };
+<<<<<<< HEAD
+=======
+    if (withTimestamp.allocationId === undefined && withTimestamp.allocation_id) {
+        withTimestamp.allocationId = withTimestamp.allocation_id;
+    }
+    if (withTimestamp.allocation_id === undefined && withTimestamp.allocationId) {
+        withTimestamp.allocation_id = withTimestamp.allocationId;
+    }
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     return { ...withTimestamp } as unknown as Transaction;
 };
 

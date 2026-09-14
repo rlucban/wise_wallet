@@ -17,6 +17,7 @@
     "@shopify/flash-list": "2.0.2",
     "@types/uuid": "^10.0.0",
     "date-fns": "^4.1.0",
+<<<<<<< HEAD
     "expo": "~54.0.33",
     "expo-constants": "~18.0.13",
     "expo-crypto": "~15.0.8",
@@ -29,6 +30,20 @@
     "expo-notifications": "~0.32.16",
     "expo-print": "~15.0.8",
     "expo-router": "~6.0.23",
+=======
+    "expo": "~54.0.37",
+    "expo-constants": "~18.0.14",
+    "expo-crypto": "~15.0.9",
+    "expo-document-picker": "~14.0.8",
+    "expo-file-system": "~19.0.24",
+    "expo-image": "~3.0.11",
+    "expo-image-picker": "~17.0.11",
+    "expo-linear-gradient": "~15.0.8",
+    "expo-linking": "~8.0.12",
+    "expo-notifications": "~0.32.17",
+    "expo-print": "~15.0.8",
+    "expo-router": "~6.0.24",
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     "expo-secure-store": "~15.0.8",
     "expo-sharing": "~14.0.8",
     "expo-sqlite": "~16.0.10",
@@ -38,7 +53,11 @@
     "react-native": "0.81.5",
     "react-native-calendars": "^1.1314.0",
     "react-native-chart-kit": "^6.12.0",
+<<<<<<< HEAD
     "react-native-get-random-values": "^2.0.0",
+=======
+    "react-native-get-random-values": "~1.11.0",
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     "react-native-paper": "^5.13.1",
     "react-native-progress": "^5.0.1",
     "react-native-safe-area-context": "~5.6.0",
@@ -60,4 +79,8 @@
     "typescript": "~5.9.2"
   },
   "private": true
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)

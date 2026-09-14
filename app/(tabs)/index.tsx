@@ -20,6 +20,22 @@ import { SmartInsights } from "../../components/SmartInsights";
 import { Transaction } from "../../types";
 import EmptyState from "../../components/EmptyState";
 
+<<<<<<< HEAD
+=======
+const getCategoryIcon = (category?: string | { name?: string }): string => {
+  const name = (typeof category === 'string' ? category : category?.name ?? "").trim().toLowerCase();
+
+  if (name.includes("food")) return "silverware-fork-knife";
+  if (name.includes("bill")) return "receipt";
+  if (name.includes("transport")) return "car";
+  if (name.includes("shop")) return "shopping";
+  if (name.includes("entertain")) return "movie";
+  if (name.includes("scatter") || name.includes("game")) return "dice-5";
+  if (name.includes("salary") || name.includes("income")) return "cash-multiple";
+
+  return "dots-horizontal";
+};
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 
 export default function Dashboard() {
   const router = useRouter();
@@ -129,6 +145,7 @@ export default function Dashboard() {
           marginRight: 16
         }}>
           <MaterialCommunityIcons
+<<<<<<< HEAD
             name={
               ({
                 cash: "cash",
@@ -137,6 +154,9 @@ export default function Dashboard() {
                 e_wallet: "wallet",
               } as Record<string, string>)[item.paymentMethod || "cash"]
             }
+=======
+            name={getCategoryIcon(item.category)}
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
             size={24}
             color={theme.colors.primary}
           />

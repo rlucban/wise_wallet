@@ -6,6 +6,10 @@ import { useRouter } from "expo-router";
 import { useUserProfileActions } from "../context/UserProfileContext";
 import { useTransactionsActions } from "../context/TransactionsContext";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+<<<<<<< HEAD
+=======
+import AsyncStorage from "@react-native-async-storage/async-storage";
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 
 export default function OnboardingScreen() {
     const router = useRouter();
@@ -22,8 +26,16 @@ export default function OnboardingScreen() {
         if (!name.trim()) {
             newErrors.name = "Please enter your name.";
         }
+<<<<<<< HEAD
         if (isNaN(parseAmount(balance))) {
             newErrors.balance = "Please enter a valid number.";
+=======
+        const num = parseAmount(balance);
+        if (isNaN(num)) {
+            newErrors.balance = "Please enter a valid number.";
+        } else if (num > 1000000) {
+            newErrors.balance = "Amount cannot exceed ₱1,000,000.00";
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -35,10 +47,15 @@ export default function OnboardingScreen() {
         try {
             const initialBalance = parseAmount(balance) || 0;
 
+<<<<<<< HEAD
             // 1. Update Profile (Sets the current balance field)
             await completeSetup(name.trim(), initialBalance);
 
             // 2. Create the Ledger Entry (Transaction history)
+=======
+            await completeSetup(name.trim(), initialBalance);
+
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
             if (initialBalance !== 0) {
                 await addTransaction({
                     title: "Opening Balance",
@@ -51,6 +68,10 @@ export default function OnboardingScreen() {
                 });
             }
 
+<<<<<<< HEAD
+=======
+            await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
             router.replace("/");
         } catch (e) {
             console.error("Setup failed:", e);

@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { View, ScrollView } from "react-native";
 import { Image } from "expo-image";
+<<<<<<< HEAD
 import { Appbar, Text, Card, Chip, Divider, useTheme } from "react-native-paper";
+=======
+import { Appbar, Text, Card, Chip, Divider, Button, useTheme } from "react-native-paper";
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTransactions } from "../hooks/useTransactions";
 import { useCurrencyActions } from "../context/CurrencyContext";
@@ -46,8 +50,13 @@ export default function TransactionDetails() {
       <Appbar.Header>
         <Appbar.BackAction onPress={() => router.back()} />
         <Appbar.Content title="Transaction Details" />
+<<<<<<< HEAD
         {/* <Appbar.Action icon="pencil" onPress={() => router.push(`/edit-transaction?id=${transaction.id}`)} />
         <Appbar.Action icon="delete" onPress={() => setDeleteDialogVisible(true)} /> */}
+=======
+        <Appbar.Action icon="pencil" onPress={() => router.push(`/edit-transaction?id=${transaction.id}`)} />
+        <Appbar.Action icon="delete" onPress={() => setDeleteDialogVisible(true)} />
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
@@ -134,23 +143,37 @@ export default function TransactionDetails() {
           </Card>
         )}
 
+<<<<<<< HEAD
         {/* <Button
+=======
+        <Button
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
           mode="outlined"
           icon="pencil"
           onPress={() => router.push(`/edit-transaction?id=${transaction.id}`)}
           style={{ marginBottom: 8 }}
         >
           Edit Transaction
+<<<<<<< HEAD
         </Button> */}
 
         {/* <Button
+=======
+        </Button>
+
+        <Button
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
           mode="outlined"
           icon="delete"
           textColor={theme.colors.error}
           onPress={() => setDeleteDialogVisible(true)}
         >
           Delete Transaction
+<<<<<<< HEAD
         </Button> */}
+=======
+        </Button>
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
       </ScrollView>
 
       <ConfirmDialog

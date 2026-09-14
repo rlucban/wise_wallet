@@ -45,6 +45,10 @@ export default function RegisterScreen() {
         await saveUserProfile({ name: username, isFirstRun: true, initialBalance: 0 }, offlineId);
         await initDb(offlineId);
         await setSetting('autoBackup', 'false');
+<<<<<<< HEAD
+=======
+        await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
         await login(offlineId, "offline_token");
         return true;
     };
@@ -69,6 +73,10 @@ export default function RegisterScreen() {
                 await saveUserProfile({ name: emailAddr.trim(), isFirstRun: true, initialBalance: 0 }, responseData.data.user.id);
                 await initDb(responseData.data.user.id);
                 await setSetting('autoBackup', 'true');
+<<<<<<< HEAD
+=======
+                await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
                 await login(responseData.data.user.id, responseData.data.token);
                 return true;
             } else {

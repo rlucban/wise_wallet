@@ -5,10 +5,15 @@ import { Appbar, Text, FAB, Portal, Modal, TextInput, Button, Card, IconButton, 
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
+<<<<<<< HEAD
 import { useTransactions, useTransactionsActions } from "../hooks/useTransactions";
 import { useCategoriesData } from "../context/CategoriesContext";
 import { GLOBAL_CATEGORIES } from "../utils/db";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+=======
+import { useTransactions } from "../hooks/useTransactions";
+import { formatNumberInput } from "../utils/amount";
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 import { useUserProfile } from "../context/UserProfileContext";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -18,8 +23,11 @@ export default function SavingsScreen() {
     const theme = useTheme();
     const { items, addItem, updateItem, deleteItem, refetch } = useSavings();
     const { formatAmount } = useCurrencyActions();
+<<<<<<< HEAD
     const { addTransaction } = useTransactionsActions();
     const { categories } = useCategoriesData();
+=======
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     const { transactions } = useTransactions();
     const { profile } = useUserProfile();
 
@@ -40,6 +48,10 @@ export default function SavingsScreen() {
     const [transferAmount, setTransferAmount] = useState("");
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+<<<<<<< HEAD
+=======
+    const [addError, setAddError] = useState<string | null>(null);
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
 
     useFocusEffect(
         useCallback(() => {
@@ -48,6 +60,7 @@ export default function SavingsScreen() {
     );
 
     const handleAddItem = async () => {
+<<<<<<< HEAD
         const cleanBalance = parseFloat(balance.toString().replace(/[^0-9.]/g, "")) || 0;
         if (!title || isNaN(cleanBalance) || cleanBalance <= 0) {
             Alert.alert("Invalid Input", "Please provide a title and amount.");
@@ -56,28 +69,75 @@ export default function SavingsScreen() {
 
         if (cleanBalance > availableBalance) {
             Alert.alert("Insufficient Balance", `You only have ${formatAmount(availableBalance)} available to allocate.`);
+=======
+        setAddError(null);
+        if (!title.trim()) {
+            setAddError("Please enter an allocation name.");
+            return;
+        }
+
+        const rawBalance = balance.trim() === "" ? "0" : balance;
+        const cleanBalance = parseFloat(rawBalance.toString().replace(/,/g, '').trim());
+
+        if (isNaN(cleanBalance) || cleanBalance < 0) {
+            setAddError("Please enter a valid non-negative amount.");
+            return;
+        }
+
+        if (cleanBalance > 1000000) {
+            setAddError("Amount cannot exceed ₱1,000,000.00.");
+            return;
+        }
+
+        if (cleanBalance > 0 && cleanBalance > availableBalance) {
+            setAddError(`Insufficient balance. You only have ${formatAmount(availableBalance)} available to allocate. Enter ₱0 to create the goal first.`);
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
             return;
         }
 
         try {
             await addItem({
+<<<<<<< HEAD
                 title,
+=======
+                title: title.trim(),
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
                 balance: cleanBalance,
                 updatedAt: Date.now(),
             });
             setModalVisible(false);
             setTitle("");
             setBalance("");
+<<<<<<< HEAD
         } catch (e) {
             console.error("Failed to add savings item:", e);
             setToastMessage("Failed to save allocation. Please try again.");
+=======
+            setAddError(null);
+            setToastMessage(`Allocation "${title.trim()}" created successfully!`);
+            await refetch();
+        } catch (e) {
+            console.error("Failed to add savings item:", e);
+            setAddError("Failed to save allocation. Please try again.");
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
         }
     };
 
     const handleTransferIn = async () => {
+<<<<<<< HEAD
         const numAmount = parseAmount(transferAmount);
         if (isNaN(numAmount) || numAmount <= 0 || !selectedItemId) return;
 
+=======
+        const numAmount = parseFloat(transferAmount.toString().replace(/,/g, '').trim());
+        if (isNaN(numAmount) || numAmount <= 0 || !selectedItemId) return;
+
+        if (numAmount > 1000000) {
+            Alert.alert("Amount Limit", "Amount cannot exceed ₱1,000,000.00");
+            return;
+        }
+
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
         const item = items.find(g => g.id === selectedItemId);
         if (!item) return;
 
@@ -91,6 +151,7 @@ export default function SavingsScreen() {
                 balance: item.balance + numAmount,
             });
 
+<<<<<<< HEAD
             let savingsCat = categories.find(c => c.name === "Savings" && c.type === "expense");
             if (!savingsCat) savingsCat = GLOBAL_CATEGORIES.find(c => c.name === "Others" && c.type === "expense");
 
@@ -107,14 +168,33 @@ export default function SavingsScreen() {
             setTransferAmount("");
             setSelectedItemId(null);
         } catch {
+=======
+            setTransferInModalVisible(false);
+            setTransferAmount("");
+            setSelectedItemId(null);
+            await refetch();
+        } catch (e) {
+            console.error("Failed to transfer funds in:", e);
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
             Alert.alert("Error", "Failed to transfer funds.");
         }
     };
 
     const handleTransferOut = async () => {
+<<<<<<< HEAD
         const numAmount = parseAmount(transferAmount);
         if (isNaN(numAmount) || numAmount <= 0 || !selectedItemId) return;
 
+=======
+        const numAmount = parseFloat(transferAmount.toString().replace(/,/g, '').trim());
+        if (isNaN(numAmount) || numAmount <= 0 || !selectedItemId) return;
+
+        if (numAmount > 1000000) {
+            Alert.alert("Amount Limit", "Amount cannot exceed ₱1,000,000.00");
+            return;
+        }
+
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
         const item = items.find(g => g.id === selectedItemId);
         if (!item) return;
 
@@ -128,6 +208,7 @@ export default function SavingsScreen() {
                 balance: item.balance - numAmount,
             });
 
+<<<<<<< HEAD
             let savingsCat = categories.find(c => c.name === "Savings" && c.type === "income");
             if (!savingsCat) savingsCat = GLOBAL_CATEGORIES.find(c => c.name === "Others" && c.type === "income");
 
@@ -144,6 +225,14 @@ export default function SavingsScreen() {
             setTransferAmount("");
             setSelectedItemId(null);
         } catch {
+=======
+            setTransferOutModalVisible(false);
+            setTransferAmount("");
+            setSelectedItemId(null);
+            await refetch();
+        } catch (e) {
+            console.error("Failed to transfer funds out:", e);
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
             Alert.alert("Error", "Failed to transfer funds.");
         }
     };
@@ -155,17 +244,31 @@ export default function SavingsScreen() {
     };
 
     const selectedItem = items.find(g => g.id === selectedItemId);
+<<<<<<< HEAD
     const transferOutAmount = parseAmount(transferAmount);
+=======
+    const transferOutAmount = parseFloat(transferAmount.toString().replace(/,/g, '').trim());
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     const transferOutAmountValid =
         selectedItem != null &&
         !isNaN(transferOutAmount) &&
         transferOutAmount > 0 &&
+<<<<<<< HEAD
+=======
+        transferOutAmount <= 1000000 &&
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
         transferOutAmount <= selectedItem.balance;
     const transferOutError = useMemo(() => {
         if (!selectedItem) return null;
         if (transferAmount.trim() === "" || isNaN(transferOutAmount) || transferOutAmount <= 0) {
             return "Please enter a valid amount";
         }
+<<<<<<< HEAD
+=======
+        if (transferOutAmount > 1000000) {
+            return "Amount cannot exceed ₱1,000,000.00";
+        }
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
         if (transferOutAmount > selectedItem.balance) {
             return "Insufficient balance";
         }
@@ -179,6 +282,7 @@ export default function SavingsScreen() {
     const confirmDelete = async () => {
         if (!deleteTarget) return;
         const id = deleteTarget;
+<<<<<<< HEAD
         const item = items.find(g => g.id === id);
         setDeleteTarget(null);
         if (!item) return;
@@ -200,6 +304,17 @@ export default function SavingsScreen() {
             console.error("Failed to create return transaction, deleting anyway:", e);
         }
         await deleteItem(id);
+=======
+        setDeleteTarget(null);
+
+        try {
+            await deleteItem(id);
+            await refetch();
+        } catch (e) {
+            console.error("Failed to delete allocation item:", e);
+            Alert.alert("Error", "Failed to delete allocation item.");
+        }
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
     };
 
     return (
@@ -260,6 +375,7 @@ export default function SavingsScreen() {
             </ScrollView>
 
             <Portal>
+<<<<<<< HEAD
                 <Modal visible={modalVisible} onDismiss={() => setModalVisible(false)} contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}>
                      <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>New Allocation</Text>
                     <TextInput label="Name" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} placeholder="e.g. Education Fund" />
@@ -267,6 +383,20 @@ export default function SavingsScreen() {
                     <Text variant="bodySmall" style={{ color: "gray", marginBottom: 12 }}>
                         Allocating money sets it aside — it decreases your Available to Spend but does not change your Total Balance.
                     </Text>
+=======
+                <Modal visible={modalVisible} onDismiss={() => { setModalVisible(false); setAddError(null); }} contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}>
+                     <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>New Allocation</Text>
+                    <TextInput label="Name" value={title} onChangeText={(t) => { setTitle(t); setAddError(null); }} mode="outlined" style={{ marginBottom: 12 }} placeholder="e.g. Education Fund" />
+                    <TextInput label="Initial Balance" value={balance} onChangeText={(t) => { setBalance(formatNumberInput(t)); setAddError(null); }} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} />
+                    <Text variant="bodySmall" style={{ color: "gray", marginBottom: 12 }}>
+                        Allocating money sets it aside — it decreases your Available to Spend but does not change your Total Balance.
+                    </Text>
+                    {addError && (
+                        <Text variant="bodyMedium" style={{ color: theme.colors.error, marginBottom: 12, fontWeight: "600" }}>
+                            {addError}
+                        </Text>
+                    )}
+>>>>>>> d608b80 (Fix onboarding routing bug, enforce safe amount limit, and resolve Expo SDK warnings)
                     <Button mode="contained" onPress={handleAddItem}>Create</Button>
                 </Modal>
 
