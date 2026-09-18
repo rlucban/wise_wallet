@@ -17,7 +17,7 @@ export default function AddDue() {
 
     const [title, setTitle] = useState("");
     const [amount, setAmount] = useState("");
-    const [date, setDate] = useState(new Date());
+    const [date, _setDate] = useState(new Date());
     const [type, setType] = useState<"expense" | "income">("expense");
     const [frequency, setFrequency] = useState<DueFrequency>("once");
     const [autoProcess, setAutoProcess] = useState(false);

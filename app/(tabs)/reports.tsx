@@ -52,7 +52,6 @@ export default function ReportsScreen() {
   const [period, setPeriod] = useState<Period>("monthly");
   const [menuVisible, setMenuVisible] = useState(false);
   const [offsetDate, setOffsetDate] = useState(new Date());
-  const TODAY = useMemo(() => new Date(), []);
 
   useFocusEffect(
     useCallback(() => {

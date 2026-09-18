@@ -4,20 +4,15 @@ import { TextInput, Button, Text, useTheme, Appbar, Card } from "react-native-pa
 import { useRouter } from "expo-router";
 import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
-import { useTransactionsActions } from "../hooks/useTransactions";
-import { useCategoriesData } from "../context/CategoriesContext";
-import { GLOBAL_CATEGORIES } from "../utils/db";
 import { useUserProfile } from "../context/UserProfileContext";
 import { useTransactions } from "../hooks/useTransactions";
-import { formatNumberInput, parseAmount } from "../utils/amount";
+import { formatNumberInput } from "../utils/amount";
 
 export default function AddAllocation() {
     const router = useRouter();
     const theme = useTheme();
     const { addItem } = useSavings();
     const { formatAmount } = useCurrencyActions();
-    const { addTransaction } = useTransactionsActions();
-    const { categories } = useCategoriesData();
     const { transactions } = useTransactions();
     const { profile } = useUserProfile();
 
@@ -26,7 +21,6 @@ export default function AddAllocation() {
     const [goalAmount, setGoalAmount] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const totalReserved = 0;
     const availableBalance = (() => {
         const initialBalance = Number(profile?.initialBalance || 0);
         const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);

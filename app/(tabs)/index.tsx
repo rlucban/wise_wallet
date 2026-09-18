@@ -39,7 +39,7 @@ const renderCategoryIcon = (category?: string, title?: string, type?: string): s
 
 export default function Dashboard() {
   const router = useRouter();
-  const { profile, isLoading: profileLoading } = useUserProfile();
+  const { isLoading: profileLoading } = useUserProfile();
   const { transactions, loading: txLoading, refetch: refetchTx } = useTransactions();
   const { items: savingsItems, refetch: refetchSavings } = useSavings();
   const { dues, refetch: refetchDues } = useDues();

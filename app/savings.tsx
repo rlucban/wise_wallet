@@ -24,7 +24,7 @@ const CARD_SHADOW = {
 export default function SavingsScreen() {
     const router = useRouter();
     const theme = useTheme();
-    const { items, addItem, updateItem, deleteItem, refetch } = useSavings();
+    const { items, updateItem, deleteItem, refetch } = useSavings();
     const { formatAmount } = useCurrencyActions();
     const { addTransaction } = useTransactionsActions();
     const { categories } = useCategoriesData();
@@ -61,7 +61,7 @@ export default function SavingsScreen() {
     useFocusEffect(
         useCallback(() => {
             refetch();
-        }, [])
+        }, [refetch])
     );
 
     const handleEditItem = async () => {
@@ -272,8 +272,6 @@ export default function SavingsScreen() {
 
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
-
-    const anyModalOpen = editModalVisible || transferInModalVisible || transferOutModalVisible;
 
     const modalContainerStyle = isMobile
         ? { flex: 1, backgroundColor: "#FFFFFF", justifyContent: "flex-start" as const, paddingTop: 50, paddingHorizontal: 20 }

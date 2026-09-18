@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { View, Alert, ScrollView } from "react-native";
+import { View, Alert } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Appbar, Text, Card, FAB, Portal, Modal, TextInput, Button, Checkbox, useTheme, Chip, IconButton, SegmentedButtons } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -55,7 +55,7 @@ export default function DuesScreen() {
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [])
+    }, [refetch])
   );
 
   useEffect(() => {
