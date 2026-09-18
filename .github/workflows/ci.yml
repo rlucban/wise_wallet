@@ -20,7 +20,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npx eslint . --max-warnings 999
+      - run: npx eslint . --ext .ts,.tsx --max-warnings 999
         name: Lint
 
       - run: npx tsc --noEmit
