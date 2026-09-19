@@ -210,18 +210,27 @@ export default function NotificationsScreen() {
       const title = formatDueTitle(due, formatAmount);
       const formattedDate = formatDueDate(due.date);
 
+      const dueDateObj = new Date(due.date);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const isOverdue = dueDateObj < todayStart;
+      const isDueToday = isToday(dueDateObj);
+      const isUrgent = isOverdue || isDueToday;
+
       return (
         <TouchableOpacity
           onPress={() => router.push("/dues")}
           activeOpacity={0.7}
           style={{
-            backgroundColor: theme.colors.surface,
+            backgroundColor: isUrgent ? "#FEF2F2" : theme.colors.surface,
             borderRadius: 16,
             padding: 16,
             marginBottom: 12,
             marginHorizontal: 16,
             flexDirection: "row",
-            alignItems: "center",
+            alignItems: "flex-start",
+            borderLeftWidth: isUrgent ? 4 : 0,
+            borderLeftColor: isUrgent ? "#EF4444" : "transparent",
             ...Platform.select({
               web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)" },
               default: {
@@ -239,27 +248,45 @@ export default function NotificationsScreen() {
               width: 48,
               height: 48,
               borderRadius: 12,
-              backgroundColor: badge.color,
+              backgroundColor: isUrgent ? "#FEE2E2" : badge.color,
               justifyContent: "center",
               alignItems: "center",
               marginRight: 16,
             }}
           >
-            <MaterialCommunityIcons name={badge.icon} size={24} color="#FFFFFF" />
+            <MaterialCommunityIcons
+              name={isUrgent ? "alert-circle" : badge.icon}
+              size={24}
+              color={isUrgent ? "#DC2626" : "#FFFFFF"}
+            />
           </View>
 
           <View style={{ flex: 1 }}>
-            <Text
-              variant="bodyMedium"
-              style={{
-                fontWeight: "700",
-                color: theme.colors.onSurface,
-                fontSize: 14,
-              }}
-              numberOfLines={2}
-            >
-              {title}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+              <Text
+                variant="bodyMedium"
+                style={{
+                  fontWeight: "700",
+                  color: isUrgent ? "#DC2626" : theme.colors.onSurface,
+                  fontSize: 14,
+                }}
+                numberOfLines={2}
+              >
+                {title}
+              </Text>
+              {isUrgent && (
+                <View style={{
+                  backgroundColor: isOverdue ? "#DC2626" : "#F97316",
+                  borderRadius: 6,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                }}>
+                  <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "700" }}>
+                    {isOverdue ? "OVERDUE" : "DUE TODAY"}
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text
               variant="bodySmall"
               style={{
@@ -270,6 +297,24 @@ export default function NotificationsScreen() {
             >
               {formattedDate}
             </Text>
+            {isUrgent && (
+              <TouchableOpacity
+                onPress={() => router.push("/dues")}
+                style={{
+                  marginTop: 10,
+                  backgroundColor: "#DC2626",
+                  borderRadius: 8,
+                  paddingVertical: 8,
+                  paddingHorizontal: 16,
+                  alignSelf: "flex-start",
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>
+                  Pay Now
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </TouchableOpacity>
       );

@@ -161,18 +161,6 @@ export default function DuesScreen() {
     setCustomCategory("");
   }, []);
 
-  const openAddModal = useCallback(() => {
-    setEditingDue(null);
-    setTitle("");
-    setAmount("");
-    setDate(new Date());
-    setFrequency("once");
-    setAutoProcess(false);
-    setSelectedCategoryId(undefined);
-    setCustomCategory("");
-    setModalVisible(true);
-  }, []);
-
   const handleEdit = useCallback((due: Due) => {
     setTitle(due.title);
     setAmount(formatNumberInput(String(due.amount)));
@@ -195,6 +183,10 @@ export default function DuesScreen() {
     const numAmount = parseAmount(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
       Alert.alert("Invalid Amount", "Please enter a valid amount.");
+      return;
+    }
+    if (numAmount > 99999999.99) {
+      Alert.alert("Invalid Amount", "Amount must not exceed 99,999,999.99.");
       return;
     }
     if (isOthersSelected && !customCategory.trim()) {
@@ -485,7 +477,7 @@ export default function DuesScreen() {
 
       <Portal>
         <Modal visible={modalVisible} onDismiss={closeModal} contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}>
-           <Text variant="titleLarge" style={{ marginBottom: 16 }}>{editingDue ? "Edit Scheduled Item" : "New Scheduled Item"}</Text>
+           <Text variant="titleLarge" style={{ marginBottom: 16 }}>Edit Scheduled Item</Text>
 
            <SegmentedButtons
              value={type}
@@ -520,7 +512,7 @@ export default function DuesScreen() {
           </View>
 
           <TextInput label="Title" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
-          <TextInput label="Amount" value={amount} onChangeText={(t) => setAmount(formatNumberInput(t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} left={<TextInput.Affix text="₱" />} />
+          <TextInput label="Amount" value={amount} onChangeText={(t) => setAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} left={<TextInput.Affix text="₱" />} />
 
            <TextInput
              label="Date"
@@ -560,7 +552,7 @@ export default function DuesScreen() {
             />
           )}
 
-          <Button mode="contained" onPress={handleSubmit} disabled={!title || !amount}>{editingDue ? "Save Changes" : "Add Due"}</Button>
+          <Button mode="contained" onPress={handleSubmit} disabled={!title || !amount}>Save Changes</Button>
          </Modal>
        </Portal>
 
@@ -636,7 +628,7 @@ export default function DuesScreen() {
          </Modal>
        </Portal>
 
-       <FAB icon="plus" style={{ position: "absolute", margin: 16, right: 0, bottom: 0 }} onPress={openAddModal} />
+       <FAB icon="plus" style={{ position: "absolute", margin: 16, right: 0, bottom: 0 }} onPress={() => router.push("/add-due")} />
     </View>
   );
 }

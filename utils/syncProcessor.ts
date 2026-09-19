@@ -13,7 +13,7 @@ import {
   enqueueSync,
 } from './syncQueue';
 
-let processingTimeout: NodeJS.Timeout | null = null;
+let processingTimeout: ReturnType<typeof setTimeout> | null = null;
 let isProcessing = false;
 
 const entityEndpoints: Record<SyncEntity, string> = {

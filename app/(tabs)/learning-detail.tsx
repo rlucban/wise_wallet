@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
-import { Text, Appbar, Card, useTheme } from "react-native-paper";
+import { Text, Appbar, Card, IconButton, useTheme } from "react-native-paper";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Speech from "expo-speech";
 
 const LEARNING_CONTENT: Record<string, { title: string; content: string }> = {
     budgeting_101: {
@@ -104,6 +105,27 @@ export default function LearningDetail() {
     const { id } = useLocalSearchParams<{ id: string }>();
 
     const topic = id ? LEARNING_CONTENT[id] : null;
+    const [isPlaying, setIsPlaying] = useState(false);
+
+    useEffect(() => {
+        return () => { Speech.stop(); };
+    }, []);
+
+    const handlePlayAudio = () => {
+        if (!topic) return;
+        if (isPlaying) {
+            Speech.stop();
+            setIsPlaying(false);
+        } else {
+            setIsPlaying(true);
+            Speech.speak(topic.content, {
+                language: "en-US",
+                rate: 0.9,
+                onDone: () => setIsPlaying(false),
+                onStopped: () => setIsPlaying(false),
+            });
+        }
+    };
 
     const handleBack = () => {
         router.push('/(tabs)/learning');
@@ -134,6 +156,26 @@ export default function LearningDetail() {
                 <Card style={styles.card}>
                     <Card.Content>
                         <Text variant="headlineSmall" style={styles.title}>{topic.title}</Text>
+
+                        {/* Audio Control Bar */}
+                        <View style={styles.audioBar}>
+                            <IconButton
+                                icon={isPlaying ? "pause-circle" : "play-circle"}
+                                iconColor="#1E3A8A"
+                                size={32}
+                                onPress={handlePlayAudio}
+                            />
+                            <Text variant="bodyMedium" style={styles.audioStatus}>
+                                {isPlaying ? "Reading aloud..." : "Listen to Article"}
+                            </Text>
+                            <IconButton
+                                icon="stop-circle-outline"
+                                iconColor="#64748B"
+                                size={28}
+                                onPress={() => { Speech.stop(); setIsPlaying(false); }}
+                            />
+                        </View>
+
                         <Text variant="bodyLarge" style={styles.body}>{topic.content}</Text>
                     </Card.Content>
                 </Card>
@@ -147,6 +189,20 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     content: { padding: 16, width: "100%", maxWidth: 800, alignSelf: "center" },
     card: { borderRadius: 20 },
-    title: { fontWeight: "bold", marginBottom: 16, color: "#1B3F7A" },
+    title: { fontWeight: "bold", marginBottom: 12, color: "#1B3F7A" },
+    audioBar: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#F1F5F9",
+        borderRadius: 12,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        marginBottom: 16,
+    },
+    audioStatus: {
+        flex: 1,
+        color: "#475569",
+        fontWeight: "600",
+    },
     body: { lineHeight: 26, opacity: 0.85 },
 });

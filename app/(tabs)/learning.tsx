@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { View, ScrollView, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import { Text, Card, Appbar, IconButton, Chip, TextInput } from "react-native-paper";
 import { useRouter } from "expo-router";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import * as Speech from "expo-speech";
 import { FinancialTip } from "../../components/FinancialTip";
 import { useThemeData } from "../../context/ThemeContext";
 import { LEARNING_RESOURCES } from "../../utils/learningData";
@@ -19,6 +20,11 @@ export default function LearningScreen() {
     const [activeFilter, setActiveFilter] = useState<UnifiedFilter>("All");
     const [searchQuery, setSearchQuery] = useState("");
     const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+    const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
+
+    useEffect(() => {
+        return () => { Speech.stop(); };
+    }, []);
 
     const toggleBookmark = (id: string) => {
         setBookmarkedIds((prev) => {
@@ -29,6 +35,24 @@ export default function LearningScreen() {
                 next.add(id);
             }
             return next;
+        });
+    };
+
+    const handlePlayAudio = async (article: { id: string; title: string; description: string }) => {
+        const speaking = await Speech.isSpeakingAsync();
+        if (speaking && activeArticleId === article.id) {
+            Speech.stop();
+            setActiveArticleId(null);
+            return;
+        }
+        Speech.stop();
+        setActiveArticleId(article.id);
+        Speech.speak(`${article.title}. ${article.description}`, {
+            language: "en-US",
+            pitch: 1.0,
+            rate: 0.9,
+            onDone: () => setActiveArticleId(null),
+            onStopped: () => setActiveArticleId(null),
         });
     };
 
@@ -174,6 +198,13 @@ export default function LearningScreen() {
                                                         </View>
                                                     </View>
                                                     <View style={{ alignItems: "center" }}>
+                                                        <IconButton
+                                                            icon={activeArticleId === item.id ? "square" : "volume-high"}
+                                                            iconColor="#1E3A8A"
+                                                            size={22}
+                                                            style={activeArticleId === item.id ? { backgroundColor: "#DBEAFE" } : undefined}
+                                                            onPress={() => handlePlayAudio(item)}
+                                                        />
                                                         <IconButton
                                                             icon={isBookmarked ? "bookmark" : "bookmark-outline"}
                                                             iconColor={isBookmarked ? theme.colors.primary : theme.colors.outline}

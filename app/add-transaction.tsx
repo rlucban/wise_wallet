@@ -108,8 +108,8 @@ export default function AddTransaction() {
       const num = parseAmount(trimmed);
       if (isNaN(num) || num <= 0) {
         next.amount = "Please enter a valid amount greater than 0.";
-      } else if (num > 999999999.99) {
-        next.amount = "Amount must be less than 1 billion.";
+      } else if (num > 99999999.99) {
+        next.amount = "Amount must not exceed 99,999,999.99.";
       }
     }
 
@@ -178,14 +178,14 @@ export default function AddTransaction() {
 
   const theme = useTheme();
 
-  return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title="Add Transaction" />
-      </Appbar.Header>
+    return (
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <Appbar.Header>
+                <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.Content title="Add Transaction" />
+            </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
         <SegmentedButtons
           value={type}
           onValueChange={(val) => {
@@ -204,7 +204,8 @@ export default function AddTransaction() {
           label="Amount"
           value={amount}
           onChangeText={(val) => {
-            setAmount(formatNumberInput(val));
+            const truncated = val.length > 12 ? val.slice(0, 12) : val;
+            setAmount(formatNumberInput(truncated));
             clearError("amount");
           }}
           keyboardType="numeric"
@@ -430,7 +431,7 @@ export default function AddTransaction() {
             </Card>
           </Modal>
         </Portal>
-      </ScrollView>
+        </ScrollView>
     </View>
   );
 }
