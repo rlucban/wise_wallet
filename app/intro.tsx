@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, StyleSheet, Platform } from "react-native";
 import { Text, Button } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useAuthData } from "../context/AuthContext";
+import { useUserProfileData } from "../context/UserProfileContext";
 
 const STEPS = [
     {
@@ -26,6 +28,40 @@ const STEPS = [
 export default function IntroScreen() {
     const [currentStep, setCurrentStep] = useState(0);
     const router = useRouter();
+    const { activeUserId, isLoading: authLoading } = useAuthData();
+    const { profile, isLoading: profileLoading } = useUserProfileData();
+
+    // Intro is only for authenticated first-run users.
+    // - Logged out (logout / cold-start) -> /login, never Intro.
+    // - Setup complete (isFirstRun false) -> /, never Intro.
+    useEffect(() => {
+        if (authLoading || profileLoading) return;
+        if (!activeUserId) {
+            router.replace("/login");
+        } else if (profile && !profile.isFirstRun) {
+            router.replace("/");
+        }
+    }, [activeUserId, profile, authLoading, profileLoading, router]);
+
+    // Hold the Intro UI until auth/profile resolves to avoid a flash
+    // of Intro on logout or cold-start.
+    if (authLoading || profileLoading) {
+        return null;
+    }
+    if (!activeUserId) {
+        return null;
+    }
+    if (activeUserId && !profile) {
+        return null;
+    }
+    if (profile && !profile.isFirstRun) {
+        return null;
+    }
+
+    // Authenticated first-run users continue into Onboarding.
+    // (Unauthenticated fallback kept for safety but unreachable via guards.)
+    const skipTarget = activeUserId ? "/onboarding" : "/login";
+    const getStartedTarget = activeUserId ? "/onboarding" : "/register";
 
     const isLastStep = currentStep === STEPS.length - 1;
 
@@ -68,7 +104,7 @@ export default function IntroScreen() {
                                 mode="contained" 
                                 style={[styles.actionButton, { backgroundColor: "#fff" }]}
                                 labelStyle={{ color: "#1a237e", fontWeight: "bold" }}
-                                onPress={() => router.replace("/register")}
+                                onPress={() => router.replace(getStartedTarget as "/onboarding" | "/register")}
                             >
                                 Get Started
                             </Button>
@@ -77,7 +113,7 @@ export default function IntroScreen() {
                         <View style={styles.navGroup}>
                             <Button 
                                 mode="text" 
-                                onPress={() => router.replace("/login")}
+                                onPress={() => router.replace(skipTarget as "/onboarding" | "/login")}
                                 labelStyle={{ color: "rgba(255,255,255,0.7)" }}
                             >
                                 Skip
