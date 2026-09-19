@@ -112,7 +112,7 @@ export default function SettingsScreen() {
   const paperTheme = usePaperTheme();
   const { isDarkMode, toggleTheme } = useAppTheme();
   const { profile, updateProfile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
-  const { language, setLanguage, t } = useLanguage();
+  const { t } = useLanguage();
   const { isPasscodeEnabled, passcode, setIsPasscodeEnabled, setPasscode, setIsUnlocked } = usePasscode();
   const { activeUserId, logout, login } = useAuth();
   const { refetch: refetchTx } = useTransactionsActions();
@@ -974,14 +974,6 @@ export default function SettingsScreen() {
               </View>
               <Switch value={isDarkMode} onValueChange={toggleTheme} />
             </View>
-
-            <Divider style={{ marginVertical: 8 }} />
-
-            <Text variant="titleSmall" style={{ marginTop: 8 }}>{t("language")}</Text>
-            <RadioButton.Group onValueChange={(v) => setLanguage(v as "en" | "tl")} value={language}>
-              <RadioButton.Item label="English" value="en" />
-              <RadioButton.Item label="Filipino" value="tl" />
-            </RadioButton.Group>
           </Card.Content>
         </Card>
 

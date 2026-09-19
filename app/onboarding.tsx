@@ -24,6 +24,8 @@ export default function OnboardingScreen() {
         }
         if (isNaN(parseAmount(balance))) {
             newErrors.balance = "Please enter a valid number.";
+        } else if (parseAmount(balance) > 99999999.99) {
+            newErrors.balance = "Amount must not exceed 99,999,999.99.";
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -101,7 +103,7 @@ export default function OnboardingScreen() {
                         <TextInput
                             label="Initial Balance"
                             value={balance}
-                            onChangeText={(t) => setBalance(formatNumberInput(t))}
+                            onChangeText={(t) => setBalance(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
                             mode="outlined"
                             style={styles.input}
                             textColor="#1a237e"

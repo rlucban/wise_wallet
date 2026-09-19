@@ -131,6 +131,10 @@ export default function EditTransaction() {
       Alert.alert("Invalid Amount", "Please enter a valid amount greater than 0.");
       return;
     }
+    if (numAmount > 99999999.99) {
+      Alert.alert("Invalid Amount", "Amount must not exceed 99,999,999.99.");
+      return;
+    }
     if (!selectedCategory || !id) return;
     if (isOthersCategory(selectedCategory) && !customCategory.trim()) {
       Alert.alert("Invalid Category", "Please specify a category.");
@@ -163,14 +167,14 @@ export default function EditTransaction() {
 
   const theme = useTheme();
 
-  return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title="Edit Transaction" />
-      </Appbar.Header>
+    return (
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <Appbar.Header>
+                <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.Content title="Edit Transaction" />
+            </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
         <SegmentedButtons
           value={type}
           onValueChange={(val) => setType(val as TransactionType)}
@@ -184,7 +188,7 @@ export default function EditTransaction() {
         <TextInput
           label="Amount"
           value={amount}
-          onChangeText={(t) => setAmount(formatNumberInput(t))}
+          onChangeText={(t) => setAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
           keyboardType="numeric"
           mode="outlined"
           left={<TextInput.Affix text="₱" />}
@@ -338,7 +342,7 @@ export default function EditTransaction() {
             </Card>
           </Modal>
         </Portal>
-      </ScrollView>
+        </ScrollView>
     </View>
   );
 }

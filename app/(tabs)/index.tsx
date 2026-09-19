@@ -20,10 +20,26 @@ import { SmartInsights } from "../../components/SmartInsights";
 import { Transaction } from "../../types";
 import EmptyState from "../../components/EmptyState";
 
+const renderCategoryIcon = (category?: string, title?: string, type?: string): string => {
+  const text = `${category || ''} ${title || ''}`.toLowerCase();
+  const isIncome = type?.toLowerCase() === 'income';
+
+  if (isIncome) return 'wallet-outline';
+  if (text.includes('food') || text.includes('mcdo')) return 'silverware-fork-knife';
+  if (text.includes('shop')) return 'cart-outline';
+  if (text.includes('freelance') || text.includes('salary')) return 'cash';
+  if (text.includes('utang') || text.includes('john')) return 'account-outline';
+  if (text.includes('bill') || text.includes('utility')) return 'receipt';
+  if (text.includes('transport')) return 'car-outline';
+  if (text.includes('entertain')) return 'movie-open';
+
+  return 'cash';
+};
+
 
 export default function Dashboard() {
   const router = useRouter();
-  const { profile, isLoading: profileLoading } = useUserProfile();
+  const { isLoading: profileLoading } = useUserProfile();
   const { transactions, loading: txLoading, refetch: refetchTx } = useTransactions();
   const { items: savingsItems, refetch: refetchSavings } = useSavings();
   const { dues, refetch: refetchDues } = useDues();
@@ -129,16 +145,9 @@ export default function Dashboard() {
           marginRight: 16
         }}>
           <MaterialCommunityIcons
-            name={
-              ({
-                cash: "cash",
-                card: "credit-card",
-                bank_transfer: "bank",
-                e_wallet: "wallet",
-              } as Record<string, string>)[item.paymentMethod || "cash"]
-            }
+            name={renderCategoryIcon(item.category?.name, item.title, item.type)}
             size={24}
-            color={theme.colors.primary}
+            color={item.type === "income" ? "#16A34A" : "#DC2626"}
           />
         </View>
 
@@ -256,8 +265,10 @@ export default function Dashboard() {
       <View style={{ paddingTop: 60, paddingHorizontal: 20, backgroundColor: theme.colors.background, paddingBottom: 16 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <View>
-            <Text variant="labelSmall" style={{ color: theme.colors.outline, letterSpacing: 1 }}>HELLO,</Text>
-            <Text variant="titleLarge" style={{ fontWeight: "700" }}>{profile?.name || "User"}</Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.outline, letterSpacing: 1 }}>Hello!</Text>
+            <Text variant="titleLarge" style={{ fontWeight: "700" }}>
+              {new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
+            </Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <View style={{ position: "relative" }}>
@@ -303,7 +314,7 @@ export default function Dashboard() {
 
       <FAB
         icon="plus"
-        label="Record"
+        label="Transaction"
         style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
         color="#fff"
         onPress={() => router.push("/add-transaction")}

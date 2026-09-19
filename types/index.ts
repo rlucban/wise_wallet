@@ -57,6 +57,7 @@ export interface SavingsItem extends TimestampedEntity {
   id: string;
   title: string;
   balance: number;
+  target_amount?: number;
   icon?: string;
   color?: string;
 }

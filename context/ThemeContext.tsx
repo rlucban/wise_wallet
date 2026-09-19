@@ -3,22 +3,10 @@ import { useColorScheme } from "react-native";
 import {
     MD3LightTheme,
     MD3DarkTheme,
-    adaptNavigationTheme,
     MD3Theme
 } from "react-native-paper";
-import {
-    DefaultTheme as NavigationDefaultTheme,
-    DarkTheme as NavigationDarkTheme,
-    Theme as NavigationTheme
-} from "@react-navigation/native";
-import merge from "deepmerge";
 
-const { LightTheme, DarkTheme } = adaptNavigationTheme({
-    reactNavigationLight: NavigationDefaultTheme,
-    reactNavigationDark: NavigationDarkTheme,
-});
-
-const CustomLightTheme = {
+const CustomLightTheme: MD3Theme = {
     ...MD3LightTheme,
     colors: {
         ...MD3LightTheme.colors,
@@ -60,7 +48,7 @@ const CustomLightTheme = {
     },
 };
 
-const CustomDarkTheme = {
+const CustomDarkTheme: MD3Theme = {
     ...MD3DarkTheme,
     colors: {
         ...MD3DarkTheme.colors,
@@ -75,18 +63,18 @@ const CustomDarkTheme = {
     },
 };
 
-const CombinedDefaultTheme = {
-    ...merge(LightTheme, CustomLightTheme),
+const CombinedDefaultTheme: MD3Theme = {
+    ...CustomLightTheme,
     roundness: 3,
 };
-const CombinedDarkTheme = {
-    ...merge(DarkTheme, CustomDarkTheme),
+const CombinedDarkTheme: MD3Theme = {
+    ...CustomDarkTheme,
     roundness: 3,
 };
 
 interface ThemeData {
     isDarkMode: boolean;
-    theme: MD3Theme & NavigationTheme;
+    theme: MD3Theme;
 }
 
 interface ThemeActions {

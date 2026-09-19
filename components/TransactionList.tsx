@@ -7,18 +7,20 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import EmptyState from "./EmptyState";
 import { FlashList } from "@shopify/flash-list";
 
-const getCategoryIcon = (category?: string | { name?: string }): string => {
-  const name = (typeof category === 'string' ? category : category?.name ?? "").trim().toLowerCase();
+const renderCategoryIcon = (category?: string, title?: string, type?: string): string => {
+  const text = `${category || ''} ${title || ''}`.toLowerCase();
+  const isIncome = type?.toLowerCase() === 'income';
 
-  if (name.includes("food")) return "silverware-fork-knife";
-  if (name.includes("bill")) return "receipt";
-  if (name.includes("transport")) return "car";
-  if (name.includes("shop")) return "shopping";
-  if (name.includes("entertain")) return "movie";
-  if (name.includes("scatter") || name.includes("game")) return "dice-5";
-  if (name.includes("salary") || name.includes("income")) return "cash-multiple";
+  if (isIncome) return 'wallet-outline';
+  if (text.includes('food') || text.includes('mcdo')) return 'silverware-fork-knife';
+  if (text.includes('shop')) return 'cart-outline';
+  if (text.includes('freelance') || text.includes('salary')) return 'cash';
+  if (text.includes('utang') || text.includes('john')) return 'account-outline';
+  if (text.includes('bill') || text.includes('utility')) return 'receipt';
+  if (text.includes('transport')) return 'car-outline';
+  if (text.includes('entertain')) return 'movie-open';
 
-  return "dots-horizontal"; // Fallback for Others
+  return 'cash';
 };
 
 export function TransactionList({ transactions }: { transactions: Transaction[] }) {
@@ -61,9 +63,9 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
         marginRight: 16
       }}>
         <MaterialCommunityIcons
-          name={getCategoryIcon(item.category)}
+          name={renderCategoryIcon(item.category?.name, item.title, item.type)}
           size={24}
-          color="#1E293B"
+          color={item.type === "income" ? "#16A34A" : "#DC2626"}
         />
       </View>
 
