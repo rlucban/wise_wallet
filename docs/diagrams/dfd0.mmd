@@ -1,0 +1,20 @@
+graph LR
+    User(["👤 User"])
+    System["🟦 WiseWallet System"]
+    Supabase[("☁️ Supabase Cloud")]
+    AsyncStorage[("📱 AsyncStorage / Local DB")]
+
+    User -- "Login / Register" --> System
+    User -- "Record Transaction" --> System
+    User -- "Manage Dues / Savings" --> System
+    User -- "View Reports / Insights" --> System
+    User -- "Configure Settings" --> System
+
+    System -- "Dashboard / Notifications / Reports" --> User
+    System -- "Financial Tips & Insights" --> User
+
+    System -- "Sync Data (Push/Pull)" --> Supabase
+    Supabase -- "Cloud Data" --> System
+
+    System -- "Read / Write Local Data" --> AsyncStorage
+    AsyncStorage -- "Cached Data" --> System
