@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useMemo, useCallback, useRef, ReactNode } from "react";
 import { useColorScheme } from "react-native";
+import { useThemeColor, useLinkingContext, NavigationTheme } from "expo-linking";
 import {
     MD3LightTheme,
     MD3DarkTheme,
     MD3Theme
 } from "react-native-paper";
+import merge from "deepmerge";
 
 // Navigation theme placeholder — replaced by react-navigation migration
 const DefaultNavTheme = {

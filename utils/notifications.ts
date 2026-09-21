@@ -6,7 +6,7 @@ import { generateUUID } from "./uuid";
 let Notifications: typeof import("expo-notifications") | null = null;
 try {
   Notifications = require("expo-notifications");
-  Notifications!.setNotificationHandler({
+  Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
       shouldPlaySound: true,
