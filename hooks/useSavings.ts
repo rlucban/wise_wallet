@@ -15,6 +15,7 @@ function migrateSavingsItem(item: SavingsItem): SavingsItem {
       id: item.id,
       title: item.title,
       balance: (record.currentAmount as number) || 0,
+      target_amount: (record.targetAmount as number) ?? item.target_amount,
       icon: item.icon,
       color: item.color,
       updatedAt: nowTimestamp(),

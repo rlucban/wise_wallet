@@ -4,7 +4,7 @@ import { FAB, Text, Card, IconButton } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useCallback, useMemo } from "react";
-import { startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import { startOfWeek, endOfWeek, isWithinInterval, format } from "date-fns";
 import { useThemeData } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useTransactions } from "../../hooks/useTransactions";
@@ -265,9 +265,9 @@ export default function Dashboard() {
       <View style={{ paddingTop: 60, paddingHorizontal: 20, backgroundColor: theme.colors.background, paddingBottom: 16 }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <View>
-            <Text variant="labelSmall" style={{ color: theme.colors.outline, letterSpacing: 1 }}>Hello!</Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.outline, letterSpacing: 1 }}>{format(new Date(), "EEEE").toUpperCase()}</Text>
             <Text variant="titleLarge" style={{ fontWeight: "700" }}>
-              {new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
+              {format(new Date(), "MMMM d, yyyy")}
             </Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center" }}>

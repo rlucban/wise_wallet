@@ -12,7 +12,6 @@ jest.mock('./apiClient', () => ({
 }));
 
 import { authFetch } from './apiClient';
-import { API_URL } from './db';
 
 const mockAuthFetch = authFetch as jest.MockedFunction<typeof authFetch>;
 

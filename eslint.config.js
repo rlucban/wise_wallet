@@ -94,6 +94,7 @@ module.exports = [
       "build/",
       "assets/",
       "*.config.*",
+      "**/*.json",
     ],
   },
 ];

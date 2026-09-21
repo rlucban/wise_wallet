@@ -1,23 +1,79 @@
 import { Platform } from "react-native";
-import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
 import { Due, DueFrequency, SystemAlert } from "../types";
 import { getItem, setItem, getPrefixedKey, nowTimestamp } from "./storage";
 import { generateUUID } from "./uuid";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// ---------------------------------------------------------------------------
+// Expo Go safety:
+// Since SDK 53, `expo-notifications` (Android remote-push path) throws on
+// import inside Expo Go. A static `import * as Notifications` therefore
+// crashes the whole app at startup (via SystemAlertsContext ->
+// TransactionsContext -> _layout). We lazy-load it and gracefully disable
+// local reminders when running inside Expo Go or on web. In-app
+// SystemAlerts (AsyncStorage) keep working everywhere.
+// ---------------------------------------------------------------------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type NotificationsModule = any;
+
+let cachedNotifications: NotificationsModule | null = null;
+let loadAttempted = false;
+
+function isExpoGo(): boolean {
+  try {
+    return Constants.appOwnership === "expo";
+  } catch {
+    return false;
+  }
+}
+
+function loadNotifications(): NotificationsModule | null {
+  if (loadAttempted) return cachedNotifications;
+  loadAttempted = true;
+
+  if (Platform.OS === "web" || isExpoGo()) {
+    return null;
+  }
+
+  try {
+    // Lazy require so Expo Go never evaluates the native module.
+    const mod = require("expo-notifications");
+    cachedNotifications = mod;
+    try {
+      mod.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+    } catch (e) {
+      console.warn("Failed to set notification handler:", e);
+    }
+    return mod;
+  } catch (e) {
+    console.warn(
+      "expo-notifications unavailable (Expo Go or missing native module). Local reminders disabled.",
+      e
+    );
+    cachedNotifications = null;
+    return null;
+  }
+}
+
+function notificationsAvailable(): boolean {
+  return loadNotifications() !== null;
+}
 
 const ANDROID_CHANNEL_ID = "wise-wallet-dues";
 
 async function ensureAndroidChannel(): Promise<void> {
   if (Platform.OS !== "android") return;
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
   try {
     await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
       name: "Due Reminders",
@@ -31,8 +87,16 @@ async function ensureAndroidChannel(): Promise<void> {
   }
 }
 
-export async function requestNotificationPermissions(): Promise<boolean> {
+export function areLocalRemindersSupported(): boolean {
   if (Platform.OS === "web") return false;
+  if (isExpoGo()) return false;
+  return notificationsAvailable();
+}
+
+export async function requestNotificationPermissions(): Promise<boolean> {
+  if (Platform.OS === "web" || isExpoGo()) return false;
+  const Notifications = loadNotifications();
+  if (!Notifications) return false;
   try {
     if (Platform.OS === "android") {
       await ensureAndroidChannel();
@@ -76,7 +140,9 @@ function getNextDueDate(dateStr: string, frequency: DueFrequency): Date | null {
 }
 
 export async function scheduleDueNotifications(dues: Due[]): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (Platform.OS === "web" || isExpoGo()) return;
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
 
   try {
     if (Platform.OS === "android") {
@@ -120,7 +186,9 @@ export async function scheduleDueNotifications(dues: Due[]): Promise<void> {
 }
 
 export async function cancelAllNotifications(): Promise<void> {
-  if (Platform.OS === "web") return;
+  if (Platform.OS === "web" || isExpoGo()) return;
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch (e) {
@@ -189,22 +257,24 @@ export async function checkAndTriggerNegativeBalanceAlert(
   const updatedAlerts = [newAlert, ...alerts];
   await saveSystemAlerts(updatedAlerts, userId);
 
-  if (Platform.OS !== "web") {
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: newAlert.title,
-          body: newAlert.message,
-          data: { screen: "notifications" },
-          ...(Platform.OS === "android" && { channelId: ANDROID_CHANNEL_ID }),
-        },
-        trigger: null,
-      });
-    } catch (e) {
-      console.warn("Failed to trigger local notification:", e);
+  if (Platform.OS !== "web" && !isExpoGo()) {
+    const Notifications = loadNotifications();
+    if (Notifications) {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: newAlert.title,
+            body: newAlert.message,
+            data: { screen: "notifications" },
+            ...(Platform.OS === "android" && { channelId: ANDROID_CHANNEL_ID }),
+          },
+          trigger: null,
+        });
+      } catch (e) {
+        console.warn("Failed to trigger local notification:", e);
+      }
     }
   }
 
   return newAlert;
 }
-

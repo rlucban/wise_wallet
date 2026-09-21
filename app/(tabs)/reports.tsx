@@ -255,10 +255,22 @@ export default function ReportsScreen() {
           </View>
         </View>
 
-        {/* Combined Donut Chart Card */}
+        {/* Monthly Expense by Month (Bar Graph) */}
+        <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: "#fff", borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700", color: "#1E293B" }}>Monthly Expense by Month</Text>
+          <MonthlyTrendChart
+            labels={trend.labels}
+            income={trend.income}
+            expense={trend.expense}
+            width={screenWidth - 96}
+            formatValue={formatAmount}
+          />
+        </View>
+
+        {/* Income vs Expenses (Pie graph) */}
         <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: "#fff", borderRadius: 16, padding: 20, alignItems: "center", ...CARD_SHADOW }}>
           <Text variant="titleMedium" style={{ fontWeight: "700", color: "#1E293B", marginBottom: 16, alignSelf: "flex-start" }}>
-            Expense & Income Breakdown
+            Income vs Expenses
           </Text>
 
           <DonutChart
@@ -339,18 +351,6 @@ export default function ReportsScreen() {
             })}
           </View>
         )}
-
-        {/* Monthly Trend */}
-        <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: "#fff", borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700", color: "#1E293B" }}>Monthly Trend</Text>
-          <MonthlyTrendChart
-            labels={trend.labels}
-            income={trend.income}
-            expense={trend.expense}
-            width={screenWidth - 96}
-            formatValue={formatAmount}
-          />
-        </View>
 
         {/* Export */}
         <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: "#fff", borderRadius: 16, padding: 20, ...CARD_SHADOW }}>

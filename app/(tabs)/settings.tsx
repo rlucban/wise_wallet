@@ -10,7 +10,6 @@ import { setSetting, clearAllLocalData, exportData, importData, deleteUser, merg
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
-import { useLanguage } from "../../context/LanguageContext";
 import { usePasscode } from "../../context/PasscodeContext";
 import { useTransactionsActions } from "../../context/TransactionsContext";
 import { useCategoriesActions } from "../../context/CategoriesContext";
@@ -112,7 +111,6 @@ export default function SettingsScreen() {
   const paperTheme = usePaperTheme();
   const { isDarkMode, toggleTheme } = useAppTheme();
   const { profile, updateProfile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
-  const { t } = useLanguage();
   const { isPasscodeEnabled, passcode, setIsPasscodeEnabled, setPasscode, setIsUnlocked } = usePasscode();
   const { activeUserId, logout, login } = useAuth();
   const { refetch: refetchTx } = useTransactionsActions();
@@ -909,7 +907,7 @@ export default function SettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: paperTheme.colors.background }}>
       <Appbar.Header style={{ backgroundColor: paperTheme.colors.background, elevation: 0 }}>
-        <Appbar.Content title={t("settings")} titleStyle={{ fontWeight: "700" }} />
+        <Appbar.Content title="Settings" titleStyle={{ fontWeight: "700" }} />
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
@@ -953,9 +951,9 @@ export default function SettingsScreen() {
         {/* General Settings */}
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
-            <Text variant="titleMedium" style={{ marginBottom: 16 }}>{t("categories")}</Text>
+            <Text variant="titleMedium" style={{ marginBottom: 16 }}>Categories</Text>
             <List.Item
-              title={t("categories")}
+              title="Categories"
               description="Manage income & expense categories"
               left={props => <List.Icon {...props} icon="shape-outline" />}
               right={props => <List.Icon {...props} icon="chevron-right" />}
@@ -966,14 +964,17 @@ export default function SettingsScreen() {
 
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
-            <Text variant="titleMedium" style={{ marginBottom: 16 }}>{t("appearance")}</Text>
+            <Text variant="titleMedium" style={{ marginBottom: 16 }}>Appearance</Text>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 }}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <List.Icon icon="theme-light-dark" color={paperTheme.colors.onSurfaceVariant} />
-                <Text variant="bodyLarge" style={{ marginLeft: 12 }}>{t("darkMode")}</Text>
+                <Text variant="bodyLarge" style={{ marginLeft: 12 }}>Dark Mode</Text>
               </View>
               <Switch value={isDarkMode} onValueChange={toggleTheme} />
             </View>
+            <Text variant="bodySmall" style={{ marginLeft: 52, color: paperTheme.colors.outline }}>
+              Language: English
+            </Text>
           </Card.Content>
         </Card>
 
@@ -1040,7 +1041,7 @@ export default function SettingsScreen() {
             <View style={{ marginBottom: 8 }}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <List.Icon icon="lock-outline" color={paperTheme.colors.onSurfaceVariant} />
-                <Text variant="bodyLarge" style={{ marginLeft: 12 }}>{t("passcode")}</Text>
+                <Text variant="bodyLarge" style={{ marginLeft: 12 }}>Passcode</Text>
               </View>
               <Text variant="bodySmall" style={{ marginLeft: 52, color: paperTheme.colors.outline }}>
                 Require PIN to unlock the app on startup
