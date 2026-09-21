@@ -18,7 +18,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - run: npm install
+      - run: npm ci
 
       - run: npx eslint . --max-warnings 999
         name: Lint
