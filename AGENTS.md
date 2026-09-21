@@ -133,6 +133,8 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 - **2026-09-21 — Specs moved out of AGENTS.md.** New `specs/` folder;
   `specs/04-connection-status-vs-offline-mode.md` is now normative (FINAL).
   `AGENTS.md §4` is a pointer only.
+- **2026-09-21 — Spec reformatted.** `specs/04-*` now uses Context,
+  Constraints, Goal, Deliverables (same normative content).
 
 ---
 
@@ -144,5 +146,4 @@ Cloud→Local downgrade.**
 
 > Specs moved out of `AGENTS.md` on 2026-09-21 per user request. This section
 > is a pointer only — see `specs/04-connection-status-vs-offline-mode.md`
-> (§4.1 problem, §4.2 definitions, §4.3 rules, §4.4 matrix, §4.5 flows,
-> §4.6 resolved decisions, acceptance).
+> (Context, Constraints, Goal, Deliverables).
