@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import { Card, Text, IconButton, Button } from "react-native-paper";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useInsights, Insight } from "../hooks/useInsights";
 
 export function SmartInsights() {

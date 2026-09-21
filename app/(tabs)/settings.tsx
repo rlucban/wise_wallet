@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { View, ScrollView, Alert, Platform, StyleSheet } from "react-native";
-import { Appbar, List, RadioButton, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
+import { View, ScrollView, Alert, Platform, StyleSheet, TouchableOpacity } from "react-native";
+import { Appbar, List, RadioButton, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, Menu, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
@@ -8,6 +8,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
 import { setSetting, clearAllLocalData, exportData, importData, deleteUser, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
 import { useAuth } from "../../context/AuthContext";
+import { useCurrency, CURRENCIES } from "../../context/CurrencyContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
 import { useLanguage } from "../../context/LanguageContext";
@@ -110,6 +111,7 @@ const styles = StyleSheet.create({
 export default function SettingsScreen() {
   const router = useRouter();
   const paperTheme = usePaperTheme();
+  const { currency, setCurrency, decimalPlaces, setDecimalPlaces } = useCurrency();
   const { isDarkMode, toggleTheme } = useAppTheme();
   const { profile, updateProfile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
   const { language, setLanguage, t } = useLanguage();
@@ -193,6 +195,8 @@ export default function SettingsScreen() {
   const [showNewAccountDialog, setShowNewAccountDialog] = useState(false);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [pinInput, setPinInput] = useState("");
+  const [currencyMenuVisible, setCurrencyMenuVisible] = useState(false);
+  const [decimalMenuVisible, setDecimalMenuVisible] = useState(false);
   const [showChangePasscodeDialog, setShowChangePasscodeDialog] = useState(false);
   const [currentPasscodeInput, setCurrentPasscodeInput] = useState("");
   const [newPasscodeInput, setNewPasscodeInput] = useState("");
