@@ -151,6 +151,10 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   specs MUST live under `specs/` and follow the SPEC-04 template
   (metadata + RFC 2119 + Context/Constraints/Goal/Deliverables +
   CON/ACC/D + Glossary + References).
+- **2026-09-21 — Spec 04 v1.3 review polish.** Fixed stale login cite
+  (188-193), both-token guards, flag migration rule, retry numbers
+  (3s/500ms/1500ms, non-blocking notice), Cloud-OFF queue paused,
+  D-04 end-state (same normative intent).
 
 ---
 
