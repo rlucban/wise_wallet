@@ -37,6 +37,15 @@
 8. **Document after approved changes.** Update `docs/savepoint.md` (change
    journal) and append a `Current status` entry in Section 3 below, per
    `.agents/rules/wisewallet.md`.
+9. **Spec format standard (all future specs).** Every normative spec MUST live
+   as its own file under `specs/` (never inline in `AGENTS.md` — §4 is a
+   pointer only) and MUST follow the `SPEC-04`
+   (`specs/04-connection-status-vs-offline-mode.md`) template: metadata table
+   (ID/Title/Status/Owner/Version/Scope/Non-goals) + RFC 2119 terminology +
+   `Context` + `Constraints` (numbered `CON-*`, MUST/MUST NOT) + `Goal`
+   (interaction matrix where applicable, decisions `DEC-*`, acceptance
+   `ACC-*`) + `Deliverables` (numbered `D-*`) + `Glossary` + `References`.
+   No normative change via reformat/polish alone.
 
 ---
 
@@ -135,6 +144,13 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   `AGENTS.md §4` is a pointer only.
 - **2026-09-21 — Spec reformatted.** `specs/04-*` now uses Context,
   Constraints, Goal, Deliverables (same normative content).
+- **2026-09-21 — Spec polished.** `specs/04-*` adds metadata, RFC 2119
+  keywords, numbered CON/ACC/D requirements, glossary, references (no
+  normative change).
+- **2026-09-21 — Spec format rule added.** `AGENTS.md §1.9`: all future
+  specs MUST live under `specs/` and follow the SPEC-04 template
+  (metadata + RFC 2119 + Context/Constraints/Goal/Deliverables +
+  CON/ACC/D + Glossary + References).
 
 ---
 

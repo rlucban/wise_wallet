@@ -1,12 +1,30 @@
 # Spec 04: Connection Status vs Offline (Local-Only) Account Mode
 
-**Status: FINAL (2026-09-21 per user call) — implement exactly this; no Cloud→Local downgrade.**
+| Field | Value |
+|---|---|
+| ID | SPEC-04 |
+| Title | Connection Status vs Offline (Local-Only) Account Mode |
+| Status | **FINAL** (2026-09-21 per user call) |
+| Owner | User (final authority) |
+| Version | 1.2 — reformatted + industry-standard polish, same normative content |
+| Scope | Account mode, connection status, sync gating, login fallback, Make Online upgrade |
+| Non-goals | Cloud→Local downgrade (explicitly out of scope); new storage engine; new API contract |
+| Normative source | This file. `AGENTS.md §4` is a pointer only. |
 
-> Moved out of `AGENTS.md §4` on 2026-09-21 per user request. Reformatted to
-> Context / Constraints / Goal / Deliverables on 2026-09-21 per user request.
-> This file is the normative spec. `AGENTS.md §4` is a pointer only.
+> History: moved out of `AGENTS.md §4` on 2026-09-21; reformatted to
+> Context / Constraints / Goal / Deliverables on 2026-09-21; polished with
+> metadata, RFC 2119 keywords, and numbered requirements on 2026-09-21.
+> No normative change in this polish — implement exactly this.
 
-## Context
+## Terminology (RFC 2119)
+
+The keywords **MUST**, **MUST NOT**, **SHOULD**, and **MAY** in this spec are
+to be interpreted as described in RFC 2119. Informative prose (examples,
+"today", "currently") is non-normative unless restated as a requirement.
+
+## 1. Context
+
+### 1.1 Problem
 
 The codebase conflates two independent axes under the word "offline":
 
@@ -17,7 +35,11 @@ The codebase conflates two independent axes under the word "offline":
   (`login.tsx:191-193`), so a *transient network blip* and a *deliberate
   no-cloud account* look identical to the user.
 
-Two concepts, defined separately:
+The two axes MUST be modeled, named, and displayed as separate concepts.
+Users MUST NOT be confused between offline/online (mode/connection) and
+auto-backup (sync toggle).
+
+### 1.2 Definitions
 
 **A. Connection status — transient, device-level, automatic.**
 
@@ -30,9 +52,8 @@ Two concepts, defined separately:
   - **Local accounts:** device connectivity only
     (`navigator.onLine` / `expo-network`) — zero API pings, even for the
     reachability probe.
-- UI surface today: `OfflineIndicator` banner in `_layout.tsx` only
-  ("You're offline. Changes will sync automatically…"). `useCloudLink.ts`
-  currently runs a *second, separate* 2s health check.
+- UI surface today (non-normative): `OfflineIndicator` banner in `_layout.tsx`
+  only. `useCloudLink.ts` currently runs a second, separate 2s health check.
 
 **B. Account mode — persistent, per-account, chosen by the user at registration.**
 
@@ -46,60 +67,65 @@ Two concepts, defined separately:
 - `autoBackup = false` is the **initial** value for Local accounts, but it is
   **not** the mode indicator. The switch is always shown: on Local, toggling ON
   routes to the Make Online workflow; on Cloud it is a plain sync toggle.
-- **Feature-identical to Cloud**: same screens, same validation, same 10M
-  limits. Only sync behavior and account-management surfaces differ.
-- **Storage: AsyncStorage only**, same repository layer and same
+- Feature-identical to Cloud: same screens, same validation, same 10M limits.
+  Only sync behavior and account-management surfaces differ.
+- Storage: AsyncStorage only, same repository layer and same
   `user_{userId}_{entity}` key namespacing (`storage.ts:getPrefixedKey`) as
   Cloud — no separate storage engine. AsyncStorage is the *only* copy; no
   cloud mirror.
 
-## Constraints
+## 2. Constraints (normative)
 
-1. **Single selector.** Add `isLocalAccount()` (Auth data + profile): true iff
-   `token ∈ {"offline_token","local_token"}` (or an explicit stored mode flag
-   if introduced — same semantics). **Never** `autoBackup == false` alone: a
-   Cloud account with auto-backup OFF stays Cloud. All gating (writers,
-   banners, settings copy) uses it — never raw string compares scattered
-   across files (today: `CloudLinkBanner:16`, `useCloudLink:42`, `login.tsx:21`).
-2. **Data sync vs auth split.** `autoBackup` gates **data sync only**
-   (`TransactionsContext:154-193`, `useSavings:103-138`, `useDues:72-107`,
-   `CategoriesContext:65-81`):
-   - **Local:** zero data calls (`authFetch` for entities never runs) and zero
-     API probe calls (device connectivity only).
-   - **Cloud with `autoBackup = false`:** no data sync calls, but auth/session
-     calls and the `checkHealth()` probe are still allowed — OFF means
-     "sync off", not "disconnected".
-3. **Mode/connection independence + no downgrade.** Connection status never
-   changes account mode and vice versa. Toggling auto-backup OFF never makes a
-   Cloud account Local. **Once Cloud always Cloud; Local may become Cloud via
-   upgrade only. No Cloud→Local downgrade** (only via Clear Data / new account,
-   out of scope).
-4. **Copy rule — never confuse offline/online with auto-backup.**
-   `auto-backup` vocabulary describes the sync toggle only, never the mode.
-   The word "offline" (and cloud-off icons) is reserved for connection status.
-   Local accounts are called **"Local-only account"** with a device/phone icon:
-   - `settings.tsx` profile subtitle → `"Local-only account — stored on this device"`
-   - `SyncStatusCard`: `isLocalAccount()` → `"Local-only"`, neutral color;
-     Cloud + `!autoBackup` → `"Sync off"` (still Cloud, neutral — not red
-     `error`, not "Local-only"); red `error` is reserved for *problems*.
-   - Offline banner keeps cloud-off icon + "You're offline…" copy.
-5. **Probe rule.** Local accounts make zero API calls including probes
-   (device connectivity only). Cloud accounts (even with auto-backup OFF) may
-   use the `checkHealth()` probe.
-6. **Login rule.** Up to **3 retries with throttling/backoff** on network
-   failure, then a transient notice ("No connection — checking this device…")
-   distinct from the Local-account offer, then local lookup.
-7. **Standing repo invariants (AGENTS.md §1).** Android + iOS + Web keep working
-   (`Platform.OS`/`select`, no static native-only imports — Expo Go must not
-   crash on import); Vercel-deployable web (`EXPO_PUBLIC_*` only, no Node APIs
-   in app code, no secrets in bundle); no breaking changes to storage keys
-   (`user_{id}_*`), API contract (`wallet-api`), AsyncStorage shapes, routes,
-   or native deps unless this spec requires them (any migration needs rollback
-   noted).
+- **CON-01 — Single mode selector.** The implementation MUST add
+  `isLocalAccount()` (Auth data + profile), true iff
+  `token ∈ {"offline_token","local_token"}` (or an explicit stored mode flag
+  with identical semantics). It MUST NOT use `autoBackup == false` alone as a
+  mode test. All gating (writers, banners, settings copy) MUST use
+  `isLocalAccount()`; raw string compares scattered across files
+  (`CloudLinkBanner:16`, `useCloudLink:42`, `login.tsx:21`) MUST be removed.
+- **CON-02 — Data sync vs auth split.** `autoBackup` MUST gate data sync only
+  (`TransactionsContext:154-193`, `useSavings:103-138`, `useDues:72-107`,
+  `CategoriesContext:65-81`):
+  - Local accounts MUST NOT issue data calls (`authFetch` for entities) and
+    MUST NOT issue API probe calls.
+  - Cloud accounts with `autoBackup = false` MUST NOT issue data sync calls,
+    but MAY still issue auth/session calls and the `checkHealth()` probe. OFF
+    means "sync off", NOT "disconnected".
+- **CON-03 — Independence and upgrade-only.** Connection status MUST NOT change
+  account mode and vice versa. Toggling auto-backup OFF MUST NOT convert a
+  Cloud account to Local. Once Cloud always Cloud; Local MAY become Cloud via
+  §4-D-07 only. Cloud→Local downgrade is out of scope (Clear Data / new
+  account only, not part of this spec).
+- **CON-04 — Copy rule.** The word "offline" (and cloud-off icons) is reserved
+  for connection status. Local accounts MUST be labeled **"Local-only account"**
+  with a device/phone icon:
+  - `settings.tsx` profile subtitle MUST read
+    `"Local-only account — stored on this device"`;
+  - `SyncStatusCard` MUST show `"Local-only"` (neutral color) when
+    `isLocalAccount()`, and `"Sync off"` (neutral, still Cloud — MUST NOT use
+    red `error`, MUST NOT say "Local-only") for Cloud + `!autoBackup`. Red
+    `error` is reserved for problems;
+  - the offline banner keeps the cloud-off icon + "You're offline…" copy.
+  `auto-backup` vocabulary MUST describe the sync toggle only, never the mode.
+- **CON-05 — Probe rule.** Local accounts MUST make zero API calls including
+  probes (device connectivity only). Cloud accounts (even with auto-backup OFF)
+  MAY use the `checkHealth()` probe.
+- **CON-06 — Login retry rule.** On network failure the login flow MUST attempt
+  up to 3 retries with throttling/backoff, then show a transient notice
+  ("No connection — checking this device…") distinct from the Local-account
+  offer, before local lookup.
+- **CON-07 — Standing repo invariants (AGENTS.md §1).** The implementation MUST
+  keep Android + iOS + Web working (`Platform.OS`/`select`; MUST NOT statically
+  import a native-only module at file top level — Expo Go MUST NOT crash on
+  import); MUST keep web Vercel-deployable (`EXPO_PUBLIC_*` only, no Node APIs
+  in app code, no secrets in bundle); and MUST NOT introduce breaking changes
+  to storage keys (`user_{id}_*`), the `wallet-api` contract, AsyncStorage
+  shapes, routes, or native deps unless this spec requires them (any migration
+  MUST note rollback).
 
-## Goal
+## 3. Goal
 
-Separate the two axes in model, naming, and display so that:
+Separate the two axes in model, naming, and display per the matrix below.
 
 | Account | autoBackup | Connection | Writes go to | Cloud calls | Banner / status |
 |---|---|---|---|---|---|
@@ -111,51 +137,68 @@ Separate the two axes in model, naming, and display so that:
 
 Resolved decisions (FINAL per user call 2026-09-21):
 
-1. Reachability probe for Local accounts: **device connectivity only** — zero API calls.
-2. Login fallback: **retry (≤3, throttled) + transient notice**, then local lookup.
-3. Downgrade Cloud → Local: **explicitly out of scope**.
+- DEC-01: reachability probe for Local accounts = device connectivity only.
+- DEC-02: login fallback = retry (≤3, throttled) + transient notice, then local lookup.
+- DEC-03: Cloud→Local downgrade explicitly out of scope.
 
-Acceptance:
+### Acceptance criteria
 
-1. Airplane-mode Cloud account shows offline banner, queues, drains on
-   reconnect, never offers "create offline account".
-2. Local account on Wi-Fi makes zero API calls (device connectivity only —
-   verify via proxy/log).
-3. Cloud with auto-backup OFF stays Cloud, still auth-capable, labeled
-   "Sync off", never "Local-only"/"Offline".
-4. No screen uses the word "offline" for a Local account.
-5. Login attempts ≤3 throttled retries before the transient offline notice.
+- **ACC-01:** an airplane-mode Cloud account shows the offline banner, queues
+  writes, drains on reconnect, and is never offered "create offline account".
+- **ACC-02:** a Local account on Wi-Fi makes zero API calls (device
+  connectivity only — verify via proxy/log).
+- **ACC-03:** a Cloud account with auto-backup OFF stays Cloud, remains
+  auth-capable, is labeled "Sync off", and is never labeled
+  "Local-only"/"Offline".
+- **ACC-04:** no screen uses the word "offline" for a Local account.
+- **ACC-05:** login performs at most 3 throttled retries before the transient
+  offline notice.
 
-## Deliverables
+## 4. Deliverables
 
-1. **Register — explicit Online/Offline mode selector** (replaces
-   email-format inference):
-   - Online → `POST {API_URL}/auth/register`; on success `autoBackup = true`,
-     JWT stored, Cloud account.
-   - Offline → `createLocalAccount` with no network call: local UUID id →
-     `addUser` → `saveUserProfile` → `initDb` → `autoBackup = false`
-     (initial) → `login(id, "offline_token")`.
-   - Online chosen but server unreachable → "Cloud Unreachable" dialog offering
-     "Create Offline Account" (keep current `register.tsx:81-96` behavior).
-2. **`isLocalAccount()` selector** (Auth data + profile) and reroute of all
-   gating (writers, banners, settings copy) through it.
-3. **Writer gating keeps `autoBackup` as data-sync switch** in
-   `TransactionsContext`, `useSavings`, `useDues`, `CategoriesContext`;
-   Cloud-OFF still allows auth/probe; Local performs zero API calls.
-4. **Connection plumbing:** delete the second 2s health check in
-   `useCloudLink.ts`; Cloud routes through `checkHealth()`, Local through
-   device connectivity; `OfflineIndicator` remains the sole connection banner
-   in `_layout.tsx`.
-5. **Settings + status copy:** Auto-Backup switch always shown (Local ON →
-   Make Online workflow; Cloud = sync toggle); `SyncStatusCard` shows
-   "Local-only" vs "Sync off" per §Constraints-4; profile subtitle
-   "Local-only account — stored on this device".
-6. **Login flow:** ≤3 throttled retries → transient "No connection — checking
-   this device…" notice → `attemptLocalLogin` (`login.tsx:55-104`); known PIN
-   → `"local_token"`; unknown → "Create Offline Account" dialog.
-7. **Make Online upgrade (only direction):** single Settings flow reachable
-   from Settings "Make Online", Local switch ON, `CloudLinkBanner` "LINK NOW",
-   and `useCloudLink` dialog (reroute away from `/login`/dead-end alert):
-   PIN verify → cloud register/login → conflict check → Merge (LWW) / Keep
-   Local / Keep Cloud (reuse `settings.tsx` flow) → Cloud (`autoBackup = true`,
-   JWT).
+- **D-01 — Register mode selector** (replaces email-format inference):
+  Online → `POST {API_URL}/auth/register`; on success `autoBackup = true`,
+  JWT stored (Cloud). Offline → `createLocalAccount` with no network call:
+  local UUID → `addUser` → `saveUserProfile` → `initDb` →
+  `autoBackup = false` (initial) → `login(id, "offline_token")`. Online chosen
+  but unreachable → "Cloud Unreachable" dialog offering "Create Offline
+  Account" (keep `register.tsx:81-96`).
+- **D-02 — `isLocalAccount()`** per CON-01 with all gating rerouted through it.
+- **D-03 — Writer gating** per CON-02 (`TransactionsContext`, `useSavings`,
+  `useDues`, `CategoriesContext`).
+- **D-04 — Connection plumbing:** delete the second 2s check in
+  `useCloudLink.ts`; Cloud routes through `checkHealth()`, Local through
+  device connectivity; `OfflineIndicator` remains the sole connection banner
+  in `_layout.tsx`.
+- **D-05 — Settings + status copy** per CON-04: switch always shown (Local ON →
+  Make Online workflow; Cloud = sync toggle); `SyncStatusCard` and subtitle
+  copy as specified.
+- **D-06 — Login flow** per CON-06: ≤3 retries → transient notice →
+  `attemptLocalLogin` (`login.tsx:55-104`); known PIN → `"local_token"`;
+  unknown → "Create Offline Account" dialog.
+- **D-07 — Make Online upgrade (only direction):** single Settings flow
+  reachable from Settings "Make Online", Local switch ON, `CloudLinkBanner`
+  "LINK NOW", and the `useCloudLink` dialog (reroute away from `/login` /
+  dead-end alert): PIN verify → cloud register/login → conflict check →
+  Merge (LWW) / Keep Local / Keep Cloud (reuse `settings.tsx` flow) → Cloud
+  (`autoBackup = true`, JWT).
+
+## Glossary
+
+| Term | Meaning |
+|---|---|
+| Cloud account | Online-mode account with JWT; MAY sync data when `autoBackup` is ON |
+| Local account | Offline-mode, Local-only account (`offline_token`/`local_token`); AsyncStorage only |
+| Connection status | Transient device-level Online/Offline; never changes account mode |
+| auto-backup | Data-sync toggle only; OFF on Cloud means "Sync off", still Cloud |
+| Make Online | Upgrade flow Local → Cloud (PIN verify → register/login → conflict resolve) |
+
+## References
+
+- `AGENTS.md §1` — working agreements (spec-first, no CLI, invariants, docs).
+- `context/NetworkContext.tsx` — `checkHealth()`; `app/_layout.tsx` —
+  `OfflineIndicator`; `hooks/useCloudLink.ts`, `components/CloudLinkBanner.tsx`.
+- `app/register.tsx`, `app/login.tsx`, `app/(tabs)/settings.tsx` (incl.
+  `SyncStatusCard`), `context/UserProfileContext.tsx`, `types/index.ts`.
+- Writers: `context/TransactionsContext.tsx`, `hooks/useSavings.ts`,
+  `hooks/useDues.ts`, `context/CategoriesContext.tsx`.
