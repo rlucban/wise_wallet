@@ -119,22 +119,29 @@ function MainLayout() {
     if (authLoading || profileLoading || !navigationState?.key) return;
     if (activeUserId && !profile) return;
 
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register' || segments[0] === 'intro';
+    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+    const inIntro = segments[0] === 'intro';
     const inOnboarding = segments[0] === 'onboarding';
 
     console.info(`[Nav] State -> User: ${activeUserId}, FirstRun: ${profile?.isFirstRun}, Path: /${segments.join('/')}`);
     
-    if (!activeUserId && !inAuthGroup) {
-      // 1. Not logged in -> Go to Auth
-      console.info("[Nav] Redirecting to Intro");
-      setTimeout(() => router.replace('/intro'), 0);
+    if (!activeUserId) {
+      // Logged out / cold-start -> always Login, never Intro.
+      // Intro is reserved for authenticated first-run users only.
+      if (inIntro || inOnboarding || !inAuthGroup) {
+        console.info("[Nav] Redirecting to Login");
+        setTimeout(() => router.replace('/login'), 0);
+      }
     } else if (activeUserId) {
-      if (profile?.isFirstRun && !inOnboarding) {
-        // 2. Logged in but first run -> Go to Onboarding
-        console.info("[Nav] Redirecting to Onboarding");
-        setTimeout(() => router.replace('/onboarding'), 0);
-      } else if (!profile?.isFirstRun && (inAuthGroup || inOnboarding)) {
-        // 3. Logged in and setup done -> Go to Home
+      if (profile?.isFirstRun) {
+        // First run -> Intro first (Intro then leads to Onboarding).
+        // Allow both so Intro <-> Onboarding navigation doesn't loop.
+        if (!inIntro && !inOnboarding) {
+          console.info("[Nav] Redirecting to Intro");
+          setTimeout(() => router.replace('/intro'), 0);
+        }
+      } else if (!profile?.isFirstRun && (inAuthGroup || inIntro || inOnboarding)) {
+        // Setup done -> Home, never Intro.
         console.info("[Nav] Redirecting to Dashboard");
         setTimeout(() => router.replace('/'), 0);
       }
