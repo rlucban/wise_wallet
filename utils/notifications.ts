@@ -1,28 +1,23 @@
 import { Platform } from "react-native";
+import * as Notifications from "expo-notifications";
 import { Due, DueFrequency, SystemAlert } from "../types";
 import { getItem, setItem, getPrefixedKey, nowTimestamp } from "./storage";
 import { generateUUID } from "./uuid";
 
-let Notifications: typeof import("expo-notifications") | null = null;
-try {
-  Notifications = require("expo-notifications");
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
-} catch {
-  // expo-notifications unavailable — local push won't fire
-}
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 const ANDROID_CHANNEL_ID = "wise-wallet-dues";
 
 async function ensureAndroidChannel(): Promise<void> {
-  if (Platform.OS !== "android" || !Notifications) return;
+  if (Platform.OS !== "android") return;
   try {
     await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
       name: "Due Reminders",
@@ -37,7 +32,7 @@ async function ensureAndroidChannel(): Promise<void> {
 }
 
 export async function requestNotificationPermissions(): Promise<boolean> {
-  if (Platform.OS === "web" || !Notifications) return false;
+  if (Platform.OS === "web") return false;
   try {
     if (Platform.OS === "android") {
       await ensureAndroidChannel();
@@ -81,7 +76,7 @@ function getNextDueDate(dateStr: string, frequency: DueFrequency): Date | null {
 }
 
 export async function scheduleDueNotifications(dues: Due[]): Promise<void> {
-  if (Platform.OS === "web" || !Notifications) return;
+  if (Platform.OS === "web") return;
 
   try {
     if (Platform.OS === "android") {
@@ -125,7 +120,7 @@ export async function scheduleDueNotifications(dues: Due[]): Promise<void> {
 }
 
 export async function cancelAllNotifications(): Promise<void> {
-  if (Platform.OS === "web" || !Notifications) return;
+  if (Platform.OS === "web") return;
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch (e) {
@@ -194,7 +189,7 @@ export async function checkAndTriggerNegativeBalanceAlert(
   const updatedAlerts = [newAlert, ...alerts];
   await saveSystemAlerts(updatedAlerts, userId);
 
-  if (Platform.OS !== "web" && Notifications) {
+  if (Platform.OS !== "web") {
     try {
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -212,3 +207,4 @@ export async function checkAndTriggerNegativeBalanceAlert(
 
   return newAlert;
 }
+

@@ -45,10 +45,7 @@
           "iosDisplayInForeground": true,
           "androidDisplayInForeground": true
         }
-      ],
-      "expo-image",
-      "expo-sharing",
-      "expo-status-bar"
+      ]
     ]
   }
 }
