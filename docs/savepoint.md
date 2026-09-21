@@ -39,6 +39,13 @@ WiseWallet is a React Native app built using Expo Router. It currently has featu
   - Grouped the "Upcoming Due" alert card and "Next 7 Days" dues summary card sequentially together right under "Highlights" with tight vertical card spacing (`marginTop: 2`), removing excessive empty whitespace.
   - Positioned Quick Action buttons ("Scheduled", "Allocations") below the grouped Highlights section.
 
+## 2026-09-21 Updates
+- Added `AGENTS.md` (repo-root agent contract): spec-first/no-autopilot/no-agent-CLI rules, no-breaking-changes, Android+iOS+Web invariant, Vercel-deployable, Expo Go testable; app overview + scaffold; current-status log; proposed spec §4 (connection status vs local-only account mode, NOT finalized).
+- Ma'am Haidee suggestions: Dashboard header is date+day only; Reports has Expense/Income/Total cards with bar first, pie second; Settings English-only; Allocations goal + progress and Learning TTS verified pre-existing.
+- Amount cap ₱10,000,000 (`utils/amount.ts` + all validators).
+- `utils/notifications.ts` lazy-loads `expo-notifications` so Expo Go no longer crashes on import.
+- `app.json` migrated to SDK 57 schema; installed `expo-font` + `expo-splash-screen`; `expo-doctor` 21/21; `npm run lint` clean.
+
 
 
 
