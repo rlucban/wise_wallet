@@ -1,4 +1,4 @@
-const MAX_AMOUNT = 99999999.99;
+const MAX_AMOUNT = 10000000;
 const MAX_INT_DIGITS = 8;
 
 export const formatNumberInput = (raw: string): string => {

@@ -24,8 +24,8 @@ export default function OnboardingScreen() {
         }
         if (isNaN(parseAmount(balance))) {
             newErrors.balance = "Please enter a valid number.";
-        } else if (parseAmount(balance) > 99999999.99) {
-            newErrors.balance = "Amount must not exceed 99,999,999.99.";
+        } else if (parseAmount(balance) > 10000000) {
+            newErrors.balance = "Amount must not exceed 10,000,000.";
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;

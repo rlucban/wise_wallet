@@ -185,8 +185,8 @@ export default function DuesScreen() {
       Alert.alert("Invalid Amount", "Please enter a valid amount.");
       return;
     }
-    if (numAmount > 99999999.99) {
-      Alert.alert("Invalid Amount", "Amount must not exceed 99,999,999.99.");
+    if (numAmount > 10000000) {
+      Alert.alert("Invalid Amount", "Amount must not exceed 10,000,000.");
       return;
     }
     if (isOthersSelected && !customCategory.trim()) {

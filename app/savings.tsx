@@ -71,8 +71,8 @@ export default function SavingsScreen() {
             Alert.alert("Invalid Goal", "Please enter a valid goal amount.");
             return;
         }
-        if (cleanGoal > 99999999.99) {
-            Alert.alert("Invalid Goal", "Goal amount must not exceed 99,999,999.99.");
+        if (cleanGoal > 10000000) {
+            Alert.alert("Invalid Goal", "Goal amount must not exceed 10,000,000.");
             return;
         }
 
@@ -102,8 +102,8 @@ export default function SavingsScreen() {
         const numAmount = parseAmount(transferAmount);
         if (isNaN(numAmount) || numAmount <= 0 || !selectedItemId) return;
 
-        if (numAmount > 99999999.99) {
-            Alert.alert("Invalid Amount", "Amount must not exceed 99,999,999.99.");
+        if (numAmount > 10000000) {
+            Alert.alert("Invalid Amount", "Amount must not exceed 10,000,000.");
             return;
         }
 
@@ -155,8 +155,8 @@ export default function SavingsScreen() {
         const numAmount = parseAmount(transferAmount);
         if (isNaN(numAmount) || numAmount <= 0 || !selectedItemId) return;
 
-        if (numAmount > 99999999.99) {
-            Alert.alert("Invalid Amount", "Amount must not exceed 99,999,999.99.");
+        if (numAmount > 10000000) {
+            Alert.alert("Invalid Amount", "Amount must not exceed 10,000,000.");
             return;
         }
 

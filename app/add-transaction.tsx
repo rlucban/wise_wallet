@@ -108,8 +108,8 @@ export default function AddTransaction() {
       const num = parseAmount(trimmed);
       if (isNaN(num) || num <= 0) {
         next.amount = "Please enter a valid amount greater than 0.";
-      } else if (num > 99999999.99) {
-        next.amount = "Amount must not exceed 99,999,999.99.";
+      } else if (num > 10000000) {
+        next.amount = "Amount must not exceed 10,000,000.";
       }
     }
 
