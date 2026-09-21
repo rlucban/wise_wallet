@@ -118,6 +118,11 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 - **2026-09-21 — Spec §4 proposed (NOT finalized).** Connection status vs
   offline (local-only) account mode. Open decisions pending user call; no
   implementation until finalized.
+- **2026-09-21 — Spec §4 revised per user call.** Mode is an explicit
+  Online/Offline choice at registration (replaces email-format inference);
+  "auto-backup" is not user-facing vocabulary for Local accounts —
+  `autoBackup = false` is automatic, the switch is hidden, Settings shows
+  "Make Online" instead. Login-no-network review deferred.
 
 ---
 
@@ -152,18 +157,24 @@ They must be modeled, named, and displayed as separate concepts.
   invent its own verdict — `useCloudLink.ts` currently runs a *second, separate*
   2s health check and must be deleted and routed through `checkHealth()`.
 
-**B. Account mode — persistent, per-account, chosen by the user.**
+**B. Account mode — persistent, per-account, chosen by the user at registration.**
 
-- Modes: `Cloud` | `Local`. Set at account creation, changeable only via the
-  upgrade flow (§4.5).
+- Modes: `Cloud` ("Online") | `Local` ("Offline"). The user picks explicitly on
+  the Register screen via an Online/Offline mode selector (replacing the
+  current email-format inference). Changeable only via the upgrade flow (§4.5).
+  The word "auto-backup" is never shown to the user as the mode concept.
 - "Offline mode" = **Local account**, defined as:
-  1. Created via `createLocalAccount` (`register.tsx:32-50`) or the "Create
-     Offline Account" dialog (`login.tsx:75-102`) — local UUID id,
+  1. Created by selecting **Offline** at registration (`register.tsx`), or via
+     the "Create Offline Account" dialog (`login.tsx:75-102`) — local UUID id,
      `login(id, "offline_token")` (or `"local_token"` on local re-login,
      `login.tsx:67,172`).
-  2. `autoBackup = false` (setting + profile). This is the enforcement switch
-     every writer gates on (`TransactionsContext:154-193`, `useSavings:103-138`,
-     `useDues:72-107`, `CategoriesContext:65-81`).
+  2. `autoBackup = false` is set **automatically** as an internal consequence
+     of the mode — it is not a user-facing setting for Local accounts.
+     The Auto-Backup switch is hidden for Local accounts; in its place Settings
+     shows a **"Make Online"** action that starts the upgrade flow (§4.5).
+     `autoBackup == false` remains the enforcement switch every writer gates on
+     (`TransactionsContext:154-193`, `useSavings:103-138`, `useDues:72-107`,
+     `CategoriesContext:65-81`).
   3. **Feature-identical to Cloud**: same screens, same validation, same 10M
      limits. The *only* differences are sync behavior and account-management
      surfaces.
@@ -202,17 +213,32 @@ They must be modeled, named, and displayed as separate concepts.
 | Local | Online | AsyncStorage only | none | `CloudLinkBanner` ("Link to cloud…"); status "Local-only" |
 | Local | Offline | AsyncStorage only | none | Both banner and "Local-only" may show — both true, no contradiction |
 
-### 4.5 Flows (existing behavior, locked in)
+### 4.5 Flows (normative)
 
-- **Create Local:** register non-email or "Cloud Unreachable → Create Offline
-  Account" (`register.tsx:81-96`); login network-fail → `attemptLocalLogin` →
-  "Account Not Found → Create Offline Account" (`login.tsx:55-104`).
-- **Upgrade Local → Cloud:** flip Auto-Backup ON → PIN verify → conflict check →
-  Merge (LWW) / Keep Local / Keep Cloud (`settings.tsx` conflict flow).
+- **Register — explicit mode choice (NEW, replaces email-format inference).**
+  The Register screen presents an **Online / Offline mode selector** before
+  account creation:
+  - **Online** → cloud registration (`POST {API_URL}/auth/register`); on
+    success `autoBackup = true`, JWT stored, normal Cloud account.
+  - **Offline** → `createLocalAccount` path with no network call at all:
+    local UUID id → `addUser` → `saveUserProfile` → `initDb` →
+    `autoBackup = false` (automatic) → `login(id, "offline_token")`.
+  - If **Online** is chosen but the server is unreachable → "Cloud Unreachable"
+    dialog offering "Create Offline Account" (current `register.tsx:81-96`
+    behavior, kept).
+- **Login fallback (existing, kept):** network failure → `attemptLocalLogin`
+  (`login.tsx:55-104`); known local user + matching PIN → in with
+  `"local_token"`; unknown user → "Create Offline Account" dialog (same Local
+  creation as above).
+- **Make Online (upgrade Local → Cloud, NEW surface).** Local accounts have **no
+  Auto-Backup switch and no sync settings** — Settings shows a **"Make Online"**
+  action instead. Tapping it starts: PIN verify → cloud register/login →
+  conflict check → Merge (LWW) / Keep Local / Keep Cloud (existing
+  `settings.tsx` conflict flow, reused). On success the account becomes Cloud
+  (`autoBackup = true`, JWT) and the Auto-Backup switch appears.
   `CloudLinkBanner` "LINK NOW" and the `useCloudLink` "Secure Your Data" dialog
-  must both deep-link into this Settings flow (today `useCloudLink.performLink`
-  is a dead-end demo alert and `CloudLinkBanner` pushes `/login` — both fix to
-  route to Settings per this spec).
+  route into this Settings "Make Online" entry point (today they push `/login`
+  / show a dead-end alert — both rerouted per this spec).
 
 ### 4.6 Open decisions (need user call before FINAL)
 
