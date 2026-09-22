@@ -3,8 +3,15 @@ import { View, StyleSheet, TouchableOpacity, Platform, AppState, AppStateStatus 
 import { Text } from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useAuthData } from '../context/AuthContext';
-import { checkHealth } from '../context/NetworkContext';
+import { isLocalAccountToken } from '../utils/authMode';
 import { useRouter } from 'expo-router';
+
+function getDeviceOnline(): boolean {
+    if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
+        return navigator.onLine;
+    }
+    return true;
+}
 
 export function CloudLinkBanner() {
     const { token } = useAuthData();
@@ -13,14 +20,13 @@ export function CloudLinkBanner() {
     const appStateRef = useRef(AppState.currentState);
 
     useEffect(() => {
-        if (token !== 'offline_token') {
+        if (!isLocalAccountToken(token)) {
             setIsVisible(false);
             return;
         }
 
-        const evaluate = async () => {
-            const { online } = await checkHealth();
-            setIsVisible(online);
+        const evaluate = () => {
+            setIsVisible(getDeviceOnline());
         };
         evaluate();
 
@@ -47,7 +53,7 @@ export function CloudLinkBanner() {
             </View>
             <TouchableOpacity 
                 style={styles.button} 
-                onPress={() => router.push("/login")} // Redirect to Auth screen to 're-register' or link
+                onPress={() => router.push("/(tabs)/settings")}
             >
                 <Text style={styles.buttonText}>LINK NOW</Text>
             </TouchableOpacity>

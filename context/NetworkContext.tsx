@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { AppState, AppStateStatus } from "react-native";
 import { API_URL } from "../utils/db";
 import { processSyncQueue, triggerSyncProcessing } from "../utils/syncProcessor";
+import { useIsLocalAccount } from "../utils/authMode";
 
 interface HealthResult {
   online: boolean;
@@ -93,7 +94,15 @@ export function checkHealth(): Promise<HealthResult> {
   return inFlight;
 }
 
+function getDeviceOnline(): boolean {
+  if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
+    return navigator.onLine;
+  }
+  return true;
+}
+
 export function NetworkProvider({ children }: { children: ReactNode }) {
+  const isLocal = useIsLocalAccount();
   const isOnlineRef = useRef(true);
   const [isOnline, setIsOnline] = useState(true);
   const [isChecking, setIsChecking] = useState(false);
@@ -102,8 +111,15 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   const checkConnectivity = useCallback(async (): Promise<boolean> => {
     setIsChecking(true);
     try {
-      const result = await checkHealth();
-      const online = result.online;
+      let online: boolean;
+
+      if (isLocal) {
+        online = getDeviceOnline();
+      } else {
+        const result = await checkHealth();
+        online = result.online;
+      }
+
       const wasPreviouslyOffline = !isOnlineRef.current;
 
       if (online !== isOnlineRef.current) {
@@ -127,7 +143,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [isLocal]);
 
   const appStateRef = useRef(AppState.currentState);
 

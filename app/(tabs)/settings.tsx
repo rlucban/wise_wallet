@@ -16,17 +16,19 @@ import { useCategoriesActions } from "../../context/CategoriesContext";
 import { authFetch } from "../../utils/apiClient";
 import { useSyncStatus } from "../../hooks/useSyncStatus";
 import { useNetwork } from "../../context/NetworkContext";
+import { useIsLocalAccount } from "../../utils/authMode";
 import * as Crypto from 'expo-crypto';
 import { Transaction, Category, Due, SavingsItem, UserProfile } from "../../types";
 import ConfirmDialog from "../../components/ConfirmDialog";
 
-function SyncStatusCard({ autoBackup }: { autoBackup: boolean }) {
+function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal: boolean }) {
   const { isOnline, checkConnectivity, isChecking } = useNetwork();
   const { pending, lastSyncedAt, refresh: retryAll } = useSyncStatus();
   const paperTheme = usePaperTheme();
 
   const getStatusColor = () => {
-    if (!autoBackup) return { icon: "cloud-off-outline", text: "Backup Disabled", color: paperTheme.colors.error };
+    if (isLocal) return { icon: "cellphone-off", text: "Local-only", color: paperTheme.colors.outline };
+    if (!autoBackup) return { icon: "cloud-off-outline", text: "Sync off", color: paperTheme.colors.outline };
     if (isChecking) return { icon: "cloud-sync", text: "Checking...", color: paperTheme.colors.primary };
     if (!isOnline) return { icon: "cloud-off", text: "Offline", color: paperTheme.colors.error };
     if (pending > 0) return { icon: "upload", text: `${pending} pending`, color: paperTheme.colors.tertiary };
@@ -45,8 +47,10 @@ function SyncStatusCard({ autoBackup }: { autoBackup: boolean }) {
     <View style={[
       styles.syncCard,
       {
-        backgroundColor: !autoBackup
-          ? paperTheme.colors.errorContainer
+        backgroundColor: isLocal
+          ? paperTheme.colors.surfaceVariant
+          : !autoBackup
+          ? paperTheme.colors.surfaceVariant
           : !isOnline
           ? paperTheme.colors.errorContainer
           : pending > 0
@@ -66,11 +70,11 @@ function SyncStatusCard({ autoBackup }: { autoBackup: boolean }) {
             {status.text}
           </Text>
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-            Last sync: {formatLastSync()}
+            {isLocal ? "Data stored on device" : `Last sync: ${formatLastSync()}`}
           </Text>
         </View>
       </View>
-      {!autoBackup ? null : pending > 0 && isOnline ? (
+      {!autoBackup || isLocal ? null : pending > 0 && isOnline ? (
         <Button
           mode="text"
           compact
@@ -116,6 +120,7 @@ export default function SettingsScreen() {
   const { refetch: refetchTx } = useTransactionsActions();
   const { refetch: refetchCats } = useCategoriesActions();
   const repos = useRepositories();
+  const isLocal = useIsLocalAccount();
 
   const handleLogout = async () => {
     await logout();
@@ -215,6 +220,12 @@ export default function SettingsScreen() {
    };
 
    const handleToggleAutoBackup = async (val: boolean) => {
+     if (isLocal && val) {
+       setVerificationError("");
+       setPinVerificationInput("");
+       setShowPinVerificationDialog(true);
+       return;
+     }
      if (val) {
        setVerificationError("");
        setPinVerificationInput("");
@@ -923,30 +934,46 @@ export default function SettingsScreen() {
                <View style={{ marginLeft: 16 }}>
                  <Text variant="titleMedium">{profile?.name || "Wise User"}</Text>
                  <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
-                   {autoBackup ? "Cloud Sync Enabled" : "Local Profile (Offline)"}
+                   {isLocal ? "Local-only account — stored on this device" : autoBackup ? "Cloud Sync Enabled" : "Cloud account — sync off"}
                  </Text>
                </View>
             </View>
           </Card.Content>
         </Card>
 
-        {!autoBackup && (
-          <Card style={{ marginBottom: 16, backgroundColor: paperTheme.colors.errorContainer }}>
+        {isLocal ? (
+          <Card style={{ marginBottom: 16, backgroundColor: paperTheme.colors.surfaceVariant }}>
             <Card.Content>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <List.Icon icon="cloud-off-outline" color={paperTheme.colors.onErrorContainer} />
+                <List.Icon icon="cellphone-off" color={paperTheme.colors.onSurfaceVariant} />
                 <View style={{ marginLeft: 12, flex: 1 }}>
-                  <Text variant="titleSmall" style={{ color: paperTheme.colors.onErrorContainer, fontWeight: "600" }}>
-                    Local Mode (Backup Disabled)
+                  <Text variant="titleSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontWeight: "600" }}>
+                    Local-only Account
                   </Text>
-                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onErrorContainer, opacity: 0.8 }}>
-                    Your data is only stored on this device. Enable Auto-Backup to sync across devices and prevent data loss.
+                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, opacity: 0.8 }}>
+                    Your data is stored only on this device. Use "Make Online" below to enable cloud sync.
                   </Text>
                 </View>
               </View>
             </Card.Content>
           </Card>
-        )}
+        ) : !autoBackup ? (
+          <Card style={{ marginBottom: 16, backgroundColor: paperTheme.colors.surfaceVariant }}>
+            <Card.Content>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <List.Icon icon="cloud-off-outline" color={paperTheme.colors.onSurfaceVariant} />
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <Text variant="titleSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontWeight: "600" }}>
+                    Sync off
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, opacity: 0.8 }}>
+                    Auto-backup is disabled. Your data stays on this device only.
+                  </Text>
+                </View>
+              </View>
+            </Card.Content>
+          </Card>
+        ) : null}
 
         {/* General Settings */}
         <Card style={{ marginBottom: 16 }}>
@@ -984,7 +1011,7 @@ export default function SettingsScreen() {
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>Data Management</Text>
 
-            <SyncStatusCard autoBackup={autoBackup} />
+            <SyncStatusCard autoBackup={autoBackup} isLocal={isLocal} />
 
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 }}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -1026,6 +1053,11 @@ export default function SettingsScreen() {
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>Account</Text>
+            {isLocal && (
+              <Button mode="contained" icon="cloud-upload-outline" onPress={() => handleToggleAutoBackup(true)} style={{ marginBottom: 8 }}>
+                Make Online
+              </Button>
+            )}
             <Button mode="outlined" icon="account-switch" onPress={handleLogout} textColor={paperTheme.colors.primary} style={{ marginBottom: 8 }}>
               Switch Account / Logout
             </Button>
@@ -1177,10 +1209,13 @@ export default function SettingsScreen() {
         />
 
         <Dialog visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)}>
-          <Dialog.Title>Verify Account PIN</Dialog.Title>
+          <Dialog.Title>{isLocal ? "Make Online" : "Verify Account PIN"}</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
-              To enable cloud sync, please enter the PIN for "{profile?.name || "your account"}".
+              {isLocal
+                ? `This will convert your account to an online account. Auto-backup will be enabled and this action cannot be reverted back to local-only.\n\nEnter your PIN for "${profile?.name || "your account"}" to proceed.`
+                : `To enable cloud sync, please enter the PIN for "${profile?.name || "your account"}".`
+              }
             </Text>
             <TextInput
               label="Current PIN"
@@ -1202,10 +1237,13 @@ export default function SettingsScreen() {
         </Dialog>
 
         <Dialog visible={showNewAccountDialog} onDismiss={() => setShowNewAccountDialog(false)}>
-          <Dialog.Title>PIN Doesn't Match</Dialog.Title>
+          <Dialog.Title>{isLocal ? "Create Cloud Account" : "PIN Doesn't Match"}</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
-              The PIN you entered doesn't match the cloud account. Would you like to create a new cloud account with this PIN and migrate all your local data to it?
+              {isLocal
+                ? "No cloud account found. This will create a new cloud account and migrate all your local data. This action cannot be reverted back to local-only."
+                : "The PIN you entered doesn't match the cloud account. Would you like to create a new cloud account with this PIN and migrate all your local data to it?"
+              }
             </Text>
             <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
               Your existing cloud data won't be affected. This will create a separate account.

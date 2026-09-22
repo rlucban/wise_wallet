@@ -155,6 +155,18 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   (188-193), both-token guards, flag migration rule, retry numbers
   (3s/500ms/1500ms, non-blocking notice), Cloud-OFF queue paused,
   D-04 end-state (same normative intent).
+- **2026-09-22 — Spec 04 implemented (all 7 deliverables).** D-01 register
+  mode selector (Online/Offline explicit choice); D-02 `isLocalAccount()`
+  utility + hook; D-03 writer gating (all contexts + UserProfile gate API
+  calls for local accounts); D-04 connection plumbing (useCloudLink 2s
+  check deleted, CloudLinkBanner both-token + device connectivity,
+  NetworkContext device-only for local); D-05 settings/status copy
+  ("Local-only account", "Sync off", neutral colors, Make Online button);
+  D-06 login retry (3 tries, 3s abort, backoff, transient notice); D-07
+  Make Online upgrade flow (PIN → register → conflict → merge). Lint clean.
+- **2026-09-22 — Spec 04 updated.** autoBackup permanent false for Local
+  accounts (CON-03, D-07, ACC-06 added). Make Online dialog warns
+  irreversibility + auto-backup enabled. settings.tsx copies updated.
 
 ---
 

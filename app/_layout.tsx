@@ -20,6 +20,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { hardResetLocalData } from "../utils/db";
 import { requestNotificationPermissions, scheduleDueNotifications } from "../utils/notifications";
 import { useRepositories } from "../context/RepositoryContext";
+import { useIsLocalAccount } from "../utils/authMode";
 
 import { SystemAlertsProvider } from "../context/SystemAlertsContext";
 
@@ -66,8 +67,11 @@ function SystemResetManager() {
   const routerRef = useRef(router);
   routerRef.current = router;
   const { logout: _logout } = useAuthActions();
+  const isLocal = useIsLocalAccount();
 
   useEffect(() => {
+    if (isLocal) return;
+
     const checkReset = async () => {
       try {
         const { online, data } = await checkHealth();
@@ -101,7 +105,7 @@ function SystemResetManager() {
     };
 
     checkReset();
-  }, []);
+  }, [isLocal]);
 
   return null;
 }

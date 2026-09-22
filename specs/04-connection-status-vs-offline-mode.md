@@ -98,7 +98,9 @@ auto-backup (sync toggle).
   account mode and vice versa. Toggling auto-backup OFF MUST NOT convert a
   Cloud account to Local. Once Cloud always Cloud; Local MAY become Cloud via
   §4-D-07 only. Cloud→Local downgrade is out of scope (Clear Data / new
-  account only, not part of this spec).
+  account only, not part of this spec). The Make Online upgrade dialog
+  (§4-D-07) MUST notify the user that the upgrade is permanent and cannot be
+  reverted to Local-only before the user confirms.
 - **CON-04 — Copy rule.** The word "offline" (and cloud-off icons) is reserved
   for connection status. Local accounts MUST be labeled **"Local-only account"**
   with a device/phone icon:
@@ -158,6 +160,9 @@ Resolved decisions (FINAL per user call 2026-09-21):
 - **ACC-04:** no screen uses the word "offline" for a Local account.
 - **ACC-05:** login performs at most 3 total tries (3s abort each; ~500ms /
   ~1500ms backoff) before the transient non-blocking offline notice.
+- **ACC-06:** after a successful Make Online upgrade, `isLocalAccount()`
+  returns false, auto-backup is true, the "Make Online" button does not
+  appear, and the account is permanently Cloud (no downgrade path).
 
 ## 4. Deliverables
 
@@ -188,9 +193,12 @@ Resolved decisions (FINAL per user call 2026-09-21):
 - **D-07 — Make Online upgrade (only direction):** single Settings flow
   reachable from Settings "Make Online", Local switch ON, `CloudLinkBanner`
   "LINK NOW", and the `useCloudLink` dialog (reroute away from `/login` /
-  dead-end alert): PIN verify → cloud register/login → conflict check →
+  dead-end alert): confirmation dialog MUST warn the user that this upgrade
+  is permanent and cannot be reverted to Local-only, and that auto-backup
+  will be enabled → PIN verify → cloud register/login → conflict check →
   Merge (LWW) / Keep Local / Keep Cloud (reuse `settings.tsx` flow) → Cloud
-  (`autoBackup = true`, JWT).
+  (`autoBackup = true`, JWT). After upgrade, `isLocalAccount()` MUST return
+  false and the "Make Online" button MUST NOT reappear.
 
 ## Glossary
 

@@ -7,14 +7,17 @@ import { useAuthActions } from '../context/AuthContext';
 import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
 import { LinearGradient } from 'expo-linear-gradient';
 
+type AccountMode = "online" | "offline";
+
 export default function RegisterScreen() {
     const { login } = useAuthActions();
     const router = useRouter();
 
-    const [email, setEmail] = useState("");
+    const [accountMode, setAccountMode] = useState<AccountMode>("online");
+    const [name, setName] = useState("");
     const [passcode, setPasscode] = useState("");
     const [loading, setLoading] = useState(false);
-    const [emailError, setEmailError] = useState("");
+    const [nameError, setNameError] = useState("");
     const [pinError, setPinError] = useState("");
     const [showPin, setShowPin] = useState(false);
 
@@ -51,7 +54,7 @@ export default function RegisterScreen() {
 
     const createCloudAccount = async (emailAddr: string, pin: string): Promise<boolean> => {
         if (!API_URL) {
-            showAlert("Cloud Unavailable", "Cloud registration is not available. Please check your connection or create an offline-only account.");
+            showAlert("Cloud Unavailable", "Cloud registration is not available. Please check your connection or create a local-only account.");
             return false;
         }
 
@@ -99,11 +102,11 @@ export default function RegisterScreen() {
     };
 
     const handleRegister = async () => {
-        setEmailError("");
+        setNameError("");
         setPinError("");
 
-        if (!email.trim()) {
-            setEmailError("Email is required");
+        if (!name.trim()) {
+            setNameError(accountMode === "online" ? "Email is required" : "Username is required");
             return;
         }
 
@@ -114,29 +117,16 @@ export default function RegisterScreen() {
 
         setLoading(true);
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const isEmail = emailRegex.test(email.trim());
-
-        if (isEmail) {
-            const success = await createCloudAccount(email.trim(), passcode.trim());
+        if (accountMode === "online") {
+            const success = await createCloudAccount(name.trim(), passcode.trim());
             if (!success) {
                 setLoading(false);
             }
         } else {
-            showAlert(
-                "Create Offline Account",
-                `You entered "${email.trim()}" which is not an email format.\n\nWould you like to create an offline-only account?`,
-                [
-                    {
-                        text: "Create Offline Account",
-                        onPress: async () => {
-                            const _success = await createLocalAccount(email.trim(), passcode.trim());
-                            setLoading(false);
-                        }
-                    },
-                    { text: "Cancel", style: "cancel", onPress: () => setLoading(false) }
-                ]
-            );
+            const success = await createLocalAccount(name.trim(), passcode.trim());
+            if (!success) {
+                setLoading(false);
+            }
         }
     };
 
@@ -187,23 +177,49 @@ export default function RegisterScreen() {
 
                             <Card style={styles.card}>
                                 <Card.Content>
-                                    <Text style={styles.fieldLabel}>Email</Text>
+                                    <Text style={styles.fieldLabel}>Account Type</Text>
+                                    <View style={styles.modeSelector}>
+                                        <Button
+                                            mode={accountMode === "online" ? "contained" : "outlined"}
+                                            onPress={() => { setAccountMode("online"); setName(""); setNameError(""); }}
+                                            style={[styles.modeBtn, accountMode === "online" && styles.modeBtnActive]}
+                                            labelStyle={styles.modeBtnLabel}
+                                            icon="cloud-outline"
+                                            disabled={loading}
+                                        >
+                                            Online
+                                        </Button>
+                                        <Button
+                                            mode={accountMode === "offline" ? "contained" : "outlined"}
+                                            onPress={() => { setAccountMode("offline"); setName(""); setNameError(""); }}
+                                            style={[styles.modeBtn, accountMode === "offline" && styles.modeBtnActive]}
+                                            labelStyle={styles.modeBtnLabel}
+                                            icon="cellphone-off"
+                                            disabled={loading}
+                                        >
+                                            Offline
+                                        </Button>
+                                    </View>
+
+                                    <Text style={styles.fieldLabel}>
+                                        {accountMode === "online" ? "Email" : "Username"}
+                                    </Text>
                                     <TextInput
-                                        value={email}
-                                        onChangeText={(text) => { setEmail(text); setEmailError(""); }}
+                                        value={name}
+                                        onChangeText={(text) => { setName(text); setNameError(""); }}
                                         style={styles.input}
                                         textColor="#1a237e"
                                         mode="outlined"
                                         outlineColor="#e0e0e0"
                                         activeOutlineColor="#3949ab"
-                                        error={!!emailError}
+                                        error={!!nameError}
                                         autoCapitalize="none"
-                                        keyboardType="email-address"
-                                        placeholder="Enter your email"
-                                        left={<TextInput.Icon icon="email-outline" color="#1a237e" />}
+                                        keyboardType={accountMode === "online" ? "email-address" : "default"}
+                                        placeholder={accountMode === "online" ? "Enter your email" : "Choose a username"}
+                                        left={<TextInput.Icon icon={accountMode === "online" ? "email-outline" : "account-outline"} color="#1a237e" />}
                                     />
-                                    <HelperText type="error" visible={!!emailError}>
-                                        {emailError}
+                                    <HelperText type="error" visible={!!nameError}>
+                                        {nameError}
                                     </HelperText>
 
                                     <Text style={styles.fieldLabel}>PIN</Text>
@@ -259,12 +275,25 @@ export default function RegisterScreen() {
                                     </View>
 
                                     <View style={styles.infoBox}>
-                                        <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 6 }}>
-                                            • Email enables cloud sync
-                                        </Text>
-                                        <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 2 }}>
-                                            • Non-email creates offline-only account
-                                        </Text>
+                                        {accountMode === "online" ? (
+                                            <>
+                                                <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 6 }}>
+                                                    • Online mode enables cloud sync
+                                                </Text>
+                                                <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 2 }}>
+                                                    • Data synced across your devices
+                                                </Text>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 6 }}>
+                                                    • Offline mode stores data on this device only
+                                                </Text>
+                                                <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 2 }}>
+                                                    • You can upgrade to Online later in Settings
+                                                </Text>
+                                            </>
+                                        )}
                                     </View>
                                 </Card.Content>
                             </Card>
@@ -321,6 +350,21 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginBottom: 6,
         marginTop: 4,
+    },
+    modeSelector: {
+        flexDirection: 'row',
+        marginBottom: 8,
+        gap: 8,
+    },
+    modeBtn: {
+        flex: 1,
+        borderRadius: 12,
+    },
+    modeBtnActive: {
+        backgroundColor: '#3949ab',
+    },
+    modeBtnLabel: {
+        fontSize: 13,
     },
     infoBox: {
         marginTop: 14,

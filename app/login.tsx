@@ -6,9 +6,14 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuthData, useAuthActions } from '../context/AuthContext';
 import { useUserProfileData } from '../context/UserProfileContext';
 import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
+import { isLocalAccountToken } from '../utils/authMode';
 import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PING_TIMEOUT = 3000;
+const MAX_RETRIES = 2;
+const BACKOFF_MS = [500, 1500];
 
 export default function LoginScreen() {
     const { login } = useAuthActions();
@@ -18,7 +23,7 @@ export default function LoginScreen() {
 
     useFocusEffect(
         useCallback(() => {
-            if (token === 'offline_token' && profile?.name) {
+            if (isLocalAccountToken(token) && profile?.name) {
                 setName(profile.name);
             }
         }, [token, profile])
@@ -30,6 +35,7 @@ export default function LoginScreen() {
     const [nameError, setNameError] = useState("");
     const [pinError, setPinError] = useState("");
     const [showPin, setShowPin] = useState(false);
+    const [offlineNotice, setOfflineNotice] = useState(false);
 
     const [dialog, setDialog] = useState<{
         visible: boolean;
@@ -103,6 +109,27 @@ export default function LoginScreen() {
         }
     };
 
+    const tryCloudLogin = async (force: boolean): Promise<{ ok: boolean; status: number; data?: unknown }> => {
+        const deviceId = await getDeviceId();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT);
+
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: name.trim(), passcode: passcode.trim(), deviceId, force }),
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            const responseData = await response.json();
+            return { ok: response.ok, status: response.status, data: responseData };
+        } catch {
+            clearTimeout(timeoutId);
+            return { ok: false, status: 0 };
+        }
+    };
+
     const handleLogin = async (force = false) => {
         setNameError("");
         setPinError("");
@@ -118,7 +145,6 @@ export default function LoginScreen() {
         }
 
         setLoading(true);
-        const deviceId = await getDeviceId();
 
         if (!API_URL) {
             console.info("No API_URL configured, using local-only login");
@@ -127,73 +153,79 @@ export default function LoginScreen() {
             return;
         }
 
-        try {
-            const response = await fetch(`${API_URL}/auth/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: name.trim(), passcode: passcode.trim(), deviceId, force }),
-            });
+        let lastResult: { ok: boolean; status: number; data?: unknown } = { ok: false, status: 0 };
 
-            const responseData = await response.json();
+        for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+            lastResult = await tryCloudLogin(force);
 
-            if (response.ok) {
-                const data = responseData.data;
+            if (lastResult.ok) break;
+            if (lastResult.status === 401) break;
 
-                if (data.sessionConflict) {
-                    setLoading(false);
-                    showAlert(
-                        "Session Active",
-                        "This account is already logged in on another device. Logging in here will log you out of the other device. Proceed?",
-                        [
-                            { text: "Yes, Log In", onPress: () => handleLogin(true) },
-                            { text: "No", style: "cancel" }
-                        ]
+            if (attempt < MAX_RETRIES) {
+                await new Promise(resolve => setTimeout(resolve, BACKOFF_MS[attempt]));
+            }
+        }
+
+        if (lastResult.ok) {
+            const data = lastResult.data as { data?: { sessionConflict?: boolean; user?: { id: string }; token?: string } };
+            const inner = data?.data;
+
+            if (inner?.sessionConflict) {
+                setLoading(false);
+                showAlert(
+                    "Session Active",
+                    "This account is already logged in on another device. Logging in here will log you out of the other device. Proceed?",
+                    [
+                        { text: "Yes, Log In", onPress: () => handleLogin(true) },
+                        { text: "No", style: "cancel" }
+                    ]
+                );
+                return;
+            }
+
+            if (inner?.user && inner?.token) {
+                await addUser(inner.user.id, name.trim(), passcode.trim());
+                await saveUserProfile({ name: name.trim(), isFirstRun: false, initialBalance: 0 }, inner.user.id);
+                await login(inner.user.id, inner.token);
+            }
+        } else if (lastResult.status === 401) {
+            console.info("Cloud login returned 401 - checking local users...");
+
+            const users = await getUsers();
+            const localUser = users.find((u) => (u.name as string).toLowerCase() === name.trim().toLowerCase());
+
+            if (localUser) {
+                console.info("Found local user, trying local login...");
+                try {
+                    const hashedInput = await Crypto.digestStringAsync(
+                        Crypto.CryptoDigestAlgorithm.SHA256,
+                        passcode.trim()
                     );
-                    return;
-                }
-
-                await addUser(data.user.id, name.trim(), passcode.trim());
-                await saveUserProfile({ name: name.trim(), isFirstRun: false, initialBalance: 0 }, data.user.id);
-                await login(data.user.id, data.token);
-            } else if (response.status === 401) {
-                console.info("Cloud login returned 401 - checking local users...");
-
-                const users = await getUsers();
-                const localUser = users.find((u) => (u.name as string).toLowerCase() === name.trim().toLowerCase());
-
-                if (localUser) {
-                    console.info("Found local user, trying local login...");
-                    try {
-                        const hashedInput = await Crypto.digestStringAsync(
-                            Crypto.CryptoDigestAlgorithm.SHA256,
-                            passcode.trim()
+                    if (localUser.passcode === hashedInput || localUser.passcode === passcode.trim()) {
+                        await login(localUser.id as string, "local_token");
+                    } else {
+                        showAlert(
+                            "Login Failed",
+                            "Invalid credentials. Please check your email/username and PIN."
                         );
-                        if (localUser.passcode === hashedInput || localUser.passcode === passcode.trim()) {
-                            await login(localUser.id as string, "local_token");
-                        } else {
-                            showAlert(
-                                "Login Failed",
-                                "Invalid credentials. Please check your email/username and PIN."
-                            );
-                        }
-                    } catch {
-                        showAlert("Login Failed", "Invalid credentials.");
                     }
-                } else {
-                    console.info("No local user found, server returned 401");
-                    showAlert("Login Failed", "Invalid user name and PIN.");
-                    return;
+                } catch {
+                    showAlert("Login Failed", "Invalid credentials.");
                 }
             } else {
-                console.info("Cloud login failed, trying local fallback...");
-                await attemptLocalLogin();
+                console.info("No local user found, server returned 401");
+                showAlert("Login Failed", "Invalid user name and PIN.");
+                setLoading(false);
+                return;
             }
-        } catch (_e: unknown) {
-            console.error("Online login failed (network error), attempting local fallback:", _e);
+        } else {
+            console.info("Cloud login failed after retries, showing transient notice then local fallback");
+            setOfflineNotice(true);
+            setTimeout(() => setOfflineNotice(false), 3000);
             await attemptLocalLogin();
-        } finally {
-            setLoading(false);
         }
+
+        setLoading(false);
     };
 
     return (
@@ -240,6 +272,13 @@ export default function LoginScreen() {
                             <MaterialCommunityIcons name="wallet" size={42} color="#fff" style={styles.logo} />
                             <Text style={styles.appName}>WiseWallet</Text>
                             <Text style={styles.tagline}>Welcome Back</Text>
+
+                            {offlineNotice && (
+                                <View style={styles.offlineNotice}>
+                                    <MaterialCommunityIcons name="wifi-off" size={16} color="#fff" />
+                                    <Text style={styles.offlineNoticeText}>No connection — checking this device…</Text>
+                                </View>
+                            )}
 
                             <Card style={styles.card}>
                                 <Card.Content>
@@ -316,10 +355,10 @@ export default function LoginScreen() {
 
                                     <View style={styles.infoBox}>
                                         <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 6 }}>
-                                            • Use email for cloud sync
+                                            • Cloud accounts use email + PIN
                                         </Text>
                                         <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 2 }}>
-                                            • Use any username for offline-only
+                                            • Local accounts use username + PIN
                                         </Text>
                                         <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 2 }}>
                                             • Login auto-detects account type
@@ -389,6 +428,22 @@ const styles = StyleSheet.create({
         backgroundColor: '#f5f5f5',
         borderRadius: 8,
         alignItems: 'center',
+    },
+    offlineNotice: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        marginBottom: 16,
+        gap: 6,
+    },
+    offlineNoticeText: {
+        color: '#fff',
+        fontSize: 13,
+        fontWeight: '500',
     },
     primaryBtn: {
         marginTop: 20,

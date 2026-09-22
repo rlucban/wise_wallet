@@ -3,6 +3,7 @@ import { API_URL, setSetting } from "../utils/db";
 import { authFetch } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
 import { useRepositories } from "./RepositoryContext";
+import { useIsLocalAccount } from "../utils/authMode";
 
 interface UserProfile {
     name: string;
@@ -43,6 +44,7 @@ const UserProfileActionsContext = createContext<UserProfileActions | undefined>(
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
     const { activeUserId } = useAuth();
+    const isLocal = useIsLocalAccount();
     const repos = useRepositories();
     const { profiles: profileRepo } = repos;
     const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -56,7 +58,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         try {
             const local = await profileRepo.getById('default');
 
-              if (API_URL && activeUserId) {
+              if (!isLocal && API_URL && activeUserId) {
                   const { ok, data: cloudProfile } = await authFetch(`userProfiles?userId=${activeUserId}`);
 
                    if (ok && cloudProfile && (cloudProfile as Record<string, unknown>).name) {
@@ -79,7 +81,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         } finally {
             setIsLoading(false);
         }
-    }, [activeUserId, profileRepo]);
+    }, [activeUserId, profileRepo, isLocal]);
 
     useEffect(() => {
         if (!activeUserId) {
@@ -98,7 +100,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         await profileRepo.upsert(newProfile as UserProfile);
         setProfile(newProfile);
 
-        if (API_URL && activeUserId) {
+        if (!isLocal && API_URL && activeUserId) {
             try {
                 await authFetch(`userProfiles/${activeUserId}`, {
                     method: "PUT",
@@ -108,7 +110,7 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
                 console.error("Cloud profile sync error:", e);
             }
         }
-    }, [profileRepo, activeUserId]);
+    }, [profileRepo, activeUserId, isLocal]);
 
     const resetProfileToDefaults = useCallback(async () => {
         const currentProfile = profileRef.current;

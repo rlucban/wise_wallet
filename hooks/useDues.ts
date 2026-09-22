@@ -5,6 +5,7 @@ import { API_URL, getSetting } from "../utils/db";
 import { authFetch } from "../utils/apiClient";
 import { enqueueAndTrigger, processSyncQueue } from "../utils/syncProcessor";
 import { useRepositories } from "../context/RepositoryContext";
+import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
 import { nowTimestamp } from "../utils/storage";
 
@@ -32,6 +33,7 @@ export function useDues() {
   const [dues, setDues] = useState<Due[]>([]);
   const [loading, setLoading] = useState(false);
   const { activeUserId } = useAuthData();
+  const isLocal = useIsLocalAccount();
   const repos = useRepositories();
 
   const fetchDues = useCallback(async () => {
@@ -41,7 +43,7 @@ export function useDues() {
       const migrated = localData.map(migrateDue);
       setDues(migrated);
 
-      if (API_URL && activeUserId) {
+      if (!isLocal && API_URL && activeUserId) {
         const { ok, data: remoteData } = await authFetch(`dues`);
         if (ok && Array.isArray(remoteData)) {
             await repos.dues.upsertBulk(remoteData);
@@ -56,7 +58,7 @@ export function useDues() {
     } finally {
       setLoading(false);
     }
-  }, [activeUserId, repos]);
+  }, [activeUserId, repos, isLocal]);
 
   useEffect(() => {
     if (!activeUserId) return;
@@ -69,10 +71,12 @@ export function useDues() {
       await repos.dues.upsert(newDue);
       setDues((prev) => [...prev, newDue]);
 
-      const autoBackup = await getSetting('autoBackup');
-      if (API_URL && autoBackup !== 'false') {
-        const syncData = { ...newDue, userId: activeUserId };
-        await enqueueAndTrigger('dues', 'create', newDue.id, syncData);
+      if (!isLocal) {
+        const autoBackup = await getSetting('autoBackup');
+        if (API_URL && autoBackup !== 'false') {
+          const syncData = { ...newDue, userId: activeUserId };
+          await enqueueAndTrigger('dues', 'create', newDue.id, syncData);
+        }
       }
     } catch (error) {
       console.error("Error adding due:", error);
@@ -88,10 +92,12 @@ export function useDues() {
       }
       setDues((prev) => prev.map((d) => (d.id === id ? { ...d, ...updates } : d)));
 
-      const autoBackup = await getSetting('autoBackup');
-      if (API_URL && autoBackup !== 'false') {
-        const syncData = { ...updates, userId: activeUserId };
-        await enqueueAndTrigger('dues', 'update', id, syncData);
+      if (!isLocal) {
+        const autoBackup = await getSetting('autoBackup');
+        if (API_URL && autoBackup !== 'false') {
+          const syncData = { ...updates, userId: activeUserId };
+          await enqueueAndTrigger('dues', 'update', id, syncData);
+        }
       }
     } catch (error) {
       console.error("Error updating due:", error);
@@ -103,9 +109,11 @@ export function useDues() {
       await repos.dues.deleteById(id);
       setDues((prev) => prev.filter((d) => d.id !== id));
 
-      const autoBackup = await getSetting('autoBackup');
-      if (API_URL && autoBackup !== 'false') {
-        await enqueueAndTrigger('dues', 'delete', id);
+      if (!isLocal) {
+        const autoBackup = await getSetting('autoBackup');
+        if (API_URL && autoBackup !== 'false') {
+          await enqueueAndTrigger('dues', 'delete', id);
+        }
       }
     } catch (error) {
       console.error("Error deleting due:", error);

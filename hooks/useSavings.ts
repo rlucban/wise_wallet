@@ -5,6 +5,7 @@ import { API_URL, getSetting } from "../utils/db";
 import { authFetch } from "../utils/apiClient";
 import { enqueueAndTrigger, processSyncQueue } from "../utils/syncProcessor";
 import { useRepositories } from "../context/RepositoryContext";
+import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
 import { nowTimestamp } from "../utils/storage";
 
@@ -39,6 +40,7 @@ export function useSavings() {
     const [loading, setLoading] = useState(false);
 
     const { activeUserId } = useAuthData();
+    const isLocal = useIsLocalAccount();
     const repos = useRepositories();
 
     const fetchItems = useCallback(async () => {
@@ -49,7 +51,7 @@ export function useSavings() {
             const deduped = titleDeduplicate(migrated);
             setItems(deduped);
 
-            if (API_URL && activeUserId) {
+            if (!isLocal && API_URL && activeUserId) {
                 const { ok, data: remoteData } = await authFetch<SavingsItem[]>(`savingsItems?userId=${activeUserId}`);
                 if (ok && Array.isArray(remoteData)) {
                         const remoteMap = new Map(remoteData.map(g => [g.id, g]));
@@ -80,7 +82,7 @@ export function useSavings() {
         } finally {
             setLoading(false);
         }
-    }, [activeUserId, repos]);
+    }, [activeUserId, repos, isLocal]);
 
     useEffect(() => {
         if (!activeUserId) return;
@@ -100,10 +102,12 @@ export function useSavings() {
             await repos.savingsItems.upsert(newItem);
             setItems((prev) => [...prev, newItem]);
 
-            const autoBackup = await getSetting('autoBackup');
-            if (API_URL && autoBackup !== 'false') {
-                const syncData = { ...newItem, userId: activeUserId };
-                await enqueueAndTrigger('savingsItems', 'create', newItem.id, syncData);
+            if (!isLocal) {
+                const autoBackup = await getSetting('autoBackup');
+                if (API_URL && autoBackup !== 'false') {
+                    const syncData = { ...newItem, userId: activeUserId };
+                    await enqueueAndTrigger('savingsItems', 'create', newItem.id, syncData);
+                }
             }
         } catch (error) {
             console.error("Error adding savings item:", error);
@@ -119,10 +123,12 @@ export function useSavings() {
             }
             setItems((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
 
-            const autoBackup = await getSetting('autoBackup');
-            if (API_URL && autoBackup !== 'false') {
-                const syncData = { ...updates, userId: activeUserId };
-                await enqueueAndTrigger('savingsItems', 'update', id, syncData);
+            if (!isLocal) {
+                const autoBackup = await getSetting('autoBackup');
+                if (API_URL && autoBackup !== 'false') {
+                    const syncData = { ...updates, userId: activeUserId };
+                    await enqueueAndTrigger('savingsItems', 'update', id, syncData);
+                }
             }
         } catch (error) {
             console.error("Error updating savings item:", error);
@@ -134,9 +140,11 @@ export function useSavings() {
             await repos.savingsItems.deleteById(id);
             setItems((prev) => prev.filter((g) => g.id !== id));
 
-            const autoBackup = await getSetting('autoBackup');
-            if (API_URL && autoBackup !== 'false') {
-                await enqueueAndTrigger('savingsItems', 'delete', id);
+            if (!isLocal) {
+                const autoBackup = await getSetting('autoBackup');
+                if (API_URL && autoBackup !== 'false') {
+                    await enqueueAndTrigger('savingsItems', 'delete', id);
+                }
             }
         } catch (error) {
             console.error("Error deleting savings item:", error);

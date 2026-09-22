@@ -9,6 +9,7 @@ import { useAuth } from "./AuthContext";
 import { useUserProfile } from "./UserProfileContext";
 import { useSystemAlerts } from "./SystemAlertsContext";
 import { useRepositories } from "./RepositoryContext";
+import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
 import * as FileSystem from 'expo-file-system/legacy';
 import { enqueueAndTrigger, processSyncQueue } from "../utils/syncProcessor";
@@ -48,6 +49,7 @@ const addCategoryFallback = (t: Transaction): Transaction => ({
 export function TransactionsProvider({ children }: { children: ReactNode }) {
     const { activeUserId } = useAuth();
     const { profile } = useUserProfile();
+    const isLocal = useIsLocalAccount();
     const { transactions: txRepo } = useRepositories();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
@@ -84,7 +86,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             const localData = (await txRepo.getAll()).map(addCategoryFallback);
             setTransactions(localData);
 
-            if (API_URL && activeUserId) {
+            if (!isLocal && API_URL && activeUserId) {
                 const { ok, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
                 if (ok && Array.isArray(remoteData)) {
                     const mergedMap = new Map<string, Transaction>();
@@ -116,7 +118,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         } finally {
             setLoading(false);
         }
-    }, [activeUserId, txRepo, uploadReceiptIfNeeded]);
+    }, [activeUserId, txRepo, uploadReceiptIfNeeded, isLocal]);
 
     const { checkNegativeBalance } = useSystemAlerts();
 
@@ -151,17 +153,19 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             await txRepo.upsert(newTransaction);
             setTransactions((prev) => [...prev, newTransaction]);
 
-            const autoBackup = await getSetting('autoBackup');
-            if (API_URL && autoBackup !== 'false') {
-                const uploaded = await uploadReceiptIfNeeded(newTransaction);
-                const syncData = { ...uploaded, userId: activeUserId };
-                await enqueueAndTrigger('transactions', 'create', newTransaction.id, syncData);
+            if (!isLocal) {
+                const autoBackup = await getSetting('autoBackup');
+                if (API_URL && autoBackup !== 'false') {
+                    const uploaded = await uploadReceiptIfNeeded(newTransaction);
+                    const syncData = { ...uploaded, userId: activeUserId };
+                    await enqueueAndTrigger('transactions', 'create', newTransaction.id, syncData);
+                }
             }
         } catch (error) {
             console.error("Error adding transaction:", error);
             throw error;
         }
-    }, [txRepo, activeUserId, uploadReceiptIfNeeded]);
+    }, [txRepo, activeUserId, uploadReceiptIfNeeded, isLocal]);
 
     const updateTransaction = useCallback(async (id: string, updates: Partial<Transaction>) => {
         try {
@@ -173,31 +177,35 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 t.id === id ? { ...t, ...updates } : t
             ));
 
-            const autoBackup = await getSetting('autoBackup');
-            if (API_URL && autoBackup !== 'false') {
-                const syncData = { ...updates, userId: activeUserId };
-                await enqueueAndTrigger('transactions', 'update', id, syncData);
+            if (!isLocal) {
+                const autoBackup = await getSetting('autoBackup');
+                if (API_URL && autoBackup !== 'false') {
+                    const syncData = { ...updates, userId: activeUserId };
+                    await enqueueAndTrigger('transactions', 'update', id, syncData);
+                }
             }
         } catch (error) {
             console.error("Error updating transaction:", error);
             throw error;
         }
-    }, [txRepo, activeUserId]);
+    }, [txRepo, activeUserId, isLocal]);
 
     const deleteTransaction = useCallback(async (id: string) => {
         try {
             await txRepo.deleteById(id);
             setTransactions((prev) => prev.filter(t => t.id !== id));
 
-            const autoBackup = await getSetting('autoBackup');
-            if (API_URL && autoBackup !== 'false') {
-                await enqueueAndTrigger('transactions', 'delete', id);
+            if (!isLocal) {
+                const autoBackup = await getSetting('autoBackup');
+                if (API_URL && autoBackup !== 'false') {
+                    await enqueueAndTrigger('transactions', 'delete', id);
+                }
             }
         } catch (error) {
             console.error("Error deleting transaction:", error);
             throw error;
         }
-    }, [txRepo]);
+    }, [txRepo, isLocal]);
 
     const dataValue = useMemo(() => ({
         transactions,

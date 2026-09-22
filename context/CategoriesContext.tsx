@@ -5,6 +5,7 @@ import { authFetch } from "../utils/apiClient";
 import { enqueueAndTrigger, processSyncQueue } from "../utils/syncProcessor";
 import { useAuth } from "./AuthContext";
 import { useRepositories } from "./RepositoryContext";
+import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
 
 interface CategoriesData {
@@ -23,6 +24,7 @@ const CategoriesActionsContext = createContext<CategoriesActions | undefined>(un
 
 export function CategoriesProvider({ children }: { children: ReactNode }) {
   const { activeUserId } = useAuth();
+  const isLocal = useIsLocalAccount();
   const { categories: catRepo } = useRepositories();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -33,7 +35,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
       const localData = await catRepo.getAll();
       setCategories(localData);
 
-      if (API_URL && activeUserId) {
+      if (!isLocal && API_URL && activeUserId) {
         const { ok, data } = await authFetch("categories");
 
         if (ok && Array.isArray(data)) {
@@ -49,7 +51,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [activeUserId, catRepo]);
+  }, [activeUserId, catRepo, isLocal]);
 
   useEffect(() => {
     if (!activeUserId) return;
@@ -62,29 +64,33 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
       await catRepo.upsert(newCategory);
       setCategories((prev) => [...prev, newCategory]);
 
-      const autoBackup = await getSetting('autoBackup');
-      if (API_URL && autoBackup !== 'false') {
-        const syncData = { ...newCategory, userId: activeUserId };
-        await enqueueAndTrigger('categories', 'create', newCategory.id, syncData);
+      if (!isLocal) {
+        const autoBackup = await getSetting('autoBackup');
+        if (API_URL && autoBackup !== 'false') {
+          const syncData = { ...newCategory, userId: activeUserId };
+          await enqueueAndTrigger('categories', 'create', newCategory.id, syncData);
+        }
       }
     } catch (error) {
       console.error("Error adding category:", error);
     }
-  }, [catRepo, activeUserId]);
+  }, [catRepo, activeUserId, isLocal]);
 
   const deleteCategory = useCallback(async (id: string) => {
     try {
       await catRepo.deleteById(id);
       setCategories((prev) => prev.filter((c) => c.id !== id));
 
-      const autoBackup = await getSetting('autoBackup');
-      if (API_URL && autoBackup !== 'false') {
-        await enqueueAndTrigger('categories', 'delete', id);
+      if (!isLocal) {
+        const autoBackup = await getSetting('autoBackup');
+        if (API_URL && autoBackup !== 'false') {
+          await enqueueAndTrigger('categories', 'delete', id);
+        }
       }
     } catch (error) {
       console.error("Error deleting category:", error);
     }
-  }, [catRepo]);
+  }, [catRepo, isLocal]);
 
   const dataValue = useMemo(() => ({
     categories,
