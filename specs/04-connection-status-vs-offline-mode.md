@@ -4,9 +4,9 @@
 |---|---|
 | ID | SPEC-04 |
 | Title | Connection Status vs Offline (Local-Only) Account Mode |
-| Status | **FINAL** (2026-09-21 per user call) |
+| Status | **FINAL** (2026-09-22 per user call — v1.4 web online-only) |
 | Owner | User (final authority) |
-| Version | 1.3 — review polish (stale cites fixed, retry/queue/plumbing tightened, same normative intent) |
+| Version | 1.4 — web online-only creation (CON-08, ACC-07..11, D-08/D-09); otherwise v1.3 intent unchanged |
 | Scope | Account mode, connection status, sync gating, login fallback, Make Online upgrade |
 | Non-goals | Cloud→Local downgrade (explicitly out of scope); new storage engine; new API contract |
 | Normative source | This file. `AGENTS.md §4` is a pointer only. File+symbol cites are normative; `:line` numbers are hints only. |
@@ -14,7 +14,9 @@
 > History: moved out of `AGENTS.md §4` on 2026-09-21; reformatted to
 > Context / Constraints / Goal / Deliverables on 2026-09-21; polished with
 > metadata, RFC 2119 keywords, and numbered requirements on 2026-09-21;
-> review polish 1.3 on 2026-09-21 (same normative intent — implement exactly this).
+> review polish 1.3 on 2026-09-21 (same normative intent — implement exactly this);
+> v1.4 on 2026-09-22: web online-only creation (no new Offline via web register/login;
+> existing web locals keep working + Make Online).
 
 ## Terminology (RFC 2119)
 
@@ -129,6 +131,13 @@ auto-backup (sync toggle).
   to storage keys (`user_{id}_*`), the `wallet-api` contract, AsyncStorage
   shapes, routes, or native deps unless this spec requires them (any migration
   MUST note rollback).
+- **CON-08 — Web online-only creation.** On `Platform.OS === "web"`, the app
+  MUST NOT offer creation of new Local-only accounts via register/login UI.
+  Register MUST force `accountMode === "online"` and hide the Offline option;
+  login/register failure dialogs MUST NOT contain a "Create Offline Account"
+  button. Lookup (PIN check) of pre-existing Local accounts on web MUST still
+  work, and Make Online (D-07) MUST remain available to them. Android + iOS
+  behavior is unchanged (Online + Offline offered).
 
 ## 3. Goal
 
@@ -147,6 +156,8 @@ Resolved decisions (FINAL per user call 2026-09-21):
 - DEC-01: reachability probe for Local accounts = device connectivity only.
 - DEC-02: login fallback = retry (≤3, throttled) + transient notice, then local lookup.
 - DEC-03: Cloud→Local downgrade explicitly out of scope.
+- DEC-04 (v1.4): web has no Offline creation UI; existing web locals are
+  grandfathered (lookup + Make Online keep working).
 
 ### Acceptance criteria
 
@@ -163,6 +174,18 @@ Resolved decisions (FINAL per user call 2026-09-21):
 - **ACC-06:** after a successful Make Online upgrade, `isLocalAccount()`
   returns false, auto-backup is true, the "Make Online" button does not
   appear, and the account is permanently Cloud (no downgrade path).
+- **ACC-07 (v1.4, objective):** on web, register shows Online only (no
+  Offline button), defaults to Online, with email-only labels.
+- **ACC-08 (v1.4, objective):** on web, Account Not Found and Cloud
+  Unreachable dialogs contain no "Create Offline Account" button.
+- **ACC-09 (v1.4, objective):** on web, no new `offline_token` is created via
+  register/login creation paths (`jest` with `Platform.OS === "web"` mock).
+- **ACC-10 (v1.4, objective):** a pre-existing web Local account still logs in
+  with PIN and still sees Make Online (D-07 preserved).
+- **ACC-11 (v1.4, subjective):** reviewer confirms in web export that
+  register/login show no offline upsell and no layout gap; Android/iOS
+  unchanged in Expo Go (side-by-side, no visible difference except web
+  hiding Offline).
 
 ## 4. Deliverables
 
@@ -189,7 +212,15 @@ Resolved decisions (FINAL per user call 2026-09-21):
 - **D-06 — Login flow** per CON-06: at most 3 tries (3s abort; ~500ms/~1500ms
   backoff) → transient non-blocking "No connection — checking this device…"
   notice → `attemptLocalLogin` (`login.tsx`); known PIN → `"local_token"`;
-  unknown → "Create Offline Account" dialog.
+  unknown → "Create Offline Account" dialog (native only after v1.4; web
+  shows plain Login Failed per D-09).
+- **D-08 — Web register guard (v1.4)** per CON-08: `app/register.tsx` forces
+  Online on web, hides the Offline button + offline info box, and blocks
+  `createLocalAccount` from web register UI.
+- **D-09 — Web login creation guard (v1.4)** per CON-08: `app/login.tsx`
+  (Account Not Found) and `app/register.tsx` (Cloud Unreachable) show no
+  "Create Offline Account" button on web; `attemptLocalLogin` lookup for
+  pre-existing locals stays.
 - **D-07 — Make Online upgrade (only direction):** single Settings flow
   reachable from Settings "Make Online", Local switch ON, `CloudLinkBanner`
   "LINK NOW", and the `useCloudLink` dialog (reroute away from `/login` /

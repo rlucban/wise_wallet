@@ -198,6 +198,9 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 - **2026-09-22 — Spec 06 implemented (FINAL).** `specs/06-web-warning-cleanup.md`:
   shadow/boxShadow, textShadow, `useNativeDriver`, `pointerEvents` web WARN
   cleanup with native parity. See `docs/savepoint.md`.
+- **2026-09-22 — Spec 04 v1.4 implemented (FINAL).** Web online-only creation:
+  register/login offer no new Offline accounts on web; existing web locals
+  keep login + Make Online. Android/iOS unchanged.
 
 ---
 

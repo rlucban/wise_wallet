@@ -78,6 +78,10 @@ export default function LoginScreen() {
                 showAlert("Error", "Authentication failed. Error: " + (err as Error).message);
             }
         } else {
+            if (Platform.OS === "web") {
+                showAlert("Login Failed", "Invalid user name and PIN.");
+                return;
+            }
             showAlert(
                 "Account Not Found",
                 `No account found for "${name.trim()}". Would you like to create an offline-only account with these credentials?`,

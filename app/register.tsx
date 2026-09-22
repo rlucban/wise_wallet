@@ -12,8 +12,10 @@ type AccountMode = "online" | "offline";
 export default function RegisterScreen() {
     const { login } = useAuthActions();
     const router = useRouter();
+    const isWeb = Platform.OS === "web";
 
     const [accountMode, setAccountMode] = useState<AccountMode>("online");
+    const effectiveMode: AccountMode = isWeb ? "online" : accountMode;
     const [name, setName] = useState("");
     const [passcode, setPasscode] = useState("");
     const [loading, setLoading] = useState(false);
@@ -33,6 +35,10 @@ export default function RegisterScreen() {
     };
 
     const createLocalAccount = async (username: string, pin: string): Promise<boolean> => {
+        if (Platform.OS === "web") {
+            showAlert("Not Available on Web", "Local-only accounts cannot be created on web. Please register an online account.");
+            return false;
+        }
         const { generateUUID } = require('../utils/uuid');
         const offlineId = generateUUID();
 
@@ -54,7 +60,12 @@ export default function RegisterScreen() {
 
     const createCloudAccount = async (emailAddr: string, pin: string): Promise<boolean> => {
         if (!API_URL) {
-            showAlert("Cloud Unavailable", "Cloud registration is not available. Please check your connection or create a local-only account.");
+            showAlert(
+                "Cloud Unavailable",
+                Platform.OS === "web"
+                    ? "Cloud registration is not available. Please check your connection and try again."
+                    : "Cloud registration is not available. Please check your connection or create a local-only account."
+            );
             return false;
         }
 
@@ -81,22 +92,32 @@ export default function RegisterScreen() {
         } catch (_e: unknown) {
             console.warn("Cloud registration failed:", (_e as Error).message);
 
-            showAlert(
-                "Cloud Unreachable",
-                "We couldn't connect to our servers. Would you like to create a local-only account instead?",
-                [
-                    {
-                        text: "Create Offline Account",
-                        onPress: async () => {
-                            const success = await createLocalAccount(emailAddr.trim(), pin.trim());
-                            if (!success) {
-                                setLoading(false);
+            if (Platform.OS === "web") {
+                showAlert(
+                    "Cloud Unreachable",
+                    "We couldn't connect to our servers. Please check your connection and try again.",
+                    [
+                        { text: "Try Again", style: "cancel", onPress: () => setLoading(false) }
+                    ]
+                );
+            } else {
+                showAlert(
+                    "Cloud Unreachable",
+                    "We couldn't connect to our servers. Would you like to create a local-only account instead?",
+                    [
+                        {
+                            text: "Create Offline Account",
+                            onPress: async () => {
+                                const success = await createLocalAccount(emailAddr.trim(), pin.trim());
+                                if (!success) {
+                                    setLoading(false);
+                                }
                             }
-                        }
-                    },
-                    { text: "Try Again", style: "cancel", onPress: () => setLoading(false) }
-                ]
-            );
+                        },
+                        { text: "Try Again", style: "cancel", onPress: () => setLoading(false) }
+                    ]
+                );
+            }
             return false;
         }
     };
@@ -106,7 +127,7 @@ export default function RegisterScreen() {
         setPinError("");
 
         if (!name.trim()) {
-            setNameError(accountMode === "online" ? "Email is required" : "Username is required");
+            setNameError(effectiveMode === "online" ? "Email is required" : "Username is required");
             return;
         }
 
@@ -117,7 +138,7 @@ export default function RegisterScreen() {
 
         setLoading(true);
 
-        if (accountMode === "online") {
+        if (effectiveMode === "online") {
             const success = await createCloudAccount(name.trim(), passcode.trim());
             if (!success) {
                 setLoading(false);
@@ -177,7 +198,8 @@ export default function RegisterScreen() {
 
                             <Card style={styles.card}>
                                 <Card.Content>
-                                    <Text style={styles.fieldLabel}>Account Type</Text>
+                                    {!isWeb && <Text style={styles.fieldLabel}>Account Type</Text>}
+                                    {!isWeb ? (
                                     <View style={styles.modeSelector}>
                                         <Button
                                             mode={accountMode === "online" ? "contained" : "outlined"}
@@ -200,9 +222,10 @@ export default function RegisterScreen() {
                                             Offline
                                         </Button>
                                     </View>
+                                    ) : null}
 
                                     <Text style={styles.fieldLabel}>
-                                        {accountMode === "online" ? "Email" : "Username"}
+                                        {effectiveMode === "online" ? "Email" : "Username"}
                                     </Text>
                                     <TextInput
                                         value={name}
@@ -214,9 +237,9 @@ export default function RegisterScreen() {
                                         activeOutlineColor="#3949ab"
                                         error={!!nameError}
                                         autoCapitalize="none"
-                                        keyboardType={accountMode === "online" ? "email-address" : "default"}
-                                        placeholder={accountMode === "online" ? "Enter your email" : "Choose a username"}
-                                        left={<TextInput.Icon icon={accountMode === "online" ? "email-outline" : "account-outline"} color="#1a237e" />}
+                                        keyboardType={effectiveMode === "online" ? "email-address" : "default"}
+                                        placeholder={effectiveMode === "online" ? "Enter your email" : "Choose a username"}
+                                        left={<TextInput.Icon icon={effectiveMode === "online" ? "email-outline" : "account-outline"} color="#1a237e" />}
                                     />
                                     <HelperText type="error" visible={!!nameError}>
                                         {nameError}
@@ -275,7 +298,7 @@ export default function RegisterScreen() {
                                     </View>
 
                                     <View style={styles.infoBox}>
-                                        {accountMode === "online" ? (
+                                        {effectiveMode === "online" ? (
                                             <>
                                                 <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 6 }}>
                                                     • Online mode enables cloud sync
