@@ -2,9 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './db';
 import { getSecureItem, removeSecureItem } from './secureStorage';
 
-let onAuthFailure: (() => void) | null = null;
+let onAuthFailure: ((reason?: string) => void) | null = null;
 
-export const setAuthFailureCallback = (callback: () => void) => {
+export const setAuthFailureCallback = (callback: (reason?: string) => void) => {
     onAuthFailure = callback;
 };
 
@@ -50,7 +50,7 @@ export async function authFetch<T = unknown>(
       console.warn('401 Unauthorized - clearing auth credentials');
       await clearAuthStorage();
       if (onAuthFailure) {
-        onAuthFailure();
+        onAuthFailure('session_ended');
       }
     }
 

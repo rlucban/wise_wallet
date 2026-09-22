@@ -10,6 +10,7 @@ import { useUserProfile } from "./UserProfileContext";
 import { useSystemAlerts } from "./SystemAlertsContext";
 import { useRepositories } from "./RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
+import { useToast } from "../context/ToastContext";
 import { generateUUID } from "../utils/uuid";
 import * as FileSystem from 'expo-file-system/legacy';
 import { enqueueAndTrigger, processSyncQueue } from "../utils/syncProcessor";
@@ -53,6 +54,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     const { transactions: txRepo } = useRepositories();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
+    const { showToast } = useToast();
 
     const uploadReceiptIfNeeded = useCallback(async (tx: Transaction): Promise<Transaction> => {
         if (tx.receiptUrl && tx.receiptUrl.startsWith('file://')) {
@@ -90,25 +92,39 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 const { ok, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
                 if (ok && Array.isArray(remoteData)) {
                     const mergedMap = new Map<string, Transaction>();
+                    let overwrittenCount = 0;
 
                     for (const remoteTx of remoteData) {
                         mergedMap.set(remoteTx.id, remoteTx);
                     }
 
                     for (const localTx of localData) {
-                        if (!mergedMap.has(localTx.id)) {
+                        const remoteTx = mergedMap.get(localTx.id);
+                        if (!remoteTx) {
                             const uploaded = await uploadReceiptIfNeeded(sanitizeTransaction(localTx));
                             mergedMap.set(localTx.id, uploaded);
                             await enqueueAndTrigger('transactions', 'create', localTx.id, {
                                 ...uploaded,
                                 userId: activeUserId,
                             });
+                        } else if ((localTx.updatedAt || 0) > (remoteTx.updatedAt || 0)) {
+                            mergedMap.set(localTx.id, localTx);
+                            await enqueueAndTrigger('transactions', 'update', localTx.id, {
+                                ...localTx,
+                                userId: activeUserId,
+                            });
+                        } else if ((remoteTx.updatedAt || 0) > (localTx.updatedAt || 0)) {
+                            overwrittenCount++;
                         }
                     }
 
                     const merged = Array.from(mergedMap.values());
                     await txRepo.upsertBulk(merged.map(sanitizeTransaction));
                     setTransactions(merged);
+
+                    if (overwrittenCount > 0) {
+                        showToast(`${overwrittenCount} record(s) updated from another device.`);
+                    }
                 }
             }
 
@@ -118,7 +134,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         } finally {
             setLoading(false);
         }
-    }, [activeUserId, txRepo, uploadReceiptIfNeeded, isLocal]);
+    }, [activeUserId, txRepo, uploadReceiptIfNeeded, isLocal, showToast]);
 
     const { checkNegativeBalance } = useSystemAlerts();
 

@@ -8,11 +8,15 @@ interface AuthData {
   activeUserId: string | null;
   token: string | null;
   isLoading: boolean;
+  authFailureReason: string | null;
+  failedUserId: string | null;
 }
 
 interface AuthActions {
   login: (userId: string, token: string) => Promise<void>;
   logout: () => Promise<void>;
+  clearAuthFailureReason: () => void;
+  clearFailedUserId: () => void;
 }
 
 const AuthDataContext = createContext<AuthData | undefined>(undefined);
@@ -22,6 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authFailureReason, setAuthFailureReason] = useState<string | null>(null);
+  const [failedUserId, setFailedUserId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -37,10 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const handleAuthFailure = useCallback(() => {
+  const handleAuthFailure = useCallback((reason?: string) => {
+    if (activeUserId) setFailedUserId(activeUserId);
     setActiveUserId(null);
     setToken(null);
-  }, []);
+    if (reason) setAuthFailureReason(reason);
+  }, [activeUserId]);
 
   useEffect(() => {
     setAuthFailureCallback(handleAuthFailure);
@@ -63,16 +71,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(null);
   }, []);
 
+  const clearAuthFailureReason = useCallback(() => {
+    setAuthFailureReason(null);
+  }, []);
+
+  const clearFailedUserId = useCallback(() => {
+    setFailedUserId(null);
+  }, []);
+
   const dataValue = useMemo(() => ({
     activeUserId,
     token,
     isLoading,
-  }), [activeUserId, token, isLoading]);
+    authFailureReason,
+    failedUserId,
+  }), [activeUserId, token, isLoading, authFailureReason, failedUserId]);
 
   const actionsValue = useMemo(() => ({
     login,
     logout,
-  }), [login, logout]);
+    clearAuthFailureReason,
+    clearFailedUserId,
+  }), [login, logout, clearAuthFailureReason, clearFailedUserId]);
 
   return (
     <AuthDataContext.Provider value={dataValue}>

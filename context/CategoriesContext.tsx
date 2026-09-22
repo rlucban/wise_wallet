@@ -7,6 +7,7 @@ import { useAuth } from "./AuthContext";
 import { useRepositories } from "./RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
+import { useToast } from "./ToastContext";
 
 interface CategoriesData {
   categories: Category[];
@@ -28,6 +29,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
   const { categories: catRepo } = useRepositories();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   const fetchCategories = useCallback(async () => {
     setLoading(true);
@@ -39,8 +41,18 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
         const { ok, data } = await authFetch("categories");
 
         if (ok && Array.isArray(data)) {
+          let overwrittenCount = 0;
+          for (const remoteCat of data) {
+            const localCat = localData.find(c => c.id === remoteCat.id);
+            if (localCat && (remoteCat.updatedAt || 0) > (localCat.updatedAt || 0)) {
+              overwrittenCount++;
+            }
+          }
           await catRepo.upsertBulk(data);
           setCategories(data);
+          if (overwrittenCount > 0) {
+            showToast(`${overwrittenCount} record(s) updated from another device.`);
+          }
         }
 
         processSyncQueue();
@@ -51,7 +63,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [activeUserId, catRepo, isLocal]);
+  }, [activeUserId, catRepo, isLocal, showToast]);
 
   useEffect(() => {
     if (!activeUserId) return;

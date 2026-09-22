@@ -167,6 +167,15 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 - **2026-09-22 — Spec 04 updated.** autoBackup permanent false for Local
   accounts (CON-03, D-07, ACC-06 added). Make Online dialog warns
   irreversibility + auto-backup enabled. settings.tsx copies updated.
+- **2026-09-22 — Spec 05: Multi-Device Behavior.** New
+  `specs/05-multi-device-behavior.md` (FINAL). D-MD-01: session kill
+  notification — 401 handler passes reason to AuthContext;
+  SystemAlertsContext.createSessionEndedAlert() persists "Session Ended"
+  alert; nav guard creates alert before redirect. D-MD-02: conflict
+  overwrite display — sync merge in TransactionsContext, useSavings,
+  useDues, CategoriesContext counts overwritten records (remote updatedAt
+  > local) and shows transient Snackbar. New context/ToastContext.tsx.
+  Lint clean.
 
 ---
 

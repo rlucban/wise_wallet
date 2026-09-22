@@ -7,6 +7,7 @@ import { enqueueAndTrigger, processSyncQueue } from "../utils/syncProcessor";
 import { useRepositories } from "../context/RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
+import { useToast } from "../context/ToastContext";
 import { nowTimestamp } from "../utils/storage";
 
 function migrateSavingsItem(item: SavingsItem): SavingsItem {
@@ -42,6 +43,7 @@ export function useSavings() {
     const { activeUserId } = useAuthData();
     const isLocal = useIsLocalAccount();
     const repos = useRepositories();
+    const { showToast } = useToast();
 
     const fetchItems = useCallback(async () => {
         setLoading(true);
@@ -54,25 +56,35 @@ export function useSavings() {
             if (!isLocal && API_URL && activeUserId) {
                 const { ok, data: remoteData } = await authFetch<SavingsItem[]>(`savingsItems?userId=${activeUserId}`);
                 if (ok && Array.isArray(remoteData)) {
-                        const remoteMap = new Map(remoteData.map(g => [g.id, g]));
                         const remoteTitleMap = new Map(remoteData.map(g => [g.title.toLowerCase(), g]));
 
                         const mergedMap = new Map<string, SavingsItem>();
+                        let overwrittenCount = 0;
 
                         for (const remoteItem of remoteData) {
                             mergedMap.set(remoteItem.id, remoteItem);
                         }
 
                         for (const localItem of deduped) {
-                            if (remoteMap.has(localItem.id)) continue;
-                            if (remoteTitleMap.has(localItem.title.toLowerCase())) continue;
-                            mergedMap.set(localItem.id, localItem);
-                            await enqueueAndTrigger('savingsItems', 'create', localItem.id, localItem as unknown as Record<string, unknown>);
+                            const remoteItem = mergedMap.get(localItem.id);
+                            if (!remoteItem && !remoteTitleMap.has(localItem.title.toLowerCase())) {
+                                mergedMap.set(localItem.id, localItem);
+                                await enqueueAndTrigger('savingsItems', 'create', localItem.id, localItem as unknown as Record<string, unknown>);
+                            } else if (remoteItem && (localItem.updatedAt || 0) > (remoteItem.updatedAt || 0)) {
+                                mergedMap.set(localItem.id, localItem);
+                                await enqueueAndTrigger('savingsItems', 'update', localItem.id, localItem as unknown as Record<string, unknown>);
+                            } else if (remoteItem && (remoteItem.updatedAt || 0) > (localItem.updatedAt || 0)) {
+                                overwrittenCount++;
+                            }
                         }
 
                         const merged = Array.from(mergedMap.values());
                         await repos.savingsItems.upsertBulk(merged);
                         setItems(merged);
+
+                        if (overwrittenCount > 0) {
+                            showToast(`${overwrittenCount} record(s) updated from another device.`);
+                        }
                     }
                 }
 
@@ -82,7 +94,7 @@ export function useSavings() {
         } finally {
             setLoading(false);
         }
-    }, [activeUserId, repos, isLocal]);
+    }, [activeUserId, repos, isLocal, showToast]);
 
     useEffect(() => {
         if (!activeUserId) return;

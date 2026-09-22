@@ -8,6 +8,7 @@ import {
   markAllAlertsAsRead as markAllReadHelper,
   clearAllAlerts as clearAlertsHelper,
   checkAndTriggerNegativeBalanceAlert,
+  createSessionEndedAlert,
 } from "../utils/notifications";
 
 interface SystemAlertsContextType {
@@ -19,6 +20,7 @@ interface SystemAlertsContextType {
   markAllAsRead: () => Promise<void>;
   clearAlerts: () => Promise<void>;
   checkNegativeBalance: (balance: number) => Promise<SystemAlert | null>;
+  addSessionAlert: (userId: string) => Promise<void>;
 }
 
 const SystemAlertsContext = createContext<SystemAlertsContextType | undefined>(undefined);
@@ -79,6 +81,11 @@ export function SystemAlertsProvider({ children }: { children: ReactNode }) {
     [activeUserId, formatAmount, fetchAlerts]
   );
 
+  const addSessionAlert = useCallback(async (userId: string) => {
+    await createSessionEndedAlert(userId);
+    await fetchAlerts();
+  }, [fetchAlerts]);
+
   const unreadCount = useMemo(() => alerts.filter((a) => !a.read).length, [alerts]);
 
   const value = useMemo(
@@ -91,8 +98,9 @@ export function SystemAlertsProvider({ children }: { children: ReactNode }) {
       markAllAsRead,
       clearAlerts,
       checkNegativeBalance,
+      addSessionAlert,
     }),
-    [alerts, unreadCount, loading, fetchAlerts, markAsRead, markAllAsRead, clearAlerts, checkNegativeBalance]
+    [alerts, unreadCount, loading, fetchAlerts, markAsRead, markAllAsRead, clearAlerts, checkNegativeBalance, addSessionAlert]
   );
 
   return <SystemAlertsContext.Provider value={value}>{children}</SystemAlertsContext.Provider>;

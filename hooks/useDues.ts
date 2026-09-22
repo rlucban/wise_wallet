@@ -7,6 +7,7 @@ import { enqueueAndTrigger, processSyncQueue } from "../utils/syncProcessor";
 import { useRepositories } from "../context/RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
+import { useToast } from "../context/ToastContext";
 import { nowTimestamp } from "../utils/storage";
 
 function migrateDue(item: Due): Due {
@@ -35,6 +36,7 @@ export function useDues() {
   const { activeUserId } = useAuthData();
   const isLocal = useIsLocalAccount();
   const repos = useRepositories();
+  const { showToast } = useToast();
 
   const fetchDues = useCallback(async () => {
     setLoading(true);
@@ -46,9 +48,22 @@ export function useDues() {
       if (!isLocal && API_URL && activeUserId) {
         const { ok, data: remoteData } = await authFetch(`dues`);
         if (ok && Array.isArray(remoteData)) {
-            await repos.dues.upsertBulk(remoteData);
+            let overwrittenCount = 0;
+            for (const remoteDue of remoteData) {
+              const localDue = migrated.find(d => d.id === remoteDue.id);
+              if (localDue && (localDue.updatedAt || 0) > (remoteDue.updatedAt || 0)) {
+                await repos.dues.upsert(localDue);
+              } else if (localDue && (remoteDue.updatedAt || 0) > (localDue.updatedAt || 0)) {
+                overwrittenCount++;
+              } else {
+                await repos.dues.upsert(remoteDue);
+              }
+            }
             const merged = await repos.dues.getAll();
             setDues(merged.map(migrateDue));
+            if (overwrittenCount > 0) {
+              showToast(`${overwrittenCount} record(s) updated from another device.`);
+            }
           }
         }
 
@@ -58,7 +73,7 @@ export function useDues() {
     } finally {
       setLoading(false);
     }
-  }, [activeUserId, repos, isLocal]);
+  }, [activeUserId, repos, isLocal, showToast]);
 
   useEffect(() => {
     if (!activeUserId) return;

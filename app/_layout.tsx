@@ -11,6 +11,8 @@ import { CategoriesProvider } from "../context/CategoriesContext";
 import { LanguageProvider } from "../context/LanguageContext";
 import { PasscodeProvider, usePasscode } from "../context/PasscodeContext";
 import { AuthProvider, useAuthData, useAuthActions } from "../context/AuthContext";
+import { SystemAlertsProvider, useSystemAlerts } from "../context/SystemAlertsContext";
+import { ToastProvider } from "../context/ToastContext";
 import { NetworkProvider, useNetwork, checkHealth } from "../context/NetworkContext";
 import PasscodeScreen from "./passcode-screen";
 import { DbRecoveryProvider } from "../context/DbRecoveryContext";
@@ -21,8 +23,6 @@ import { hardResetLocalData } from "../utils/db";
 import { requestNotificationPermissions, scheduleDueNotifications } from "../utils/notifications";
 import { useRepositories } from "../context/RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
-
-import { SystemAlertsProvider } from "../context/SystemAlertsContext";
 
 function OfflineIndicator() {
   const { isOnline, checkConnectivity } = useNetwork();
@@ -113,44 +113,57 @@ function SystemResetManager() {
 function MainLayout() {
   const { theme } = useThemeData();
   const { isPasscodeEnabled, isUnlocked } = usePasscode();
-  const { activeUserId, isLoading: authLoading } = useAuthData();
+  const { activeUserId, isLoading: authLoading, authFailureReason, failedUserId } = useAuthData();
+  const { clearAuthFailureReason, clearFailedUserId } = useAuthActions();
   const { profile, isLoading: profileLoading } = useUserProfile();
+  const { addSessionAlert } = useSystemAlerts();
   const segments = useSegments();
   const router = useRouter();
   const navigationState = useRootNavigationState();
 
   useEffect(() => {
     if (authLoading || profileLoading || !navigationState?.key) return;
-    if (activeUserId && !profile) return;
 
-    const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
-    const inIntro = segments[0] === 'intro';
-    const inOnboarding = segments[0] === 'onboarding';
-
-    console.info(`[Nav] State -> User: ${activeUserId}, FirstRun: ${profile?.isFirstRun}, Path: /${segments.join('/')}`);
-    
     if (!activeUserId) {
-      // Logged out / cold-start -> always Login, never Intro.
-      // Intro is reserved for authenticated first-run users only.
+      if (authFailureReason === "session_ended" && failedUserId) {
+        addSessionAlert(failedUserId).then(() => {
+          clearAuthFailureReason();
+          clearFailedUserId();
+          const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+          if (!inAuthGroup) {
+            console.info("[Nav] Session ended — redirecting to Login");
+            setTimeout(() => router.replace('/login'), 0);
+          }
+        });
+        return;
+      }
+
+      const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+      const inIntro = segments[0] === 'intro';
+      const inOnboarding = segments[0] === 'onboarding';
+
       if (inIntro || inOnboarding || !inAuthGroup) {
         console.info("[Nav] Redirecting to Login");
         setTimeout(() => router.replace('/login'), 0);
       }
     } else if (activeUserId) {
+      const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
+      const inIntro = segments[0] === 'intro';
+      const inOnboarding = segments[0] === 'onboarding';
+
+      console.info(`[Nav] State -> User: ${activeUserId}, FirstRun: ${profile?.isFirstRun}, Path: /${segments.join('/')}`);
+
       if (profile?.isFirstRun) {
-        // First run -> Intro first (Intro then leads to Onboarding).
-        // Allow both so Intro <-> Onboarding navigation doesn't loop.
         if (!inIntro && !inOnboarding) {
           console.info("[Nav] Redirecting to Intro");
           setTimeout(() => router.replace('/intro'), 0);
         }
       } else if (!profile?.isFirstRun && (inAuthGroup || inIntro || inOnboarding)) {
-        // Setup done -> Home, never Intro.
         console.info("[Nav] Redirecting to Dashboard");
         setTimeout(() => router.replace('/'), 0);
       }
     }
-  }, [activeUserId, authLoading, profileLoading, profile, segments, navigationState?.key, router]);
+  }, [activeUserId, authFailureReason, failedUserId, authLoading, profileLoading, profile, segments, navigationState?.key, router, addSessionAlert, clearAuthFailureReason, clearFailedUserId]);
 
   if (isPasscodeEnabled && !isUnlocked) {
       return <PasscodeScreen />;
@@ -259,15 +272,16 @@ export default function RootLayout() {
         <AuthProvider>
           <UserProfileProvider>
             <SystemResetManager />
-            <ProviderComposer
-              providers={[
-                ThemeProvider,
-                LanguageProvider,
-                PasscodeProvider,
-                CurrencyProvider,
-                SystemAlertsProvider,
-              ]}
-            >
+              <ProviderComposer
+                providers={[
+                  ThemeProvider,
+                  LanguageProvider,
+                  PasscodeProvider,
+                  CurrencyProvider,
+                  SystemAlertsProvider,
+                  ToastProvider,
+                ]}
+              >
               <AuthLoader>
                 <ProviderComposer providers={[CategoriesProvider, TransactionsProvider]}>
                   <MainLayout />

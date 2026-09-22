@@ -278,3 +278,27 @@ export async function checkAndTriggerNegativeBalanceAlert(
 
   return newAlert;
 }
+
+export async function createSessionEndedAlert(userId?: string): Promise<SystemAlert | null> {
+  if (!userId) return null;
+
+  const alerts = await getSystemAlerts(userId);
+  const recentSessionAlerts = alerts.filter(
+    (a) => a.title === "Session Ended" && !a.read && (Date.now() - a.updatedAt < 60000)
+  );
+  if (recentSessionAlerts.length > 0) return null;
+
+  const alert: SystemAlert = {
+    id: `session_${Date.now()}`,
+    type: "Warning",
+    title: "Session Ended",
+    message: "Your session was ended on another device. Please log in again.",
+    date: new Date().toISOString(),
+    read: false,
+    updatedAt: nowTimestamp(),
+  };
+
+  const updated = [alert, ...alerts];
+  await saveSystemAlerts(updated, userId);
+  return alert;
+}
