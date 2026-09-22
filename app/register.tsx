@@ -320,9 +320,14 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginBottom: 6,
         letterSpacing: 1,
-        textShadowColor: 'rgba(0, 0, 0, 0.4)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 10
+        ...Platform.select({
+            web: { textShadow: "0px 2px 10px rgba(0, 0, 0, 0.4)" },
+            default: {
+                textShadowColor: 'rgba(0, 0, 0, 0.4)',
+                textShadowOffset: { width: 0, height: 2 },
+                textShadowRadius: 10,
+            },
+        }),
     },
     tagline: {
         fontSize: 18,
@@ -330,19 +335,29 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginBottom: 28,
         fontWeight: '500',
-        textShadowColor: 'rgba(0, 0, 0, 0.2)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3
+        ...Platform.select({
+            web: { textShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)" },
+            default: {
+                textShadowColor: 'rgba(0, 0, 0, 0.2)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 3,
+            },
+        }),
     },
     card: {
         backgroundColor: '#fff',
         borderRadius: 24,
         padding: 8,
         elevation: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8
+        ...Platform.select({
+            web: { boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)' },
+            default: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+            },
+        }),
     },
     fieldLabel: {
         color: '#666',

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { View, Animated, ViewStyle } from "react-native";
+import { View, Animated, Platform, ViewStyle } from "react-native";
 import { useTheme } from "react-native-paper";
 
 interface SkeletonProps {
@@ -13,22 +13,24 @@ export const SkeletonLoader = ({ width = "100%", height = 20, borderRadius = 4, 
   const theme = useTheme();
   const opacity = useRef(new Animated.Value(0.3)).current;
 
+  const useNativeDriver = Platform.OS !== "web";
+
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, {
           toValue: 0.7,
           duration: 800,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
         Animated.timing(opacity, {
           toValue: 0.3,
           duration: 800,
-          useNativeDriver: true,
+          useNativeDriver,
         }),
       ])
     ).start();
-  }, [opacity]);
+  }, [opacity, useNativeDriver]);
 
   return (
     <Animated.View

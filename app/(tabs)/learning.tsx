@@ -311,13 +311,15 @@ const styles = StyleSheet.create({
     articleCard: {
         borderRadius: 16,
         elevation: 2,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
         width: "100%",
         ...Platform.select({
             web: { boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)" },
+            default: {
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 6,
+            },
         }),
     },
     articleRow: {

@@ -279,7 +279,6 @@ export default function Dashboard() {
               />
               {totalBadgeCount > 0 && (
                 <View
-                  pointerEvents="none"
                   style={{
                     position: "absolute",
                     top: 4,
@@ -290,6 +289,7 @@ export default function Dashboard() {
                     height: 18,
                     justifyContent: "center",
                     alignItems: "center",
+                    pointerEvents: "none",
                   }}
                 >
                   <Text style={{ color: "#fff", fontSize: 10, fontWeight: "700" }}>

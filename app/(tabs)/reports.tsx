@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { View, ScrollView, Dimensions, TouchableOpacity } from "react-native";
+import { View, ScrollView, Dimensions, Platform, TouchableOpacity } from "react-native";
 import { Appbar, Text, useTheme, Menu } from "react-native-paper";
 import { useFocusEffect } from "expo-router";
 import { useTransactions } from "../../hooks/useTransactions";
@@ -36,11 +36,16 @@ const PERIOD_LABELS: Record<Period, string> = {
 };
 
 const CARD_SHADOW = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.06,
-  shadowRadius: 4,
   elevation: 3,
+  ...Platform.select({
+    web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.06)" },
+    default: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+    },
+  }),
 };
 
 export default function ReportsScreen() {
@@ -194,7 +199,7 @@ export default function ReportsScreen() {
           anchor={
             <TouchableOpacity
               onPress={() => setMenuVisible(true)}
-              style={{ flexDirection: "row", alignItems: "center", marginRight: 8, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#CBD5E1", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2, elevation: 2 }}
+              style={{ flexDirection: "row", alignItems: "center", marginRight: 8, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#CBD5E1", elevation: 2, ...Platform.select({ web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.08)" }, default: { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2 } }) }}
             >
               <Text variant="labelLarge" style={{ fontWeight: "600", color: "#1E3A8A", marginRight: 4 }}>
                 {PERIOD_LABELS[period]}

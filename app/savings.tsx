@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import EmptyState from "../components/EmptyState";
-import { View, ScrollView, Alert, useWindowDimensions } from "react-native";
+import { View, ScrollView, Alert, Platform, useWindowDimensions } from "react-native";
 import { Appbar, Text, FAB, Portal, Modal, TextInput, Button, Card, IconButton, Snackbar, useTheme } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSavings } from "../hooks/useSavings";
@@ -14,11 +14,16 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import ConfirmDialog from "../components/ConfirmDialog";
 
 const CARD_SHADOW = {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
     elevation: 3,
+    ...Platform.select({
+        web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.06)" },
+        default: {
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 4,
+        },
+    }),
 };
 
 export default function SavingsScreen() {

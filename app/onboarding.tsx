@@ -160,17 +160,27 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         color: "#fff",
         letterSpacing: 1.5,
-        textShadowColor: 'rgba(0, 0, 0, 0.4)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 10
+        ...Platform.select({
+            web: { textShadow: "0px 2px 10px rgba(0, 0, 0, 0.4)" },
+            default: {
+                textShadowColor: 'rgba(0, 0, 0, 0.4)',
+                textShadowOffset: { width: 0, height: 2 },
+                textShadowRadius: 10,
+            },
+        }),
     },
     tagline: {
         fontSize: 14,
         color: "rgba(255,255,255,0.9)",
         marginTop: 4,
-        textShadowColor: 'rgba(0, 0, 0, 0.2)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3
+        ...Platform.select({
+            web: { textShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)" },
+            default: {
+                textShadowColor: 'rgba(0, 0, 0, 0.2)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 3,
+            },
+        }),
     },
     card: {
         backgroundColor: "#fff",

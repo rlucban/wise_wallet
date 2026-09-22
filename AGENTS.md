@@ -46,6 +46,20 @@
    (interaction matrix where applicable, decisions `DEC-*`, acceptance
    `ACC-*`) + `Deliverables` (numbered `D-*`) + `Glossary` + `References`.
    No normative change via reformat/polish alone.
+10. **Spec-first + TDD with cross-platform coverage.** Every future `specs/`
+    file MUST include a platform matrix (Android | iOS | Web) separating:
+    - **Objective** — deterministic, machine-checkable (`ACC-*`): return values,
+      copy strings, counts, timeouts/retries, zero-API-call gating,
+      `Platform.OS` branches.
+    - **Subjective** — human-judged UX stated as observable reviewer checks
+      (e.g. "reviewer confirms banner is non-blocking, neutral color, no
+      red-box in Expo Go"): still written as `ACC-*` with explicit pass/fail
+      observation steps.
+    TDD MUST cover both: `jest` tests parameterized by `Platform.OS`
+    (`android`/`ios`/`web` via mock) for logic branches, plus user-run manual
+    checks in Expo Go and `expo export --platform web` for native/UI paths
+    that jest cannot prove. No platform-only behavior without a `CON-*` +
+    `ACC-*` + `D-*`. This extends `SPEC-04 CON-07`.
 
 ---
 
@@ -176,6 +190,14 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   useDues, CategoriesContext counts overwritten records (remote updatedAt
   > local) and shows transient Snackbar. New context/ToastContext.tsx.
   Lint clean.
+- **2026-09-22 — Standing rule §1.10 (FINAL).** Spec-first + TDD with
+  cross-platform coverage: future `specs/` MUST include Android|iOS|Web
+  matrix split Objective (machine-checkable `ACC-*`) vs Subjective
+  (observable reviewer checks); TDD covers both via `jest` parameterized
+  by `Platform.OS` plus user-run Expo Go + web export checks.
+- **2026-09-22 — Spec 06 implemented (FINAL).** `specs/06-web-warning-cleanup.md`:
+  shadow/boxShadow, textShadow, `useNativeDriver`, `pointerEvents` web WARN
+  cleanup with native parity. See `docs/savepoint.md`.
 
 ---
 
