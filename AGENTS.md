@@ -214,6 +214,18 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 - **2026-09-23 — Transaction details text node fix.** `app/transaction-details.tsx`:
   changed `&&` conditional patterns to ternary `? : null` inside Card.Content
   to prevent empty-string text nodes inside `<View>`. Lint clean.
+- **2026-09-23 — Spec 10 FINAL + implemented.** `specs/10-negative-balance-alert-recovery.md`:
+  negative-balance alert auto-resolves. D-01 `checkAndTriggerNegativeBalanceAlert`
+  returns `BalanceAlertEvaluation` — balance ≥ ₱0 deletes unread Negative
+  Balance Alerts; improvement-while-negative updates the existing alert's
+  amount/message in place (no duplicate); unchanged = no-op; worse or
+  re-trigger = new unread alert (OS push only on create) (`utils/notifications.ts`);
+  D-02 `SystemAlertsContext.checkNegativeBalance` refreshes on any mutation
+  (`context/SystemAlertsContext.tsx`); D-03 evaluator runs unconditionally,
+  removed the `balance < 0` gate (`context/TransactionsContext.tsx`); D-04
+  `utils/notifications.test.ts` ACC-01..08 across android/ios/web
+  (jest parameterized by `Platform.OS`); AsyncStorage jest mock typed
+  (strict-clean implicit-any params). See `docs/savepoint.md`.
 
 ---
 
