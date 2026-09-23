@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { View, ScrollView, Alert } from "react-native";
-import { TextInput, Button, Text, useTheme, Appbar, Card, Chip, SegmentedButtons, Checkbox } from "react-native-paper";
+import { TextInput, Button, Text, useTheme, Appbar, Card, Chip, SegmentedButtons, Checkbox, Portal, Modal } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { Calendar } from "react-native-calendars";
 import { useDues } from "../hooks/useDues";
 import { useCategoriesData } from "../context/CategoriesContext";
 import { DueFrequency } from "../types";
@@ -17,13 +18,14 @@ export default function AddDue() {
 
     const [title, setTitle] = useState("");
     const [amount, setAmount] = useState("");
-    const [date, _setDate] = useState(new Date());
+    const [date, setDate] = useState(new Date());
     const [type, setType] = useState<"expense" | "income">("expense");
     const [frequency, setFrequency] = useState<DueFrequency>("once");
     const [autoProcess, setAutoProcess] = useState(false);
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(undefined);
     const [customCategory, setCustomCategory] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
     const categoryOptions = useMemo(() => ensureOthersOption(categories, type), [categories, type]);
     const othersCategory = useMemo(() => categoryOptions.find((c) => c.name === "Others"), [categoryOptions]);
@@ -128,7 +130,7 @@ export default function AddDue() {
                         value={date.toLocaleDateString()}
                         mode="outlined"
                         editable={false}
-                        right={<TextInput.Icon icon="calendar" onPress={() => {}} />}
+                        right={<TextInput.Icon icon="calendar" onPress={() => setShowDatePicker(true)} />}
                         style={{ marginBottom: 8 }}
                     />
 
@@ -177,6 +179,52 @@ export default function AddDue() {
 
                 <View style={{ height: 40 }} />
             </ScrollView>
+
+            <Portal>
+                <Modal
+                    visible={showDatePicker}
+                    onDismiss={() => setShowDatePicker(false)}
+                    contentContainerStyle={{
+                        backgroundColor: "transparent",
+                        justifyContent: "center",
+                        alignItems: "center",
+                    }}
+                >
+                    <Card style={{ width: "90%", borderRadius: 24, padding: 16, elevation: 10 }}>
+                        <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700", textAlign: "center" }}>
+                            Select Due Date
+                        </Text>
+                        <Calendar
+                            current={date.toISOString().split("T")[0]}
+                            onDayPress={(day) => {
+                                setDate(new Date(day.timestamp));
+                                setShowDatePicker(false);
+                            }}
+                            markedDates={{
+                                [date.toISOString().split("T")[0]]: { selected: true, selectedColor: theme.colors.primary },
+                            }}
+                            theme={{
+                                backgroundColor: theme.colors.surface,
+                                calendarBackground: theme.colors.surface,
+                                textSectionTitleColor: theme.colors.primary,
+                                selectedDayBackgroundColor: theme.colors.primary,
+                                selectedDayTextColor: "#ffffff",
+                                todayTextColor: theme.colors.primary,
+                                dayTextColor: theme.colors.onSurface,
+                                textDisabledColor: theme.colors.surfaceVariant,
+                                dotColor: theme.colors.primary,
+                                selectedDotColor: "#ffffff",
+                                arrowColor: theme.colors.primary,
+                                disabledArrowColor: theme.colors.surfaceVariant,
+                                monthTextColor: theme.colors.onSurface,
+                            }}
+                        />
+                        <Button mode="outlined" onPress={() => setShowDatePicker(false)} style={{ marginTop: 12 }}>
+                            Cancel
+                        </Button>
+                    </Card>
+                </Modal>
+            </Portal>
         </View>
     );
 }

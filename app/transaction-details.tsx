@@ -82,7 +82,7 @@ export default function TransactionDetails() {
             </View>
             <Divider style={{ marginVertical: 8 }} />
 
-            {transaction.establishment && (
+            {transaction.establishment ? (
               <>
                 <View style={{ marginBottom: 12 }}>
                   <Text variant="labelSmall" style={{ color: "gray" }}>Establishment / Location</Text>
@@ -90,9 +90,9 @@ export default function TransactionDetails() {
                 </View>
                 <Divider style={{ marginVertical: 8 }} />
               </>
-            )}
+            ) : null}
 
-            {transaction.splitInfo && (
+            {transaction.splitInfo ? (
               <>
                 <View style={{ marginBottom: 12 }}>
                   <Text variant="labelSmall" style={{ color: "gray" }}>Split Bill</Text>
@@ -100,24 +100,24 @@ export default function TransactionDetails() {
                   <Text variant="bodyMedium" style={{ color: theme.colors.primary, fontWeight: "bold" }}>
                     {formatAmount(transaction.splitInfo.amountPerPerson)} each
                   </Text>
-                  {transaction.splitInfo.notes && (
+                  {transaction.splitInfo.notes ? (
                     <Text variant="bodySmall" style={{ marginTop: 4, fontStyle: "italic" }}>
                       Notes: {transaction.splitInfo.notes}
                     </Text>
-                  )}
+                  ) : null}
                 </View>
                 <Divider style={{ marginVertical: 8 }} />
               </>
-            )}
+            ) : null}
 
-            {transaction.note && (
+            {transaction.note ? (
               <View style={{ marginBottom: 12 }}>
                 <Text variant="labelSmall" style={{ color: "gray" }}>Note</Text>
                 <Text variant="bodyLarge">
                   {transaction.note.replace(/\s*\[Split Bill\].*$/s, "").trim()}
                 </Text>
               </View>
-            )}
+            ) : null}
           </Card.Content>
         </Card>
 
