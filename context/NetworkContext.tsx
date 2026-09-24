@@ -33,9 +33,11 @@ let inFlight: Promise<HealthResult> | null = null;
 
 async function fetchHealth(): Promise<HealthResult> {
   if (!API_URL) {
+    console.warn("[Network] No API_URL configured");
     return { online: false, data: null };
   }
 
+  console.info("[Network] Checking health at:", `${API_URL}${PING_ENDPOINT}`);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), PING_TIMEOUT);
 
@@ -62,9 +64,11 @@ async function fetchHealth(): Promise<HealthResult> {
       response.status === 404 ||
       response.status === 405;
 
+    console.info("[Network] Health check result:", { online, status: response.status, data });
     return { online, data };
-  } catch {
+  } catch (e) {
     clearTimeout(timeoutId);
+    console.warn("[Network] Health check failed:", (e as Error).message);
     return { online: false, data: null };
   }
 }
@@ -114,11 +118,15 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       let online: boolean;
 
       if (isLocal) {
+        console.info("[Network] Local account - using device connectivity");
         online = getDeviceOnline();
       } else {
+        console.info("[Network] Cloud account - checking health");
         const result = await checkHealth();
         online = result.online;
       }
+
+      console.info("[Network] Connectivity check result:", { online, isLocal });
 
       const wasPreviouslyOffline = !isOnlineRef.current;
 
