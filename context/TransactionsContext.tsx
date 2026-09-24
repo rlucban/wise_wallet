@@ -154,9 +154,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             .reduce((sum, t) => sum + Number(t.amount || 0), 0);
         const balance = initialBalance + income - expense;
 
-        if (balance < 0) {
-            checkNegativeBalance(balance);
-        }
+        checkNegativeBalance(balance);
     }, [activeUserId, profile, transactions, loading, checkNegativeBalance]);
 
     const addTransaction = useCallback(async (transaction: Omit<Transaction, "id">) => {

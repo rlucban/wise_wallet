@@ -225,58 +225,89 @@ export async function clearAllAlerts(userId?: string): Promise<void> {
   await setItem(key, []);
 }
 
+export type BalanceAlertEvaluation =
+  | { action: "created" }
+  | { action: "updated" }
+  | { action: "deleted" }
+  | { action: "none" };
+
+const NEGATIVE_BALANCE_ALERT_TITLE = "Negative Balance Alert ⚠️";
+
+function buildNegativeBalanceMessage(
+  currentBalance: number,
+  formatAmount: (val: number) => string
+): string {
+  return `Your available balance has dropped below ₱0.00 (Current: ${formatAmount(currentBalance)}). Please review your expenses or add income to rebalance.`;
+}
+
+async function scheduleNegativeBalancePush(alert: SystemAlert): Promise<void> {
+  if (Platform.OS === "web" || isExpoGo()) return;
+  const Notifications = loadNotifications();
+  if (!Notifications) return;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: alert.title,
+        body: alert.message,
+        data: { screen: "notifications" },
+        ...(Platform.OS === "android" && { channelId: ANDROID_CHANNEL_ID }),
+      },
+      trigger: null,
+    });
+  } catch (e) {
+    console.warn("Failed to trigger local notification:", e);
+  }
+}
+
 export async function checkAndTriggerNegativeBalanceAlert(
   currentBalance: number,
   formatAmount: (val: number) => string,
   userId?: string
-): Promise<SystemAlert | null> {
-  if (currentBalance >= 0) return null;
-
+): Promise<BalanceAlertEvaluation> {
   const alerts = await getSystemAlerts(userId);
   const negativeAlerts = alerts.filter((a) => a.title.includes("Negative Balance Alert"));
+  const latestAlert = [...negativeAlerts].sort((a, b) => b.updatedAt - a.updatedAt)[0];
 
-  if (negativeAlerts.length > 0) {
-    const latestAlert = [...negativeAlerts].sort((a, b) => b.updatedAt - a.updatedAt)[0];
-    if (latestAlert.balanceAtTrigger !== undefined && currentBalance >= latestAlert.balanceAtTrigger && !latestAlert.read) {
-      return null;
+  if (currentBalance >= 0) {
+    const unread = negativeAlerts.filter((a) => !a.read);
+    if (unread.length === 0) return { action: "none" };
+    const unreadIds = new Set(unread.map((a) => a.id));
+    const remaining = alerts.filter((a) => !unreadIds.has(a.id));
+    await saveSystemAlerts(remaining, userId);
+    return { action: "deleted" };
+  }
+
+  if (latestAlert && !latestAlert.read && latestAlert.balanceAtTrigger !== undefined) {
+    if (currentBalance > latestAlert.balanceAtTrigger) {
+      const updatedAlert: SystemAlert = {
+        ...latestAlert,
+        balanceAtTrigger: currentBalance,
+        message: buildNegativeBalanceMessage(currentBalance, formatAmount),
+        updatedAt: nowTimestamp(),
+      };
+      const remaining = alerts.map((a) => (a.id === latestAlert.id ? updatedAlert : a));
+      await saveSystemAlerts(remaining, userId);
+      return { action: "updated" };
+    }
+    if (currentBalance === latestAlert.balanceAtTrigger) {
+      return { action: "none" };
     }
   }
 
-  const formattedCurrent = formatAmount(currentBalance);
   const newAlert: SystemAlert = {
     id: generateUUID(),
     type: "Budget Alert",
-    title: "Negative Balance Alert ⚠️",
-    message: `Your available balance has dropped below ₱0.00 (Current: ${formattedCurrent}). Please review your expenses or add income to rebalance.`,
+    title: NEGATIVE_BALANCE_ALERT_TITLE,
+    message: buildNegativeBalanceMessage(currentBalance, formatAmount),
     date: new Date().toISOString(),
     read: false,
     balanceAtTrigger: currentBalance,
     updatedAt: nowTimestamp(),
   };
 
-  const updatedAlerts = [newAlert, ...alerts];
-  await saveSystemAlerts(updatedAlerts, userId);
-
-  if (Platform.OS !== "web" && !isExpoGo()) {
-    const Notifications = loadNotifications();
-    if (Notifications) {
-      try {
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: newAlert.title,
-            body: newAlert.message,
-            data: { screen: "notifications" },
-            ...(Platform.OS === "android" && { channelId: ANDROID_CHANNEL_ID }),
-          },
-          trigger: null,
-        });
-      } catch (e) {
-        console.warn("Failed to trigger local notification:", e);
-      }
-    }
-  }
-
-  return newAlert;
+  await saveSystemAlerts([newAlert, ...alerts], userId);
+  await scheduleNegativeBalancePush(newAlert);
+  return { action: "created" };
 }
 
 export async function createSessionEndedAlert(userId?: string): Promise<SystemAlert | null> {

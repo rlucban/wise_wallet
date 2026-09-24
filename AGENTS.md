@@ -201,6 +201,35 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 - **2026-09-22 — Spec 04 v1.4 implemented (FINAL).** Web online-only creation:
   register/login offer no new Offline accounts on web; existing web locals
   keep login + Make Online. Android/iOS unchanged.
+- **2026-09-23 — Spec 07 implemented (FINAL).** `specs/07-completed-due-locking-and-auto-progression.md`:
+  D-01 completed dues locked (no edit/delete/undo buttons); D-02
+  `recordTransaction()` gates next-occurrence creation on `autoProcess === true`;
+  D-03 help screen copy updated. Lint clean.
+- **2026-09-23 — Spec 08 implemented (FINAL).** `specs/08-enable-date-selection-on-add-due.md`:
+  D-01 Add Due screen now has a working `Calendar` date picker (was no-op);
+  users can select any date when creating a scheduled due. Lint clean.
+- **2026-09-23 — Spec 09 implemented (FINAL).** `specs/09-fix-default-category-for-scheduled-due-transactions.md`:
+  D-01 `recordTransaction()` fallback category changed from silent "Food"
+  default to synthetic "Add Scheduled" label. Lint clean.
+- **2026-09-23 — Transaction details text node fix.** `app/transaction-details.tsx`:
+  changed `&&` conditional patterns to ternary `? : null` inside Card.Content
+  to prevent empty-string text nodes inside `<View>`. Lint clean.
+- **2026-09-23 — Spec 10 FINAL + implemented.** `specs/10-negative-balance-alert-recovery.md`:
+  negative-balance alert auto-resolves. D-01 `checkAndTriggerNegativeBalanceAlert`
+  returns `BalanceAlertEvaluation` — balance ≥ ₱0 deletes unread Negative
+  Balance Alerts; improvement-while-negative updates the existing alert's
+  amount/message in place (no duplicate); unchanged = no-op; worse or
+  re-trigger = new unread alert (OS push only on create) (`utils/notifications.ts`);
+  D-02 `SystemAlertsContext.checkNegativeBalance` refreshes on any mutation
+  (`context/SystemAlertsContext.tsx`); D-03 evaluator runs unconditionally,
+  removed the `balance < 0` gate (`context/TransactionsContext.tsx`); D-04
+  `utils/notifications.test.ts` ACC-01..08 across android/ios/web
+  (jest parameterized by `Platform.OS`); AsyncStorage jest mock typed
+  (strict-clean implicit-any params). See `docs/savepoint.md`.
+- **2026-09-24 — Spec 07 implemented (FINAL).** `specs/07-ci-tsc-exclusion.md`:
+  app `tsc` excludes Jest-only files (`*.test.ts`, `*.spec.ts`, `__mocks__/**`);
+  `tsconfig.test.json` covers `__mocks__`; mock annotations only, logic
+  unchanged. No new deps, zero runtime change. See `docs/savepoint.md`.
 
 ---
 

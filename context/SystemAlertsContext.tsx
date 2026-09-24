@@ -10,6 +10,7 @@ import {
   checkAndTriggerNegativeBalanceAlert,
   createSessionEndedAlert,
 } from "../utils/notifications";
+import type { BalanceAlertEvaluation } from "../utils/notifications";
 
 interface SystemAlertsContextType {
   alerts: SystemAlert[];
@@ -19,7 +20,7 @@ interface SystemAlertsContextType {
   markAsRead: (alertId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   clearAlerts: () => Promise<void>;
-  checkNegativeBalance: (balance: number) => Promise<SystemAlert | null>;
+  checkNegativeBalance: (balance: number) => Promise<BalanceAlertEvaluation>;
   addSessionAlert: (userId: string) => Promise<void>;
 }
 
@@ -70,13 +71,13 @@ export function SystemAlertsProvider({ children }: { children: ReactNode }) {
   }, [activeUserId]);
 
   const checkNegativeBalance = useCallback(
-    async (balance: number) => {
-      if (!activeUserId) return null;
-      const createdAlert = await checkAndTriggerNegativeBalanceAlert(balance, formatAmount, activeUserId);
-      if (createdAlert) {
+    async (balance: number): Promise<BalanceAlertEvaluation> => {
+      if (!activeUserId) return { action: "none" };
+      const evaluation = await checkAndTriggerNegativeBalanceAlert(balance, formatAmount, activeUserId);
+      if (evaluation.action !== "none") {
         await fetchAlerts();
       }
-      return createdAlert;
+      return evaluation;
     },
     [activeUserId, formatAmount, fetchAlerts]
   );
