@@ -9,6 +9,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["jest", "node"]
   },
-  "include": ["**/*.test.ts", "jest.setup.js"],
+  "include": ["**/*.test.ts", "__mocks__/**/*.ts", "jest.setup.js"],
   "exclude": ["node_modules"]
 }

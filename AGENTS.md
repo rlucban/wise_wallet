@@ -214,6 +214,10 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 - **2026-09-23 — Transaction details text node fix.** `app/transaction-details.tsx`:
   changed `&&` conditional patterns to ternary `? : null` inside Card.Content
   to prevent empty-string text nodes inside `<View>`. Lint clean.
+- **2026-09-24 — Spec 07 implemented (FINAL).** `specs/07-ci-tsc-exclusion.md`:
+  app `tsc` excludes Jest-only files (`*.test.ts`, `*.spec.ts`, `__mocks__/**`);
+  `tsconfig.test.json` covers `__mocks__`; mock annotations only, logic
+  unchanged. No new deps, zero runtime change. See `docs/savepoint.md`.
 
 ---
 
