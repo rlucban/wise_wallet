@@ -101,4 +101,14 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-04 — Jest tests** (`utils/notifications.test.ts`): ACC-01..08 covering delete-on-recovery, no-op, read-history preservation, in-place update, unchanged no-op, worse→create, re-trigger, and push-on-create-only — parameterized over `Platform.OS` (`android`/`ios`/`web`).
 - **Test infra fix:** typed the implicit-any params in `__mocks__/@react-native-async-storage/async-storage.ts` (TS7006, strict) since `utils/notifications.test.ts` was the first test to import the AsyncStorage mock through ts-jest.
 
+## 2026-09-24 Updates — Spec 11 Implemented (Form Label Separation & Read-Only Field Caret Cleanup)
+
+`specs/11-form-label-caret-and-readonly-fields.md` (FINAL per user call 2026-09-24). Labels no longer live inside focusable inputs; read-only Date/Due Date fields never show a caret; PIN fields outlined.
+
+- **D-01 — Shared helpers + TDD** (`utils/formInput.ts`, `utils/formInput.test.ts`): `fieldLabel` style constant (normative §1.3 values) and `readOnlyInputProps()` (`editable: false` + `caretHidden: true`; web adds `tabIndex: -1`). Jest tests ACC-01..03 parameterized by `Platform.OS` (`android`/`ios`/`web`), including a source audit that fails if any `TextInput` on the 10 migration screens carries a `label` prop (SegmentedButtons/Chip/FAB/Checkbox labels exempt per CON-01).
+- **D-02 — Label migration** (CON-01/DEC-01): all Paper `label` props removed from form `TextInput`s on `add-transaction`, `edit-transaction`, `add-due`, `dues`, `add-allocation`, `savings`, `onboarding`, `category-settings`, `payment-methods`, and `(tabs)/settings`; replaced with standalone `<Text style={fieldLabel}>` above each input (login/register pattern). Conditional "Specify Category" fields wrapped in fragments. `login.tsx`/`register.tsx` repointed to the shared style (CON-05 SHOULD).
+- **D-03 — Read-only Date fields** (CON-02/DEC-02a): the four Date/Due Date fields (`add-transaction`, `edit-transaction`, `add-due`, `dues`) now spread `readOnlyInputProps()` — no caret, not tab-focusable on web; calendar icon `onPress` preserved.
+- **D-04 — PIN fields outlined** (CON-04/DEC-03): the four Settings PIN inputs (Current PIN ×2, PIN, New PIN) now pass `mode="outlined"`; all seven Settings auth-field labels migrated.
+- **D-06 — Pending user-run verification:** `npm test`, `npm run lint`, `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`; manual ACC-04..06 in Expo Go (Android + iOS) and `expo export --platform web`.
+
 

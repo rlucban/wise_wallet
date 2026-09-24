@@ -9,6 +9,7 @@ import { DueFrequency } from "../types";
 import { formatNumberInput, parseAmount } from "../utils/amount";
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
 import { ensureOthersOption } from "../utils/categoryOptions";
+import { fieldLabel, readOnlyInputProps } from "../utils/formInput";
 
 export default function AddDue() {
     const router = useRouter();
@@ -113,10 +114,11 @@ export default function AddDue() {
                         <Checkbox status={autoProcess ? "checked" : "unchecked"} onPress={() => setAutoProcess(!autoProcess)} />
                     </View>
 
-                    <TextInput label="Title" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
+                    <Text style={fieldLabel}>Title</Text>
+                    <TextInput value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
 
+                    <Text style={fieldLabel}>Amount</Text>
                     <TextInput
-                        label="Amount"
                         value={amount}
                         onChangeText={(t) => setAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
                         keyboardType="numeric"
@@ -125,11 +127,11 @@ export default function AddDue() {
                         left={<TextInput.Affix text="₱" />}
                     />
 
+                    <Text style={fieldLabel}>Due Date</Text>
                     <TextInput
-                        label="Due Date"
                         value={date.toLocaleDateString()}
                         mode="outlined"
-                        editable={false}
+                        {...readOnlyInputProps()}
                         right={<TextInput.Icon icon="calendar" onPress={() => setShowDatePicker(true)} />}
                         style={{ marginBottom: 8 }}
                     />
@@ -153,14 +155,16 @@ export default function AddDue() {
                         ))}
                     </View>
                     {isOthersSelected && (
-                        <TextInput
-                            label="Specify Category"
-                            value={customCategory}
-                            onChangeText={setCustomCategory}
-                            mode="outlined"
-                            placeholder="e.g., Pet Care, Gym, Gifts"
-                            style={{ marginBottom: 16 }}
-                        />
+                        <>
+                            <Text style={fieldLabel}>Specify Category</Text>
+                            <TextInput
+                                value={customCategory}
+                                onChangeText={setCustomCategory}
+                                mode="outlined"
+                                placeholder="e.g., Pet Care, Gym, Gifts"
+                                style={{ marginBottom: 16 }}
+                            />
+                        </>
                     )}
                 </Card>
 

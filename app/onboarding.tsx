@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { useUserProfileActions } from "../context/UserProfileContext";
 import { useTransactionsActions } from "../context/TransactionsContext";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { fieldLabel } from "../utils/formInput";
 
 export default function OnboardingScreen() {
     const router = useRouter();
@@ -83,8 +84,8 @@ export default function OnboardingScreen() {
                         </Text>
 
                         {/* Name Field */}
+                        <Text style={fieldLabel}>Your Name</Text>
                         <TextInput
-                            label="Your Name"
                             value={name}
                             onChangeText={setName}
                             mode="outlined"
@@ -100,8 +101,8 @@ export default function OnboardingScreen() {
                         </HelperText>
 
                         {/* Initial Balance Field */}
+                        <Text style={fieldLabel}>Initial Balance</Text>
                         <TextInput
-                            label="Initial Balance"
                             value={balance}
                             onChangeText={(t) => setBalance(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
                             mode="outlined"

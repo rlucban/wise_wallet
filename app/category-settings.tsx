@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { View, ScrollView } from "react-native";
-import { Appbar, List, IconButton, FAB, Portal, Modal, TextInput, Button, SegmentedButtons, useTheme, Card } from "react-native-paper";
+import { Appbar, List, IconButton, FAB, Portal, Modal, TextInput, Button, SegmentedButtons, useTheme, Card, Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { useCategoriesData, useCategoriesActions } from "../context/CategoriesContext";
 import { TransactionType, Category } from "../types";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { fieldLabel } from "../utils/formInput";
 
 export default function CategorySettings() {
   const router = useRouter();
@@ -89,8 +90,8 @@ export default function CategorySettings() {
               onPress={handleClose}
             />
           </View>
+          <Text style={fieldLabel}>Category Name</Text>
           <TextInput
-            label="Category Name"
             value={newCatName}
             onChangeText={setNewCatName}
             mode="outlined"

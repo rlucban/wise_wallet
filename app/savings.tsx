@@ -9,6 +9,7 @@ import { useTransactions, useTransactionsActions } from "../hooks/useTransaction
 import { useCategoriesData } from "../context/CategoriesContext";
 import { GLOBAL_CATEGORIES } from "../utils/db";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { fieldLabel } from "../utils/formInput";
 import { useUserProfile } from "../context/UserProfileContext";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -484,8 +485,10 @@ export default function SavingsScreen() {
                 <Modal visible={editModalVisible} onDismiss={() => setEditModalVisible(false)} contentContainerStyle={modalContainerStyle}>
                     <ScrollView keyboardShouldPersistTaps="handled">
                     <Text variant="titleLarge" style={{ marginBottom: 16, color: "#1E293B" }}>Edit Allocation</Text>
-                    <TextInput label="Name" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
-                    <TextInput label="Goal Amount (Optional)" value={goalAmount} onChangeText={(t) => setGoalAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} placeholder="e.g. 10,000" />
+                    <Text style={fieldLabel}>Name</Text>
+                    <TextInput value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
+                    <Text style={fieldLabel}>Goal Amount (Optional)</Text>
+                    <TextInput value={goalAmount} onChangeText={(t) => setGoalAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} placeholder="e.g. 10,000" />
                     <Button mode="contained" onPress={handleEditItem} buttonColor="#1E3A8A">Save Changes</Button>
                     </ScrollView>
                 </Modal>
@@ -503,8 +506,8 @@ export default function SavingsScreen() {
                             Remaining Goal: {formatAmount(Math.max(0, transferInItem.target_amount - transferInItem.balance))}
                         </Text>
                     ) : null}
+                    <Text style={fieldLabel}>Amount</Text>
                     <TextInput
-                        label="Amount"
                         value={transferAmount}
                         onChangeText={(t) => setTransferAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
                         keyboardType="numeric"
@@ -533,8 +536,8 @@ export default function SavingsScreen() {
                     <Text variant="bodySmall" style={{ color: "#64748B", marginBottom: 12 }}>
                         Available balance: {formatAmount(selectedItem?.balance || 0)}
                     </Text>
+                    <Text style={fieldLabel}>Amount</Text>
                     <TextInput
-                        label="Amount"
                         value={transferAmount}
                         onChangeText={(t) => setTransferAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
                         keyboardType="numeric"

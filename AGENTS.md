@@ -230,7 +230,16 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   app `tsc` excludes Jest-only files (`*.test.ts`, `*.spec.ts`, `__mocks__/**`);
   `tsconfig.test.json` covers `__mocks__`; mock annotations only, logic
   unchanged. No new deps, zero runtime change. See `docs/savepoint.md`.
-
+- **2026-09-24 — Spec 11 implemented (FINAL).** `specs/11-form-label-caret-and-readonly-fields.md`:
+  D-01 `utils/formInput.ts` (`fieldLabel` shared style + `readOnlyInputProps()`)
+  + `utils/formInput.test.ts` (ACC-01..03, jest parameterized by `Platform.OS`);
+  D-02 form labels migrated to standalone `<Text style={fieldLabel}>` above
+  inputs on 10 screens (Paper `label` prop removed; login/register repointed to
+  shared style); D-03 four Date/Due Date fields spread `readOnlyInputProps()`
+  (no caret, web `tabIndex: -1`, calendar icon intact); D-04 Settings PIN
+  fields `mode="outlined"`. Pending user-run: `npm test`, `npm run lint`,
+  `npx tsc --noEmit`, Expo Go + web export manual checks (ACC-04..06).
+  See `docs/savepoint.md`.
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

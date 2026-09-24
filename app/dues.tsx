@@ -16,6 +16,7 @@ import { scheduleDueNotifications } from "../utils/notifications";
 import { getTimeOfMonthTip, getRecurringProjectionMessage, isOverdue } from "../utils/financialLiteracy";
 import { ensureOthersOption } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { fieldLabel, readOnlyInputProps } from "../utils/formInput";
 
 const FREQUENCY_LABELS: Record<DueFrequency, string> = {
   once: "Once",
@@ -504,14 +505,16 @@ export default function DuesScreen() {
             <Checkbox status={autoProcess ? "checked" : "unchecked"} onPress={() => setAutoProcess(!autoProcess)} />
           </View>
 
-          <TextInput label="Title" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
-          <TextInput label="Amount" value={amount} onChangeText={(t) => setAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} left={<TextInput.Affix text="₱" />} />
+          <Text style={fieldLabel}>Title</Text>
+          <TextInput value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
+          <Text style={fieldLabel}>Amount</Text>
+          <TextInput value={amount} onChangeText={(t) => setAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} left={<TextInput.Affix text="₱" />} />
 
+           <Text style={fieldLabel}>Date</Text>
            <TextInput
-             label="Date"
              value={date.toLocaleDateString()}
              mode="outlined"
-             editable={false}
+             {...readOnlyInputProps()}
              right={<TextInput.Icon icon="calendar" onPress={() => setShowDatePicker(true)} />}
              style={{ marginBottom: 8 }}
            />
@@ -535,14 +538,16 @@ export default function DuesScreen() {
             ))}
           </View>
           {isOthersSelected && (
-            <TextInput
-              label="Specify Category"
-              value={customCategory}
-              onChangeText={setCustomCategory}
-              mode="outlined"
-              placeholder="e.g., Pet Care, Gym, Gifts"
-              style={{ marginBottom: 16 }}
-            />
+            <>
+              <Text style={fieldLabel}>Specify Category</Text>
+              <TextInput
+                value={customCategory}
+                onChangeText={setCustomCategory}
+                mode="outlined"
+                placeholder="e.g., Pet Care, Gym, Gifts"
+                style={{ marginBottom: 16 }}
+              />
+            </>
           )}
 
           <Button mode="contained" onPress={handleSubmit} disabled={!title || !amount}>Save Changes</Button>

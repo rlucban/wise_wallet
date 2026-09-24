@@ -4,6 +4,7 @@ import { Appbar, FAB, Portal, Modal, TextInput, Button, Text, useTheme, Card, Ic
 import { useRouter } from "expo-router";
 import { authFetch } from "../utils/apiClient";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { fieldLabel } from "../utils/formInput";
 
 interface PaymentMethod {
     id: string;
@@ -112,8 +113,8 @@ export default function PaymentMethodsScreen() {
             <Portal>
                 <Modal visible={visible} onDismiss={() => setVisible(false)} contentContainerStyle={styles.modal}>
                     <Text variant="headlineSmall" style={styles.modalTitle}>Add Payment Method</Text>
+                    <Text style={fieldLabel}>Name (e.g. GCash, BPI, My Visa)</Text>
                     <TextInput
-                        label="Name (e.g. GCash, BPI, My Visa)"
                         value={name}
                         onChangeText={setName}
                         mode="outlined"

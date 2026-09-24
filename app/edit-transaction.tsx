@@ -10,6 +10,7 @@ import { TransactionType, PaymentMethod, Category } from "../types";
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
 import { ensureOthersOption, isOthersCategory } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { fieldLabel, readOnlyInputProps } from "../utils/formInput";
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: "1", name: "Food", type: "expense", updatedAt: 0 },
@@ -185,8 +186,8 @@ export default function EditTransaction() {
           style={{ marginBottom: 16 }}
         />
 
+        <Text style={fieldLabel}>Amount</Text>
         <TextInput
-          label="Amount"
           value={amount}
           onChangeText={(t) => setAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
           keyboardType="numeric"
@@ -195,11 +196,11 @@ export default function EditTransaction() {
           style={{ marginBottom: 16 }}
         />
 
+        <Text style={fieldLabel}>Date</Text>
         <TextInput
-          label="Date"
           value={date.toLocaleDateString()}
           mode="outlined"
-          editable={false}
+          {...readOnlyInputProps()}
           right={<TextInput.Icon icon="calendar" onPress={() => setShowCalendar(true)} />}
           style={{ marginBottom: 8 }}
         />
@@ -225,18 +226,20 @@ export default function EditTransaction() {
             ))}
         </View>
         {isOthersCategory(selectedCategory) && (
-          <TextInput
-            label="Specify Category"
-            value={customCategory}
-            onChangeText={setCustomCategory}
-            mode="outlined"
-            placeholder="e.g., Pet Care, Gym, Gifts"
-            style={{ marginBottom: 16 }}
-          />
+          <>
+            <Text style={fieldLabel}>Specify Category</Text>
+            <TextInput
+              value={customCategory}
+              onChangeText={setCustomCategory}
+              mode="outlined"
+              placeholder="e.g., Pet Care, Gym, Gifts"
+              style={{ marginBottom: 16 }}
+            />
+          </>
         )}
 
+        <Text style={fieldLabel}>Establishment / Location</Text>
         <TextInput
-          label="Establishment / Location"
           value={establishment}
           onChangeText={setEstablishment}
           mode="outlined"
@@ -260,8 +263,8 @@ export default function EditTransaction() {
           ))}
         </View>
 
+        <Text style={fieldLabel}>Note (Optional)</Text>
         <TextInput
-          label="Note (Optional)"
           value={note}
           onChangeText={setNote}
           mode="outlined"

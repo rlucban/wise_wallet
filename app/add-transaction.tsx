@@ -25,6 +25,7 @@ import { useCategoriesData } from "../context/CategoriesContext";
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
 import { ensureOthersOption, isOthersCategory } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { fieldLabel, readOnlyInputProps } from "../utils/formInput";
 
 export default function AddTransaction() {
   const router = useRouter();
@@ -200,8 +201,8 @@ export default function AddTransaction() {
           style={{ marginBottom: 16 }}
         />
 
+        <Text style={fieldLabel}>Amount</Text>
         <TextInput
-          label="Amount"
           value={amount}
           onChangeText={(val) => {
             const truncated = val.length > 12 ? val.slice(0, 12) : val;
@@ -218,11 +219,11 @@ export default function AddTransaction() {
           {errors.amount}
         </HelperText>
 
+        <Text style={fieldLabel}>Date</Text>
         <TextInput
-          label="Date"
           value={date.toLocaleDateString()}
           mode="outlined"
-          editable={false}
+          {...readOnlyInputProps()}
           right={<TextInput.Icon icon="calendar" onPress={() => setShowCalendar(true)} />}
           style={{ marginBottom: 8 }}
         />
@@ -248,21 +249,23 @@ export default function AddTransaction() {
             ))}
          </View>
          {isOthersCategory(selectedCategory) && (
-           <TextInput
-             label="Specify Category"
-             value={customCategory}
-             onChangeText={(t) => { setCustomCategory(t); clearError("category"); }}
-             mode="outlined"
-             placeholder="e.g., Pet Care, Gym, Gifts"
-             style={{ marginBottom: 8 }}
-           />
+           <>
+             <Text style={fieldLabel}>Specify Category</Text>
+             <TextInput
+               value={customCategory}
+               onChangeText={(t) => { setCustomCategory(t); clearError("category"); }}
+               mode="outlined"
+               placeholder="e.g., Pet Care, Gym, Gifts"
+               style={{ marginBottom: 8 }}
+             />
+           </>
          )}
          <HelperText type="error" visible={!!errors.category} style={{ marginBottom: 8 }}>
            {errors.category}
          </HelperText>
 
+         <Text style={fieldLabel}>Establishment / Location</Text>
          <TextInput
-          label="Establishment / Location"
           value={establishment}
           onChangeText={setEstablishment}
           mode="outlined"
@@ -323,8 +326,8 @@ export default function AddTransaction() {
           </View>
         )}
 
+        <Text style={fieldLabel}>Note (Optional)</Text>
         <TextInput
-          label="Note (Optional)"
           value={note}
           onChangeText={(val) => { setNote(val); clearError("note"); }}
           mode="outlined"

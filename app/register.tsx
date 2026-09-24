@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { useAuthActions } from '../context/AuthContext';
 import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
 import { LinearGradient } from 'expo-linear-gradient';
+import { fieldLabel } from '../utils/formInput';
 
 type AccountMode = "online" | "offline";
 
@@ -382,13 +383,7 @@ const styles = StyleSheet.create({
             },
         }),
     },
-    fieldLabel: {
-        color: '#666',
-        fontSize: 13,
-        fontWeight: '600',
-        marginBottom: 6,
-        marginTop: 4,
-    },
+    fieldLabel,
     modeSelector: {
         flexDirection: 'row',
         marginBottom: 8,

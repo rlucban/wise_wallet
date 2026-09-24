@@ -7,6 +7,7 @@ import { useAuthData, useAuthActions } from '../context/AuthContext';
 import { useUserProfileData } from '../context/UserProfileContext';
 import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
 import { isLocalAccountToken } from '../utils/authMode';
+import { fieldLabel } from '../utils/formInput';
 import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -432,13 +433,7 @@ const styles = StyleSheet.create({
             },
         }),
     },
-    fieldLabel: {
-        color: '#666',
-        fontSize: 13,
-        fontWeight: '600',
-        marginBottom: 6,
-        marginTop: 4,
-    },
+    fieldLabel,
     infoBox: {
         marginTop: 14,
         marginBottom: 4,

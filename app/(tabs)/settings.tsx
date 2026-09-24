@@ -20,6 +20,7 @@ import { useIsLocalAccount } from "../../utils/authMode";
 import * as Crypto from 'expo-crypto';
 import { Transaction, Category, Due, SavingsItem, UserProfile } from "../../types";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import { fieldLabel } from "../../utils/formInput";
 
 function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal: boolean }) {
   const { isOnline, checkConnectivity, isChecking } = useNetwork();
@@ -1125,13 +1126,14 @@ export default function SettingsScreen() {
             <Text variant="labelLarge" style={{ marginBottom: 8 }}>
               Verify your PIN
             </Text>
+            <Text style={fieldLabel}>Current PIN</Text>
             <TextInput
-              label="Current PIN"
               value={deletePinInput}
               onChangeText={(t) => { setDeletePinInput(t); setDeletePinError(""); setPinVerified(false); }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
+              mode="outlined"
               error={!!deletePinError}
               disabled={pinVerified || isSyncing}
             />
@@ -1217,13 +1219,14 @@ export default function SettingsScreen() {
                 : `To enable cloud sync, please enter the PIN for "${profile?.name || "your account"}".`
               }
             </Text>
+            <Text style={fieldLabel}>Current PIN</Text>
             <TextInput
-              label="Current PIN"
               value={pinVerificationInput}
               onChangeText={(t) => { setPinVerificationInput(t); setVerificationError(""); }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
+              mode="outlined"
               error={!!verificationError}
             />
             {verificationError ? (
@@ -1289,13 +1292,14 @@ export default function SettingsScreen() {
           <Dialog.Title>Enter PIN to Clear Data</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>This action cannot be undone. All local data will be permanently deleted.</Text>
+            <Text style={fieldLabel}>PIN</Text>
             <TextInput
-              label="PIN"
               value={pinInput}
               onChangeText={setPinInput}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
+              mode="outlined"
             />
           </Dialog.Content>
           <Dialog.Actions>
@@ -1308,13 +1312,14 @@ export default function SettingsScreen() {
           <Dialog.Title>Set Passcode</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>Enter a 4-digit PIN to secure the app on startup.</Text>
+            <Text style={fieldLabel}>New PIN</Text>
             <TextInput
-              label="New PIN"
               value={pinSetupInput}
               onChangeText={setPinSetupInput}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
+              mode="outlined"
             />
           </Dialog.Content>
           <Dialog.Actions>
@@ -1333,19 +1338,21 @@ export default function SettingsScreen() {
               {passcode ? "Enter your current passcode, then choose a new 4-digit passcode." : "Choose a new 4-digit passcode."}
             </Text>
             {passcode && (
-              <TextInput
-                label="Current Passcode"
-                value={currentPasscodeInput}
-                onChangeText={(t) => { setCurrentPasscodeInput(t); setChangePasscodeError(""); }}
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={4}
-                mode="outlined"
-                style={{ marginBottom: 12 }}
-              />
+              <>
+                <Text style={fieldLabel}>Current Passcode</Text>
+                <TextInput
+                  value={currentPasscodeInput}
+                  onChangeText={(t) => { setCurrentPasscodeInput(t); setChangePasscodeError(""); }}
+                  secureTextEntry
+                  keyboardType="numeric"
+                  maxLength={4}
+                  mode="outlined"
+                  style={{ marginBottom: 12 }}
+                />
+              </>
             )}
+            <Text style={fieldLabel}>New Passcode</Text>
             <TextInput
-              label="New Passcode"
               value={newPasscodeInput}
               onChangeText={(t) => { setNewPasscodeInput(t); setChangePasscodeError(""); }}
               secureTextEntry
@@ -1354,8 +1361,8 @@ export default function SettingsScreen() {
               mode="outlined"
               style={{ marginBottom: 12 }}
             />
+            <Text style={fieldLabel}>Confirm New Passcode</Text>
             <TextInput
-              label="Confirm New Passcode"
               value={confirmPasscodeInput}
               onChangeText={(t) => { setConfirmPasscodeInput(t); setChangePasscodeError(""); }}
               secureTextEntry

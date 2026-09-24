@@ -7,6 +7,7 @@ import { useCurrencyActions } from "../context/CurrencyContext";
 import { useUserProfile } from "../context/UserProfileContext";
 import { useTransactions } from "../hooks/useTransactions";
 import { formatNumberInput } from "../utils/amount";
+import { fieldLabel } from "../utils/formInput";
 
 export default function AddAllocation() {
     const router = useRouter();
@@ -83,8 +84,8 @@ export default function AddAllocation() {
                         Allocation Details
                     </Text>
 
+                    <Text style={fieldLabel}>Name</Text>
                     <TextInput
-                        label="Name"
                         value={title}
                         onChangeText={setTitle}
                         mode="outlined"
@@ -92,8 +93,8 @@ export default function AddAllocation() {
                         placeholder="e.g. Education Fund"
                     />
 
+                    <Text style={fieldLabel}>Initial Balance</Text>
                     <TextInput
-                        label="Initial Balance"
                         value={balance}
                         onChangeText={(t) => setBalance(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
                         keyboardType="numeric"
@@ -102,8 +103,8 @@ export default function AddAllocation() {
                         left={<TextInput.Affix text="₱" />}
                     />
 
+                    <Text style={fieldLabel}>Goal Amount (Optional)</Text>
                     <TextInput
-                        label="Goal Amount (Optional)"
                         value={goalAmount}
                         onChangeText={(t) => setGoalAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
                         keyboardType="numeric"
