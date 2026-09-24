@@ -174,10 +174,6 @@ export default function DuesScreen() {
     setModalVisible(true);
   }, []);
 
-  const handleToggleCompleted = useCallback(async (due: Due) => {
-    await updateDue(due.id, { completed: !due.completed, updatedAt: Date.now() });
-  }, [updateDue]);
-
   const handleSubmit = async () => {
     if (!title) return;
     const numAmount = parseAmount(amount);
@@ -228,8 +224,7 @@ export default function DuesScreen() {
         (item.categoryName
           ? { id: item.categoryId || item.title, name: item.categoryName, type: item.type || "expense", updatedAt: 0 }
           : undefined) ||
-        categories.find((c) => c.type === (item.type || "expense")) ||
-        { id: "8", name: "Others", type: "expense", updatedAt: 0 };
+        { id: "scheduled", name: "Add Scheduled", type: item.type || "expense", updatedAt: 0 };
 
       await addTransaction({
         title: item.title,
@@ -241,7 +236,7 @@ export default function DuesScreen() {
       });
       await updateDue(item.id, { completed: true });
 
-      if (item.frequency && item.frequency !== "once") {
+      if (item.autoProcess === true && item.frequency && item.frequency !== "once") {
         const nextDate = new Date(item.date);
         switch (item.frequency) {
           case "weekly": nextDate.setDate(nextDate.getDate() + 7); break;
@@ -409,19 +404,17 @@ export default function DuesScreen() {
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <IconButton
-                icon="undo"
+              <MaterialCommunityIcons
+                name="check-circle"
                 size={20}
-                onPress={() => handleToggleCompleted(due)}
+                color={theme.colors.outline}
               />
-              <IconButton icon="pencil-outline" size={20} onPress={() => handleEdit(due)} />
-              <IconButton icon="delete" size={20} iconColor={theme.colors.error} onPress={() => setDeleteTarget(due)} />
             </View>
           </View>
         </Card.Content>
       </Card>
     );
-  }, [theme, formatAmount, recordTransaction, handleEdit, handleToggleCompleted]);
+  }, [theme, formatAmount, recordTransaction, handleEdit]);
 
   const ListHeader = useCallback(() => (
     <View>
