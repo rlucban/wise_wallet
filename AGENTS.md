@@ -201,6 +201,10 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 - **2026-09-22 — Spec 04 v1.4 implemented (FINAL).** Web online-only creation:
   register/login offer no new Offline accounts on web; existing web locals
   keep login + Make Online. Android/iOS unchanged.
+- **2026-09-24 — Spec 07 implemented (FINAL).** `specs/07-ci-tsc-exclusion.md`:
+  app `tsc` excludes Jest-only files (`*.test.ts`, `*.spec.ts`, `__mocks__/**`);
+  `tsconfig.test.json` covers `__mocks__`; mock annotations only, logic
+  unchanged. No new deps, zero runtime change. See `docs/savepoint.md`.
 
 ---
 
