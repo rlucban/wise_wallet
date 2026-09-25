@@ -7,6 +7,7 @@ import * as Speech from "expo-speech";
 import { FinancialTip } from "../../components/FinancialTip";
 import { useThemeData } from "../../context/ThemeContext";
 import { LEARNING_RESOURCES } from "../../utils/learningData";
+import { prefetchFemaleVoice, speakWithFemaleVoice } from "../../utils/speechVoice";
 
 const UNIFIED_FILTERS = ["All", "For Students", "For Workers", "Budgeting", "Savings", "Debt"] as const;
 type UnifiedFilter = (typeof UNIFIED_FILTERS)[number];
@@ -23,6 +24,7 @@ export default function LearningScreen() {
     const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
 
     useEffect(() => {
+        prefetchFemaleVoice();
         return () => { Speech.stop(); };
     }, []);
 
@@ -46,13 +48,12 @@ export default function LearningScreen() {
             return;
         }
         Speech.stop();
-        setActiveArticleId(article.id);
-        Speech.speak(`${article.title}. ${article.description}`, {
-            language: "en-US",
-            pitch: 1.0,
-            rate: 0.9,
-            onDone: () => setActiveArticleId(null),
-            onStopped: () => setActiveArticleId(null),
+        const articleId = article.id;
+        setActiveArticleId(articleId);
+        await speakWithFemaleVoice(`${article.title}. ${article.description}`, {
+            onDone: () => { setActiveArticleId((current) => (current === articleId ? null : current)); },
+            onStopped: () => { setActiveArticleId((current) => (current === articleId ? null : current)); },
+            onError: () => { setActiveArticleId((current) => (current === articleId ? null : current)); },
         });
     };
 

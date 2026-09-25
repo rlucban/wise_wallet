@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet } from "react-native";
 import { Text, Appbar, Card, IconButton, useTheme } from "react-native-paper";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
+import { prefetchFemaleVoice, speakWithFemaleVoice } from "../../utils/speechVoice";
 
 const LEARNING_CONTENT: Record<string, { title: string; content: string }> = {
     budgeting_101: {
@@ -108,21 +109,21 @@ export default function LearningDetail() {
     const [isPlaying, setIsPlaying] = useState(false);
 
     useEffect(() => {
+        prefetchFemaleVoice();
         return () => { Speech.stop(); };
     }, []);
 
-    const handlePlayAudio = () => {
+    const handlePlayAudio = async () => {
         if (!topic) return;
         if (isPlaying) {
             Speech.stop();
             setIsPlaying(false);
         } else {
             setIsPlaying(true);
-            Speech.speak(topic.content, {
-                language: "en-US",
-                rate: 0.9,
+            await speakWithFemaleVoice(topic.content, {
                 onDone: () => setIsPlaying(false),
                 onStopped: () => setIsPlaying(false),
+                onError: () => setIsPlaying(false),
             });
         }
     };
