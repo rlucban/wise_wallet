@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, ScrollView } from "react-native";
-import { Appbar, List, IconButton, FAB, Portal, Modal, TextInput, Button, SegmentedButtons, useTheme, Card } from "react-native-paper";
+import { Appbar, List, IconButton, FAB, Portal, Modal, TextInput, Button, SegmentedButtons, useTheme, Card, Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { useCategoriesData, useCategoriesActions } from "../context/CategoriesContext";
 import { TransactionType, Category } from "../types";
@@ -52,7 +52,6 @@ export default function CategorySettings() {
             { value: "expense", label: "Expenses" },
             { value: "income", label: "Income" },
           ]}
-          style={{ marginBottom: 16 }}
         />
       </View>
 
@@ -61,6 +60,7 @@ export default function CategorySettings() {
           <Card key={cat.id} style={{ marginBottom: 8 }}>
             <List.Item
               title={cat.name}
+              titleStyle={{ color: theme.colors.onSurface }}
               right={(props) => (
                 <IconButton
                   {...props}
@@ -78,27 +78,37 @@ export default function CategorySettings() {
         <Modal
           visible={modalVisible}
           onDismiss={handleClose}
-          contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}
+          contentContainerStyle={{
+            backgroundColor: "transparent",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          }}
         >
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <List.Subheader style={{ margin: 0, padding: 0 }}>
-              Add {type === "income" ? "Income" : "Expense"} Category
-            </List.Subheader>
-            <IconButton
-              icon="close"
-              onPress={handleClose}
-            />
-          </View>
-          <TextInput
-            label="Category Name"
-            value={newCatName}
-            onChangeText={setNewCatName}
-            mode="outlined"
-            style={{ marginBottom: 16 }}
-          />
-          <Button mode="contained" onPress={handleAdd}>
-            Add Category
-          </Button>
+          <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
+            <Card.Content style={{ padding: 20 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <Text variant="titleLarge" color={theme.colors.onSurface}>
+                  Add {type === "income" ? "Income" : "Expense"} Category
+                </Text>
+                <IconButton
+                  icon="close"
+                  iconColor={theme.colors.onSurfaceVariant}
+                  onPress={handleClose}
+                />
+              </View>
+              <TextInput
+                label="Category Name"
+                value={newCatName}
+                onChangeText={setNewCatName}
+                mode="outlined"
+                style={{ marginBottom: 16 }}
+              />
+              <Button mode="contained" onPress={handleAdd} buttonColor={theme.colors.primary}>
+                Add Category
+              </Button>
+            </Card.Content>
+          </Card>
         </Modal>
       </Portal>
 

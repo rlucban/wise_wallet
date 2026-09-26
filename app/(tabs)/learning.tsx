@@ -7,6 +7,7 @@ import * as Speech from "expo-speech";
 import { FinancialTip } from "../../components/FinancialTip";
 import { useThemeData } from "../../context/ThemeContext";
 import { LEARNING_RESOURCES } from "../../utils/learningData";
+import { prefetchFemaleVoice, speakWithFemaleVoice } from "../../utils/speechVoice";
 
 const UNIFIED_FILTERS = ["All", "For Students", "For Workers", "Budgeting", "Savings", "Debt"] as const;
 type UnifiedFilter = (typeof UNIFIED_FILTERS)[number];
@@ -23,6 +24,7 @@ export default function LearningScreen() {
     const [activeArticleId, setActiveArticleId] = useState<string | null>(null);
 
     useEffect(() => {
+        prefetchFemaleVoice();
         return () => { Speech.stop(); };
     }, []);
 
@@ -46,13 +48,12 @@ export default function LearningScreen() {
             return;
         }
         Speech.stop();
-        setActiveArticleId(article.id);
-        Speech.speak(`${article.title}. ${article.description}`, {
-            language: "en-US",
-            pitch: 1.0,
-            rate: 0.9,
-            onDone: () => setActiveArticleId(null),
-            onStopped: () => setActiveArticleId(null),
+        const articleId = article.id;
+        setActiveArticleId(articleId);
+        await speakWithFemaleVoice(`${article.title}. ${article.description}`, {
+            onDone: () => { setActiveArticleId((current) => (current === articleId ? null : current)); },
+            onStopped: () => { setActiveArticleId((current) => (current === articleId ? null : current)); },
+            onError: () => { setActiveArticleId((current) => (current === articleId ? null : current)); },
         });
     };
 
@@ -76,16 +77,26 @@ export default function LearningScreen() {
         });
     }, [activeFilter, searchQuery]);
 
-    const getPastelTagStyle = (topic: string) => {
+    const getPastelTagStyle = (topic: string, theme: ReturnType<typeof useThemeData>["theme"]) => {
+        const colors = theme?.colors ?? {};
+        // Use available container colors with fallbacks for secondary/tertiary
+        // Use 'in' operator to safely check for property existence
+        const hasSecondary = "secondaryContainer" in colors;
+        const hasTertiary = "tertiaryContainer" in colors;
+        const secondaryBg = hasSecondary ? colors.secondaryContainer : colors.primaryContainer;
+        const secondaryText = hasSecondary ? colors.onSecondaryContainer : colors.onPrimaryContainer;
+        const tertiaryBg = hasTertiary ? colors.tertiaryContainer : colors.errorContainer;
+        const tertiaryText = hasTertiary ? colors.onTertiaryContainer : colors.onErrorContainer;
+        
         switch (topic) {
             case "Savings":
-                return { backgroundColor: "#E8F5E9", textColor: "#2E7D32" };
+                return { backgroundColor: colors.primaryContainer, textColor: colors.onPrimaryContainer };
             case "Budgeting":
-                return { backgroundColor: "#E3F2FD", textColor: "#1565C0" };
+                return { backgroundColor: secondaryBg, textColor: secondaryText };
             case "Debt":
-                return { backgroundColor: "#FBE9E7", textColor: "#C62828" };
+                return { backgroundColor: tertiaryBg, textColor: tertiaryText };
             default:
-                return { backgroundColor: "#F3E5F5", textColor: "#6A1B9A" };
+                return { backgroundColor: colors.surfaceVariant, textColor: colors.onSurfaceVariant };
         }
     };
 
@@ -164,7 +175,7 @@ export default function LearningScreen() {
                         ) : (
                             <View style={isDesktop ? styles.desktopGrid : styles.mobileList}>
                                 {filteredResources.map((item) => {
-                                    const tagStyle = getPastelTagStyle(item.topic);
+                                    const tagStyle = getPastelTagStyle(item.topic, theme);
                                     const isBookmarked = bookmarkedIds.has(item.id);
 
                                     return (
@@ -189,8 +200,8 @@ export default function LearningScreen() {
                                                                 </Text>
                                                             </View>
                                                             {item.audience && (
-                                                                <View style={[styles.badge, { backgroundColor: "#F5F5F5" }]}>
-                                                                    <Text variant="labelSmall" style={{ color: "#616161" }}>
+                                                                <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
+                                                                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600" }}>
                                                                         {item.audience}
                                                                     </Text>
                                                                 </View>
@@ -200,9 +211,9 @@ export default function LearningScreen() {
                                                     <View style={{ alignItems: "center" }}>
                                                         <IconButton
                                                             icon={activeArticleId === item.id ? "square" : "volume-high"}
-                                                            iconColor="#1E3A8A"
+                                                            iconColor={theme.colors.primary}
                                                             size={22}
-                                                            style={activeArticleId === item.id ? { backgroundColor: "#DBEAFE" } : undefined}
+                                                            style={activeArticleId === item.id ? { backgroundColor: theme.colors.primaryContainer } : undefined}
                                                             onPress={() => handlePlayAudio(item)}
                                                         />
                                                         <IconButton

@@ -78,8 +78,8 @@ export default function AddAllocation() {
             </Appbar.Header>
 
             <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-                <Card style={{ padding: 20, borderRadius: 16, backgroundColor: "#F8FAFC" }}>
-                    <Text variant="titleMedium" style={{ marginBottom: 16, color: "#1E293B", fontWeight: "700" }}>
+                <Card style={{ padding: 20, borderRadius: 16, backgroundColor: theme.colors.surfaceVariant }}>
+                    <Text variant="titleMedium" style={{ marginBottom: 16, color: theme.colors.onSurface, fontWeight: "700" }}>
                         Allocation Details
                     </Text>
 
@@ -113,11 +113,11 @@ export default function AddAllocation() {
                         placeholder="e.g. 10,000"
                     />
 
-                    <Text variant="bodySmall" style={{ color: "#94A3B8", marginBottom: 8 }}>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>
                         Available balance: {formatAmount(availableBalance)}
                     </Text>
 
-                    <Text variant="bodySmall" style={{ color: "#94A3B8", marginBottom: 16 }}>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>
                         Setting a goal lets you track progress toward your target.
                     </Text>
                 </Card>
@@ -129,7 +129,7 @@ export default function AddAllocation() {
                     onPress={handleSubmit}
                     loading={loading}
                     disabled={loading}
-                    buttonColor="#1E3A8A"
+                    buttonColor={theme.colors.primary}
                     style={{ paddingVertical: 4 }}
                 >
                     Create Allocation

@@ -105,7 +105,8 @@ wise-wallet/
 ├── utils/                  # db, storage (user_{id}_ keys), cache, secureStorage,
 │                           # apiClient (authFetch), syncQueue/syncProcessor,
 │                           # notifications (Expo-Go-safe lazy load), exportUtils,
-│                           # amount (MAX 10,000,000), uuid, learningData
+│                           # amount (MAX 10,000,000), uuid, learningData,
+│                           # speechVoice (SPEC-11 female TTS voice, web-safe)
 ├── types/                  # Transaction, Category, Due, SavingsItem
 │                           # (has target_amount), UserProfile, SystemAlert, …
 ├── assets/  app.json  vercel.json  .env (EXPO_PUBLIC_API_URL)
@@ -230,6 +231,24 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   app `tsc` excludes Jest-only files (`*.test.ts`, `*.spec.ts`, `__mocks__/**`);
   `tsconfig.test.json` covers `__mocks__`; mock annotations only, logic
   unchanged. No new deps, zero runtime change. See `docs/savepoint.md`.
+- **2026-09-26 — Spec 11 FINAL + implemented.** Female TTS voice for
+  Financial Literacy read-aloud (`specs/11-female-tts-voice-for-recommended-reading.md`).
+  `expo-speech` exposes no gender on any platform, so D-01 new
+  `utils/speechVoice.ts` infers it: en-locale filter + Tier 0 male-name
+  exclusion + Tier 1 gender words + Tier 2 known female names, memoized once
+  per session, `pitch 1.15` / `rate 0.9` / `en-US`. 2000 ms lookup cap and a
+  silent default-voice fallback keep read-aloud from ever blocking; `Speech.speak`
+  try/catch retries once without `voice` (iOS throws on a bad identifier).
+  D-02/D-03 both surfaces use `speakWithFemaleVoice` (no inline `Speech.speak`
+  left, no UI/copy change); D-04 `utils/speechVoice.test.ts` ACC-01..10 across
+- **2026-09-26 — Spec 17 FINAL + implemented.** `specs/17-fab-button-styling.md`:
+  FAB styling alignment across `/dues` and `/savings` to match Home screen
+  (`app/(tabs)/index.tsx`). D-01: `app/dues.tsx` FAB moves
+  `backgroundColor: theme.colors.primary` into `style` and sets `color="#fff"`.
+  D-02: `app/savings.tsx` FAB moves `backgroundColor: theme.colors.primary` into
+  `style`, sets `borderRadius: 20` and `color="#fff"`. Eliminates faint/invisible
+  washed-out buttons caused by passing `backgroundColor` as a direct component prop.
+  See `docs/savepoint.md`.
 
 ---
 
