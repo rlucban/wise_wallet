@@ -359,7 +359,13 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
                     style={{ marginRight: 4 }}
                   />
                 )}
-                <Button mode="outlined" compact onPress={() => recordTransaction(due)} style={{ marginRight: 4 }}>
+                <Button
+                  mode="outlined"
+                  compact
+                  onPress={() => recordTransaction(due)}
+                  style={{ marginRight: 4 }}
+                  theme={{ colors: { primary: theme.colors.primary, outline: theme.colors.primary } }}
+                >
                   {due.type === "income" ? "Receive" : "Pay"}
                 </Button>
                 <IconButton icon="pencil-outline" onPress={() => handleEdit(due)} size={20} />
@@ -634,7 +640,14 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
          </Modal>
        </Portal>
 
-       <FAB icon="plus" style={{ position: "absolute", margin: 16, right: 0, bottom: 0 }} onPress={() => router.push("/add-due")} />
+       <FAB
+          icon="plus"
+          label="Due"
+          style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
+
+          color="#fff"
+          onPress={() => router.push("/add-due")}
+        />
     </View>
   );
 }

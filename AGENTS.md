@@ -241,7 +241,14 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   try/catch retries once without `voice` (iOS throws on a bad identifier).
   D-02/D-03 both surfaces use `speakWithFemaleVoice` (no inline `Speech.speak`
   left, no UI/copy change); D-04 `utils/speechVoice.test.ts` ACC-01..10 across
-  android/ios/web. No new deps, no storage keys. See `docs/savepoint.md`.
+- **2026-09-26 — Spec 17 FINAL + implemented.** `specs/17-fab-button-styling.md`:
+  FAB styling alignment across `/dues` and `/savings` to match Home screen
+  (`app/(tabs)/index.tsx`). D-01: `app/dues.tsx` FAB moves
+  `backgroundColor: theme.colors.primary` into `style` and sets `color="#fff"`.
+  D-02: `app/savings.tsx` FAB moves `backgroundColor: theme.colors.primary` into
+  `style`, sets `borderRadius: 20` and `color="#fff"`. Eliminates faint/invisible
+  washed-out buttons caused by passing `backgroundColor` as a direct component prop.
+  See `docs/savepoint.md`.
 
 ---
 

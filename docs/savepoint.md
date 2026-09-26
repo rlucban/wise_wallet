@@ -229,6 +229,20 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **No breaking changes**: No new deps, no storage keys, no API changes, no route changes. Uses existing Paper 5 semantic theming throughout.
 - **Lint clean** + **All 98 tests pass** (including 24 themeColors tests across 8 files × 3 platforms).
 
+## 2026-09-26 Updates — Spec 17 Implemented (FAB and Button Styling Consistency)
+
+`specs/17-fab-button-styling.md` (FINAL per user call 2026-09-26). Aligned FABs across `/dues` and `/savings` to match Home screen's solid primary styling.
+
+- **D-01 — `app/dues.tsx` FAB**: Fixed FAB styling by placing `backgroundColor: theme.colors.primary` inside the `style` prop (instead of an invalid JSX prop that React Native Paper ignores) and set `color="#fff"`:
+  - `style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}`
+  - `color="#fff"`
+  - `label="Due"`
+- **D-02 — `app/savings.tsx` FAB**: Fixed FAB styling by placing `backgroundColor: theme.colors.primary` inside the `style` prop (instead of an invalid JSX prop), setting `borderRadius: 20` and `color="#fff"`:
+  - `style={{ position: "absolute", margin: 16, right: 0, bottom: 0, borderRadius: 20, backgroundColor: theme.colors.primary }}`
+  - `color="#fff"`
+  - `label="New Allocation"`
+- **No breaking changes**: No new deps, no storage keys, no API changes. Uses existing semantic tokens.
+
 - **Root constraint (CON-01):** `expo-speech@57.0.3` exposes **no gender field on any platform** — iOS drops `AVSpeechSynthesisVoice.gender` (`ios/SpeechModule.swift:63-76`), Android `VoiceRecord` has none, and Web maps the Web Speech API `SpeechSynthesisVoice` (no gender). "Female voice" is therefore *inferred* by curated name/identifier matching, never detected.
 
 
