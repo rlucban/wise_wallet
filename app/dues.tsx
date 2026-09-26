@@ -270,17 +270,17 @@ export default function DuesScreen() {
     setDeleteTarget(null);
   }, [deleteDue, deleteTarget]);
 
-  const renderItem = useCallback(({ item }: { item: ListItem }) => {
+const renderItem = useCallback(({ item }: { item: ListItem }) => {
     if (item.kind === "upcoming-header") {
       return (
-        <Text variant="titleMedium" style={{ marginBottom: 8 }}>
+        <Text variant="titleMedium" style={{ marginBottom: 8, color: theme.colors.onSurface }}>
           Upcoming
         </Text>
       );
     }
     if (item.kind === "completed-header") {
       return (
-        <Text variant="titleMedium" style={{ marginBottom: 8, marginTop: 16 }}>
+        <Text variant="titleMedium" style={{ marginBottom: 8, marginTop: 16, color: theme.colors.onSurfaceVariant, fontWeight: "500" }}>
           Completed
         </Text>
       );
@@ -306,19 +306,19 @@ export default function DuesScreen() {
                 <MaterialCommunityIcons
                   name={due.type === "income" ? "arrow-up-circle" : "arrow-down-circle"}
                   size={24}
-                  color={due.type === "income" ? "#2E7D32" : "#D32F2F"}
+                  color={due.type === "income" ? theme.colors.primary : theme.colors.error}
                 />
               </View>
 
               <View style={{ flex: 1 }}>
-                <Text variant="titleSmall" style={{ fontWeight: isToday ? "bold" : "600" }}>
+                <Text variant="titleSmall" style={{ fontWeight: isToday ? "bold" : "600", color: theme.colors.onSurface }}>
                   {due.title}
                 </Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 2 }}>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
                   {new Date(due.date).toLocaleDateString()}  {formatAmount(due.amount)}  {FREQUENCY_LABELS[due.frequency || "once"]}
                 </Text>
                 {getRecurringProjectionMessage(due, formatAmount) && (
-                  <Text variant="bodySmall" style={{ color: "#D97706", marginTop: 2 }}>
+                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", marginTop: 2 }}>
                     💡 {getRecurringProjectionMessage(due, formatAmount)}
                   </Text>
                 )}
@@ -355,7 +355,7 @@ export default function DuesScreen() {
                   <MaterialCommunityIcons
                     name="lightning-bolt"
                     size={16}
-                    color="#D97706"
+                    color={theme.colors.onSurfaceVariant}
                     style={{ marginRight: 4 }}
                   />
                 )}
@@ -372,7 +372,7 @@ export default function DuesScreen() {
     }
 
     return (
-      <Card style={{ marginBottom: 12, borderRadius: 16, opacity: 0.7 }}>
+      <Card style={{ marginBottom: 12, borderRadius: 16 }}>
         <Card.Content>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <View style={{
@@ -387,18 +387,18 @@ export default function DuesScreen() {
               <MaterialCommunityIcons
                 name={due.type === "income" ? "arrow-up-circle" : "arrow-down-circle"}
                 size={24}
-                color="gray"
+                color={theme.colors.outline}
               />
             </View>
 
             <View style={{ flex: 1 }}>
               <Text
                 variant="titleSmall"
-                style={{ textDecorationLine: "line-through", color: "gray", fontWeight: "600" }}
+                style={{ textDecorationLine: "line-through", color: theme.colors.onSurfaceVariant, fontWeight: "600" }}
               >
                 {due.title}
               </Text>
-              <Text variant="bodySmall" style={{ color: theme.colors.outline, marginTop: 2 }}>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
                 {new Date(due.date).toLocaleDateString()}  {formatAmount(due.amount)}
               </Text>
             </View>
@@ -448,7 +448,7 @@ export default function DuesScreen() {
   ), [filter, theme, formatAmount, weekTotal, monthTotal]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header>
         <Appbar.BackAction onPress={() => router.back()} />
         <Appbar.Content title="Scheduled" />
@@ -469,8 +469,19 @@ export default function DuesScreen() {
       />
 
       <Portal>
-        <Modal visible={modalVisible} onDismiss={closeModal} contentContainerStyle={{ backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12 }}>
-           <Text variant="titleLarge" style={{ marginBottom: 16 }}>Edit Scheduled Item</Text>
+        <Modal
+          visible={modalVisible}
+          onDismiss={closeModal}
+          contentContainerStyle={{
+            backgroundColor: "transparent",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          }}
+        >
+          <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
+            <Card.Content style={{ padding: 20 }}>
+              <Text variant="titleLarge" style={{ marginBottom: 16 }}>Edit Scheduled Item</Text>
 
            <SegmentedButtons
              value={type}
@@ -545,9 +556,11 @@ export default function DuesScreen() {
             />
           )}
 
-          <Button mode="contained" onPress={handleSubmit} disabled={!title || !amount}>Save Changes</Button>
-         </Modal>
-       </Portal>
+<Button mode="contained" onPress={handleSubmit} disabled={!title || !amount}>Save Changes</Button>
+            </Card.Content>
+          </Card>
+        </Modal>
+      </Portal>
 
        <Portal>
          <ConfirmDialog
@@ -574,42 +587,42 @@ export default function DuesScreen() {
              alignItems: "center",
            }}
          >
-           <Card style={{ width: "90%", borderRadius: 24, padding: 16, elevation: 10 }}>
-             <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700", textAlign: "center" }}>
-               Select Due Date
-             </Text>
-             <Calendar
-               current={date.toISOString().split('T')[0]}
-               onDayPress={(day) => {
-                 setDate(new Date(day.timestamp));
-                 setShowDatePicker(false);
-               }}
-               markedDates={{
-                 [date.toISOString().split('T')[0]]: { selected: true, selectedColor: theme.colors.primary }
-               }}
-               theme={{
-                 backgroundColor: theme.colors.surface,
-                 calendarBackground: theme.colors.surface,
-                 textSectionTitleColor: theme.colors.primary,
-                 selectedDayBackgroundColor: theme.colors.primary,
-                 selectedDayTextColor: '#ffffff',
-                 todayTextColor: theme.colors.primary,
-                 dayTextColor: theme.colors.onSurface,
-                 textDisabledColor: theme.colors.surfaceVariant,
-                 dotColor: theme.colors.primary,
-                 selectedDotColor: '#ffffff',
-                 arrowColor: theme.colors.primary,
-                 disabledArrowColor: theme.colors.surfaceVariant,
-                 monthTextColor: theme.colors.onSurface,
-                 indicatorColor: theme.colors.primary,
-                 textDayFontWeight: '300',
-                 textMonthFontWeight: '700',
-                 textDayHeaderFontWeight: '300',
-                 textDayFontSize: 16,
-                 textMonthFontSize: 18,
-                 textDayHeaderFontSize: 14
-               }}
-             />
+<Card style={{ width: "90%", borderRadius: 24, padding: 16, elevation: 10, backgroundColor: theme.colors.surface }}>
+              <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700", textAlign: "center", color: theme.colors.onSurface }}>
+                Select Due Date
+              </Text>
+              <Calendar
+                current={date.toISOString().split('T')[0]}
+                onDayPress={(day) => {
+                  setDate(new Date(day.timestamp));
+                  setShowDatePicker(false);
+                }}
+                markedDates={{
+                  [date.toISOString().split('T')[0]]: { selected: true, selectedColor: theme.colors.primary }
+                }}
+                theme={{
+                  backgroundColor: theme.colors.surface,
+                  calendarBackground: theme.colors.surface,
+                  textSectionTitleColor: theme.colors.primary,
+                  selectedDayBackgroundColor: theme.colors.primary,
+                  selectedDayTextColor: theme.colors.onPrimary,
+                  todayTextColor: theme.colors.primary,
+                  dayTextColor: theme.colors.onSurface,
+                  textDisabledColor: theme.colors.surfaceVariant,
+                  dotColor: theme.colors.primary,
+                  selectedDotColor: theme.colors.onPrimary,
+                  arrowColor: theme.colors.primary,
+                  disabledArrowColor: theme.colors.surfaceVariant,
+                  monthTextColor: theme.colors.onSurface,
+                  indicatorColor: theme.colors.primary,
+                  textDayFontWeight: '300',
+                  textMonthFontWeight: '700',
+                  textDayHeaderFontWeight: '300',
+                  textDayFontSize: 16,
+                  textMonthFontSize: 18,
+                  textDayHeaderFontSize: 14
+                }}
+              />
              <Button
                mode="text"
                onPress={() => setShowDatePicker(false)}

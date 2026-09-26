@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import EmptyState from "../components/EmptyState";
-import { View, ScrollView, Alert, Platform, useWindowDimensions } from "react-native";
+import { View, ScrollView, Alert } from "react-native";
 import { Appbar, Text, FAB, Portal, Modal, TextInput, Button, Card, IconButton, Snackbar, useTheme } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSavings } from "../hooks/useSavings";
@@ -12,19 +12,6 @@ import { formatNumberInput, parseAmount } from "../utils/amount";
 import { useUserProfile } from "../context/UserProfileContext";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
-
-const CARD_SHADOW = {
-    elevation: 3,
-    ...Platform.select({
-        web: { boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.06)" },
-        default: {
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 4,
-        },
-    }),
-};
 
 export default function SavingsScreen() {
     const router = useRouter();
@@ -274,16 +261,8 @@ export default function SavingsScreen() {
         }
         await deleteItem(id);
     };
-
-    const { width } = useWindowDimensions();
-    const isMobile = width < 768;
-
-    const modalContainerStyle = isMobile
-        ? { flex: 1, backgroundColor: "#FFFFFF", justifyContent: "flex-start" as const, paddingTop: 50, paddingHorizontal: 20 }
-        : { backgroundColor: "white", padding: 20, margin: 20, borderRadius: 12, maxWidth: 500, alignSelf: "center" as const };
-
     return (
-        <View style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <Appbar.Header>
                 <Appbar.BackAction onPress={() => router.back()} />
                 <Appbar.Content title="Allocations" />
@@ -291,11 +270,11 @@ export default function SavingsScreen() {
 
             <ScrollView contentContainerStyle={{ padding: 16 }}>
                 {items.length > 0 && (
-                    <Card style={{ marginBottom: 16, padding: 16, borderRadius: 16, backgroundColor: "#1E3A8A" }}>
-                        <Text variant="labelMedium" style={{ color: "#93C5FD", textAlign: "center" }}>
+                    <Card style={{ marginBottom: 16, padding: 16, borderRadius: 16, backgroundColor: theme.colors.primaryContainer }}>
+                        <Text variant="labelMedium" style={{ color: theme.colors.onPrimaryContainer, textAlign: "center" }}>
                             TOTAL ALLOCATED
                         </Text>
-                        <Text variant="headlineMedium" style={{ fontWeight: "800", textAlign: "center", color: "#fff" }}>
+                        <Text variant="headlineMedium" style={{ fontWeight: "800", textAlign: "center", color: theme.colors.onPrimaryContainer }}>
                             {formatAmount(totalReserved)}
                         </Text>
                     </Card>
@@ -308,7 +287,7 @@ export default function SavingsScreen() {
                         {/* Active Allocations */}
                         {activeItems.length > 0 && (
                             <>
-                                <Text variant="titleMedium" style={{ marginBottom: 8 }}>Active</Text>
+                                <Text variant="titleMedium" style={{ marginBottom: 8, color: theme.colors.onSurface }}>Active</Text>
                                 {activeItems.map((item) => {
                                     const currentBalance = item.balance || 0;
                                     const target = item.target_amount || 0;
@@ -316,15 +295,15 @@ export default function SavingsScreen() {
                                     const progressPercent = hasGoal ? Math.min(Math.round((currentBalance / target) * 100), 100) : 0;
 
                                     return (
-                                        <Card key={item.id} style={{ marginBottom: 12, borderRadius: 16, ...CARD_SHADOW }}>
+                                        <Card key={item.id} style={{ marginBottom: 12, borderRadius: 16, elevation: 3 }}>
                                             <Card.Content style={{ paddingVertical: 12, paddingHorizontal: 16 }}>
                                                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                                                     {/* Left: Title + Progress Bar + Percentage Text */}
                                                     <View style={{ flex: 1, marginRight: 12 }}>
-                                                        <Text variant="titleMedium" style={{ fontWeight: "700", color: "#1E293B", marginBottom: 4 }}>
+                                                        <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurface, marginBottom: 4 }}>
                                                             {item.title}
                                                         </Text>
-                                                        <Text variant="bodySmall" style={{ color: "#64748B", marginBottom: 10 }}>
+                                                        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 10 }}>
                                                             {hasGoal
                                                                 ? `${formatAmount(currentBalance)} / ${formatAmount(target)}`
                                                                 : formatAmount(currentBalance)
@@ -334,15 +313,15 @@ export default function SavingsScreen() {
                                                         {/* Horizontal Progress Bar */}
                                                         {hasGoal && (
                                                             <View>
-                                                                <View style={{ height: 8, backgroundColor: "#E2E8F0", borderRadius: 4, overflow: "hidden" }}>
+                                                                <View style={{ height: 8, backgroundColor: theme.colors.surfaceVariant, borderRadius: 4, overflow: "hidden" }}>
                                                                     <View style={{
                                                                         height: "100%",
                                                                         width: `${progressPercent}%`,
-                                                                        backgroundColor: "#1E3A8A",
+                                                                        backgroundColor: theme.colors.primary,
                                                                         borderRadius: 4,
                                                                     }} />
                                                                 </View>
-                                                                <Text variant="labelSmall" style={{ color: "#94A3B8", marginTop: 4, textAlign: "right" }}>
+                                                                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 4, textAlign: "right" }}>
                                                                     {progressPercent}% reached
                                                                 </Text>
                                                             </View>
@@ -355,7 +334,7 @@ export default function SavingsScreen() {
                                                             width: 48,
                                                             height: 48,
                                                             borderRadius: 24,
-                                                            backgroundColor: "#F1F5F9",
+                                                            backgroundColor: theme.colors.surfaceVariant,
                                                             justifyContent: "center",
                                                             alignItems: "center",
                                                             marginRight: 12,
@@ -367,14 +346,14 @@ export default function SavingsScreen() {
                                                                 left: 0,
                                                                 right: 0,
                                                                 height: `${progressPercent}%`,
-                                                                backgroundColor: "#FF2D55",
+                                                                backgroundColor: theme.colors.primaryContainer,
                                                             }} />
                                                             <Text style={{
                                                                 position: "absolute",
                                                                 zIndex: 1,
                                                                 fontWeight: "800",
                                                                 fontSize: 11,
-                                                                color: progressPercent > 40 ? "#FFFFFF" : "#1E293B",
+                                                                color: theme.colors.onPrimaryContainer,
                                                             }}>
                                                                 {progressPercent}%
                                                             </Text>
@@ -389,7 +368,7 @@ export default function SavingsScreen() {
                                                             setTransferAmount("");
                                                             setTransferInModalVisible(true);
                                                         }} />
-                                                        <IconButton icon="arrow-collapse-up" size={18} disabled={item.balance <= 0} iconColor={item.balance <= 0 ? "gray" : undefined} onPress={() => {
+                                                        <IconButton icon="arrow-collapse-up" size={18} disabled={item.balance <= 0} iconColor={item.balance <= 0 ? theme.colors.outline : undefined} onPress={() => {
                                                             setSelectedItemId(item.id);
                                                             setTransferAmount("");
                                                             setTransferOutModalVisible(true);
@@ -407,21 +386,19 @@ export default function SavingsScreen() {
                         {/* Completed Allocations */}
                         {completedItems.length > 0 && (
                             <>
-                                <Text variant="titleMedium" style={{ marginBottom: 8, marginTop: activeItems.length > 0 ? 16 : 0 }}>
-                                    Completed
-                                </Text>
+                                <Text variant="titleMedium" style={{ marginBottom: 8, marginTop: activeItems.length > 0 ? 16 : 0, color: theme.colors.onSurface }}>Completed</Text>
                                 {completedItems.map((item) => {
                                     const currentBalance = item.balance || 0;
                                     const target = item.target_amount || 0;
 
                                     return (
-                                        <Card key={item.id} style={{ marginBottom: 12, borderRadius: 16, backgroundColor: "#F8FAFC", ...CARD_SHADOW }}>
+                                        <Card key={item.id} style={{ marginBottom: 12, borderRadius: 16, elevation: 3 }}>
                                             <Card.Content style={{ paddingVertical: 12, paddingHorizontal: 16 }}>
                                                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                                                     {/* Left: Title + Amount + Completed Tag */}
                                                     <View style={{ flex: 1, marginRight: 12 }}>
                                                         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
-                                                            <Text variant="titleMedium" style={{ fontWeight: "700", color: "#64748B" }}>
+                                                            <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurfaceVariant }}>
                                                                 {item.title}
                                                             </Text>
                                                             <View style={{
@@ -429,23 +406,23 @@ export default function SavingsScreen() {
                                                                 paddingHorizontal: 8,
                                                                 paddingVertical: 2,
                                                                 borderRadius: 10,
-                                                                backgroundColor: "#DCFCE7",
+                                                                backgroundColor: theme.colors.successContainer || theme.colors.tertiaryContainer,
                                                             }}>
-                                                                <Text variant="labelSmall" style={{ color: "#16A34A", fontWeight: "700" }}>
+                                                                <Text variant="labelSmall" style={{ color: theme.colors.onSuccessContainer || theme.colors.onTertiaryContainer, fontWeight: "700" }}>
                                                                     Goal Reached
                                                                 </Text>
                                                             </View>
                                                         </View>
-                                                        <Text variant="bodySmall" style={{ color: "#94A3B8", marginBottom: 10 }}>
-                                                            {formatAmount(currentBalance)} / {formatAmount(target)} • 100% Reached
+                                                        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 10 }}>
+                                                            {formatAmount(currentBalance)} / {formatAmount(target)} \u2022 100% Reached
                                                         </Text>
 
                                                         {/* Full Progress Bar */}
-                                                        <View style={{ height: 8, backgroundColor: "#E2E8F0", borderRadius: 4, overflow: "hidden" }}>
+                                                        <View style={{ height: 8, backgroundColor: theme.colors.surfaceVariant, borderRadius: 4, overflow: "hidden" }}>
                                                             <View style={{
                                                                 height: "100%",
                                                                 width: "100%",
-                                                                backgroundColor: "#16A34A",
+                                                                backgroundColor: theme.colors.success || theme.colors.tertiary,
                                                                 borderRadius: 4,
                                                             }} />
                                                         </View>
@@ -456,12 +433,12 @@ export default function SavingsScreen() {
                                                         width: 48,
                                                         height: 48,
                                                         borderRadius: 24,
-                                                        backgroundColor: "#DCFCE7",
+                                                        backgroundColor: theme.colors.successContainer || theme.colors.tertiaryContainer,
                                                         justifyContent: "center",
                                                         alignItems: "center",
                                                         marginRight: 12,
                                                     }}>
-                                                        <MaterialCommunityIcons name="checkmark-circle" size={28} color="#16A34A" />
+                                                        <MaterialCommunityIcons name="checkmark-circle" size={28} color={theme.colors.onSuccessContainer || theme.colors.onTertiaryContainer} />
                                                     </View>
 
                                                     {/* Far Right: Only Delete */}
@@ -481,75 +458,81 @@ export default function SavingsScreen() {
 
             <Portal>
                 {/* Edit Allocation Modal */}
-                <Modal visible={editModalVisible} onDismiss={() => setEditModalVisible(false)} contentContainerStyle={modalContainerStyle}>
-                    <ScrollView keyboardShouldPersistTaps="handled">
-                    <Text variant="titleLarge" style={{ marginBottom: 16, color: "#1E293B" }}>Edit Allocation</Text>
-                    <TextInput label="Name" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
-                    <TextInput label="Goal Amount (Optional)" value={goalAmount} onChangeText={(t) => setGoalAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} placeholder="e.g. 10,000" />
-                    <Button mode="contained" onPress={handleEditItem} buttonColor="#1E3A8A">Save Changes</Button>
-                    </ScrollView>
+                <Modal visible={editModalVisible} onDismiss={() => setEditModalVisible(false)} contentContainerStyle={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", padding: 20 }}>
+                    <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
+                        <Card.Content style={{ padding: 20 }}>
+                            <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Edit Allocation</Text>
+                            <TextInput label="Name" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
+                            <TextInput label="Goal Amount (Optional)" value={goalAmount} onChangeText={(t) => setGoalAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} placeholder="e.g. 10,000" />
+                            <Button mode="contained" onPress={handleEditItem} buttonColor={theme.colors.primary}>Save Changes</Button>
+                        </Card.Content>
+                    </Card>
                 </Modal>
 
                 {/* Transfer In Modal */}
-                <Modal visible={transferInModalVisible} onDismiss={() => setTransferInModalVisible(false)} contentContainerStyle={modalContainerStyle}>
-                    <ScrollView keyboardShouldPersistTaps="handled">
-                    <Text variant="titleLarge" style={{ marginBottom: 16 }}>Transfer Money In</Text>
-                    <Text variant="bodySmall" style={{ color: "#94A3B8", marginBottom: 8 }}>This creates an expense transaction — money leaves your main balance.</Text>
-                    <Text variant="bodySmall" style={{ color: "#64748B", marginBottom: 12 }}>
-                        Available Balance: {formatAmount(availableBalance)}
-                    </Text>
-                    {transferInItem?.target_amount ? (
-                        <Text variant="bodySmall" style={{ color: "#64748B", marginBottom: 12 }}>
-                            Remaining Goal: {formatAmount(Math.max(0, transferInItem.target_amount - transferInItem.balance))}
-                        </Text>
-                    ) : null}
-                    <TextInput
-                        label="Amount"
-                        value={transferAmount}
-                        onChangeText={(t) => setTransferAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
-                        keyboardType="numeric"
-                        mode="outlined"
-                        style={{ marginBottom: 8 }}
-                        left={<TextInput.Affix text="₱" />}
-                        error={!!transferInError}
-                    />
-                    {transferInError && (
-                        <Text variant="bodySmall" style={{ color: "#EF4444", marginBottom: 8 }}>
-                            {transferInError}
-                        </Text>
-                    )}
-                    <Button mode="contained" onPress={handleTransferIn} disabled={!transferInValid} buttonColor="#1E3A8A">Confirm</Button>
-                    </ScrollView>
+                <Modal visible={transferInModalVisible} onDismiss={() => setTransferInModalVisible(false)} contentContainerStyle={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", padding: 20 }}>
+                    <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
+                        <Card.Content style={{ padding: 20 }}>
+                            <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Transfer Money In</Text>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>This creates an expense transaction \u2014 money leaves your main balance.</Text>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
+                                Available Balance: {formatAmount(availableBalance)}
+                            </Text>
+                            {transferInItem?.target_amount ? (
+                                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
+                                    Remaining Goal: {formatAmount(Math.max(0, transferInItem.target_amount - transferInItem.balance))}
+                                </Text>
+                            ) : null}
+                            <TextInput
+                                label="Amount"
+                                value={transferAmount}
+                                onChangeText={(t) => setTransferAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
+                                keyboardType="numeric"
+                                mode="outlined"
+                                style={{ marginBottom: 8 }}
+                                left={<TextInput.Affix text="₱" />}
+                                error={!!transferInError}
+                            />
+                            {transferInError && (
+                                <Text variant="bodySmall" style={{ color: theme.colors.error, marginBottom: 8 }}>
+                                    {transferInError}
+                                </Text>
+                            )}
+                            <Button mode="contained" onPress={handleTransferIn} disabled={!transferInValid} buttonColor={theme.colors.primary}>Confirm</Button>
+                        </Card.Content>
+                    </Card>
                 </Modal>
 
                 {/* Transfer Out Modal */}
-                <Modal visible={transferOutModalVisible} onDismiss={closeTransferOutModal} contentContainerStyle={modalContainerStyle}>
-                    <ScrollView keyboardShouldPersistTaps="handled">
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                        <Text variant="titleLarge">Transfer Money Out</Text>
-                        <IconButton icon="close" size={24} onPress={closeTransferOutModal} />
-                    </View>
-                    <Text variant="bodySmall" style={{ color: "#94A3B8", marginBottom: 12 }}>This creates an income transaction — money returns to your main balance.</Text>
-                    <Text variant="bodySmall" style={{ color: "#64748B", marginBottom: 12 }}>
-                        Available balance: {formatAmount(selectedItem?.balance || 0)}
-                    </Text>
-                    <TextInput
-                        label="Amount"
-                        value={transferAmount}
-                        onChangeText={(t) => setTransferAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
-                        keyboardType="numeric"
-                        mode="outlined"
-                        style={{ marginBottom: 8 }}
-                        left={<TextInput.Affix text="₱" />}
-                        error={!!transferOutError}
-                    />
-                    {transferOutError && (
-                        <Text variant="bodySmall" style={{ color: theme.colors.error, marginBottom: 8 }}>
-                            {transferOutError}
-                        </Text>
-                    )}
-                    <Button mode="contained" onPress={handleTransferOut} disabled={!transferOutAmountValid} buttonColor="#1E3A8A">Confirm</Button>
-                    </ScrollView>
+                <Modal visible={transferOutModalVisible} onDismiss={closeTransferOutModal} contentContainerStyle={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", padding: 20 }}>
+                    <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
+                        <Card.Content style={{ padding: 20 }}>
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                                <Text variant="titleLarge" color={theme.colors.onSurface}>Transfer Money Out</Text>
+                                <IconButton icon="close" size={24} onPress={closeTransferOutModal} />
+                            </View>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>This creates an income transaction \u2014 money returns to your main balance.</Text>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
+                                Available balance: {formatAmount(selectedItem?.balance || 0)}
+                            </Text>
+                            <TextInput
+                                label="Amount"
+                                value={transferAmount}
+                                onChangeText={(t) => setTransferAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
+                                keyboardType="numeric"
+                                mode="outlined"
+                                style={{ marginBottom: 8 }}
+                                left={<TextInput.Affix text="₱" />}
+                                error={!!transferOutError}
+                            />
+                            {transferOutError && (
+                                <Text variant="bodySmall" style={{ color: theme.colors.error, marginBottom: 8 }}>
+                                    {transferOutError}
+                                </Text>
+                            )}
+                            <Button mode="contained" onPress={handleTransferOut} disabled={!transferOutAmountValid} buttonColor={theme.colors.primary}>Confirm</Button>
+                        </Card.Content>
+                    </Card>
                 </Modal>
 
                 <ConfirmDialog
@@ -569,8 +552,9 @@ export default function SavingsScreen() {
             <FAB
                 icon="plus"
                 label="New Allocation"
-                style={{ position: "absolute", margin: 16, right: 0, bottom: 0, borderRadius: 16, backgroundColor: "#1E3A8A" }}
-                color="#fff"
+                style={{ position: "absolute", margin: 16, right: 0, bottom: 0, borderRadius: 16 }}
+                backgroundColor={theme.colors.primary}
+                color={theme.colors.onPrimary}
                 onPress={() => router.push("/add-allocation")}
             />
 

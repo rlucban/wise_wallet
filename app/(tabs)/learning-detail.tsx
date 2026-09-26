@@ -156,28 +156,28 @@ export default function LearningDetail() {
             <ScrollView contentContainerStyle={styles.content}>
                 <Card style={styles.card}>
                     <Card.Content>
-                        <Text variant="headlineSmall" style={styles.title}>{topic.title}</Text>
+                        <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.onSurface }]}>{topic.title}</Text>
 
                         {/* Audio Control Bar */}
-                        <View style={styles.audioBar}>
+                        <View style={[styles.audioBar, { backgroundColor: theme.colors.surfaceVariant }]}>
                             <IconButton
                                 icon={isPlaying ? "pause-circle" : "play-circle"}
-                                iconColor="#1E3A8A"
+                                iconColor={theme.colors.primary}
                                 size={32}
                                 onPress={handlePlayAudio}
                             />
-                            <Text variant="bodyMedium" style={styles.audioStatus}>
+                            <Text variant="bodyMedium" style={[styles.audioStatus, { color: theme.colors.onSurfaceVariant }]}>
                                 {isPlaying ? "Reading aloud..." : "Listen to Article"}
                             </Text>
                             <IconButton
                                 icon="stop-circle-outline"
-                                iconColor="#64748B"
+                                iconColor={theme.colors.onSurfaceVariant}
                                 size={28}
                                 onPress={() => { Speech.stop(); setIsPlaying(false); }}
                             />
                         </View>
 
-                        <Text variant="bodyLarge" style={styles.body}>{topic.content}</Text>
+                        <Text variant="bodyLarge" style={[styles.body, { color: theme.colors.onSurface }]}>{topic.content}</Text>
                     </Card.Content>
                 </Card>
             </ScrollView>
@@ -190,11 +190,10 @@ const styles = StyleSheet.create({
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     content: { padding: 16, width: "100%", maxWidth: 800, alignSelf: "center" },
     card: { borderRadius: 20 },
-    title: { fontWeight: "bold", marginBottom: 12, color: "#1B3F7A" },
+    title: { fontWeight: "bold", marginBottom: 12 },
     audioBar: {
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: "#F1F5F9",
         borderRadius: 12,
         paddingVertical: 4,
         paddingHorizontal: 8,
@@ -202,8 +201,7 @@ const styles = StyleSheet.create({
     },
     audioStatus: {
         flex: 1,
-        color: "#475569",
         fontWeight: "600",
     },
-    body: { lineHeight: 26, opacity: 0.85 },
+    body: { lineHeight: 26 },
 });

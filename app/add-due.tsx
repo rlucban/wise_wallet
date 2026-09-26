@@ -80,8 +80,8 @@ export default function AddDue() {
             </Appbar.Header>
 
             <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-                <Card style={{ padding: 20, borderRadius: 16, backgroundColor: "#F8FAFC" }}>
-                    <Text variant="titleMedium" style={{ marginBottom: 16, color: "#1E293B", fontWeight: "700" }}>
+                <Card style={{ padding: 20, borderRadius: 16, backgroundColor: theme.colors.surfaceVariant }}>
+                    <Text variant="titleMedium" style={{ marginBottom: 16, color: theme.colors.onSurface, fontWeight: "700" }}>
                         Due Details
                     </Text>
 
@@ -171,7 +171,7 @@ export default function AddDue() {
                     onPress={handleSubmit}
                     loading={loading}
                     disabled={loading || !title || !amount}
-                    buttonColor="#1E3A8A"
+                    buttonColor={theme.colors.primary}
                     style={{ paddingVertical: 4 }}
                 >
                     Save Scheduled Due
@@ -190,8 +190,8 @@ export default function AddDue() {
                         alignItems: "center",
                     }}
                 >
-                    <Card style={{ width: "90%", borderRadius: 24, padding: 16, elevation: 10 }}>
-                        <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700", textAlign: "center" }}>
+                    <Card style={{ width: "90%", borderRadius: 24, padding: 16, elevation: 10, backgroundColor: theme.colors.surface }}>
+                        <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700", textAlign: "center", color: theme.colors.onSurface }}>
                             Select Due Date
                         </Text>
                         <Calendar
@@ -208,12 +208,12 @@ export default function AddDue() {
                                 calendarBackground: theme.colors.surface,
                                 textSectionTitleColor: theme.colors.primary,
                                 selectedDayBackgroundColor: theme.colors.primary,
-                                selectedDayTextColor: "#ffffff",
+                                selectedDayTextColor: theme.colors.onPrimary,
                                 todayTextColor: theme.colors.primary,
                                 dayTextColor: theme.colors.onSurface,
                                 textDisabledColor: theme.colors.surfaceVariant,
                                 dotColor: theme.colors.primary,
-                                selectedDotColor: "#ffffff",
+                                selectedDotColor: theme.colors.onPrimary,
                                 arrowColor: theme.colors.primary,
                                 disabledArrowColor: theme.colors.surfaceVariant,
                                 monthTextColor: theme.colors.onSurface,

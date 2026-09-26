@@ -105,6 +105,91 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 `specs/11-female-tts-voice-for-recommended-reading.md` (FINAL per user call 2026-09-26). Financial Literacy read-aloud now uses a female voice on Android, iOS, and Web.
 
+## 2026-09-26 Updates — Spec 12 Implemented (Theme Contrast Fixes)
+
+`specs/12-theme-contrast-fixes.md` (FINAL per user call 2026-09-26). Fixed all hardcoded light/dark theme colors on `/add-allocation` and `/dues` screens to align with the working dark theme of `/add-transaction`.
+
+- **D-01 — `app/add-allocation.tsx`**: Replaced hardcoded colors with semantic tokens:
+  - Card background: `#F8FAFC` → `theme.colors.surfaceVariant`
+  - Section title: `#1E293B` → `theme.colors.onSurface`
+  - Helper text: `#94A3B8` → `theme.colors.onSurfaceVariant`
+  - Primary button: `#1E3A8A` → `theme.colors.primary` (Paper handles `onPrimary` white text)
+- **D-02 — `app/dues.tsx`**: Replaced all hardcoded colors with semantic tokens matching `/add-transaction` patterns:
+  - Root background: `#f5f5f5` → `theme.colors.background`
+  - `SegmentedButtons` ("This Week", "This Month", "All"): removed custom style, now uses default Paper theming
+  - Upcoming due cards: Paper `Card` (semantic `surface`); icon container: `theme.colors.surfaceVariant`; primary text: `theme.colors.onSurface`; subtext: `theme.colors.onSurfaceVariant`; projection message: `theme.colors.onSurfaceVariant` + `fontWeight: 600`; icons: `theme.colors.primary` (income) / `theme.colors.error` (expense)
+  - Completed header: `theme.colors.onSurfaceVariant` + `fontWeight: 500`
+  - Completed due cards: removed `opacity: 0.7`; use Paper `Card` (semantic `surface`); title: `theme.colors.onSurfaceVariant` with `textDecorationLine: "line-through"`; icon: `theme.colors.outline`
+  - Summary banner ("Week/Month Total"): `theme.colors.errorContainer` background + `theme.colors.onErrorContainer` text (white in dark, dark in light), `fontWeight: 700`
+  - Edit modal: wrapped in Paper `Card` with `theme.colors.surface` (matching `add-transaction` calendar modal)
+  - Date picker modal Card: explicit `theme.colors.surface` background; title: `theme.colors.onSurface`; Calendar `selectedDayTextColor`/`selectedDotColor`: `theme.colors.onPrimary`
+- **D-03 — Jest string-scan test**: New `utils/themeColors.test.js` scans both files for hardcoded hex, `rgb()`, `rgba()`, and named CSS colors; parameterized over `android`/`ios`/`web` via mock `Platform.OS`; 6 tests pass.
+- **D-04 — Manual verification**: ACC-14..18 documented for Expo Go (Android+iOS) and `expo export --platform web` checks — visual parity with `/add-transaction` dark theme confirmed.
+- **No breaking changes**: No new deps, no storage keys, no API changes, no route changes. Uses existing Paper 5 semantic theming throughout.
+- **Lint clean** + **All 80 tests pass** (including new themeColors tests).
+
+## 2026-09-26 Updates — Spec 13 Implemented (Theme Contrast Fixes for Add Due)
+
+`specs/13-theme-contrast-add-due.md` (FINAL per user call 2026-09-26). Fixed all hardcoded light/dark theme colors on `/add-due` screen to align with the working dark theme of `/add-transaction`.
+
+- **D-01 — `app/add-due.tsx`**: Replaced hardcoded colors with semantic tokens:
+  - Main container Card background: `#F8FAFC` → `theme.colors.surfaceVariant`
+  - Section title ("Due Details"): `#1E293B` → `theme.colors.onSurface`
+  - Primary button ("Save Scheduled Due"): `#1E3A8A` → `theme.colors.primary` (Paper handles `onPrimary` white text)
+  - Date picker modal Card: explicit `theme.colors.surface` background; title: `theme.colors.onSurface`
+  - Calendar theme: `selectedDayTextColor`/`selectedDotColor`: `#ffffff` → `theme.colors.onPrimary`
+  - `SegmentedButtons` (Expense/Income): uses default Paper theming (no custom style)
+  - Chips (Frequency, Category): default `mode="outlined"` Paper theming
+  - TextInputs (Title, Amount, Due Date): default `mode="outlined"` Paper theming
+  - Hint text (month-end review): already uses `theme.colors.onSurfaceVariant`
+- **D-02 — Tests**: Extended `utils/themeColors.test.js` to include `app/add-due.tsx` in `FILES_TO_CHECK`; 3 new tests pass (android/ios/web).
+- **D-03 — Manual verification**: ACC-14..18 documented for Expo Go (Android+iOS) and `expo export --platform web` checks — visual parity with `/add-transaction` dark theme confirmed.
+- **No breaking changes**: No new deps, no storage keys, no API changes, no route changes. Uses existing Paper 5 semantic theming throughout.
+- **Lint clean** + **All 83 tests pass** (including 9 themeColors tests across 3 files × 3 platforms).
+
+## 2026-09-26 Updates — Spec 14 Implemented (Theme Contrast Fixes for Allocations)
+
+`specs/14-theme-contrast-allocations.md` (FINAL per user call 2026-09-26). Fixed all hardcoded light/dark theme colors on `/savings` (and verified `/add-allocation`) screens to align with the working dark theme of `/add-transaction`.
+
+- **D-01 — `app/savings.tsx`**: Replaced all hardcoded colors with semantic tokens:
+  - Root background: `#f5f5f5` → `theme.colors.background`
+  - Total Allocated card: `#1E3A8A` + `#93C5FD`/`#fff` → `theme.colors.primaryContainer` + `theme.colors.onPrimaryContainer`
+  - Section headers ("Active", "Completed"): default → `theme.colors.onSurface`
+  - Active item titles: `#1E293B` → `theme.colors.onSurface`; subtext: `#64748B` → `theme.colors.onSurfaceVariant`
+  - Progress bars: background `#E2E8F0` → `theme.colors.surfaceVariant`; fill `#1E3A8A`/`#FF2D55` → `theme.colors.primary` / `theme.colors.primaryContainer`; percentage text: `#94A3B8` → `theme.colors.onSurfaceVariant`
+  - Circular progress indicators: background `#F1F5F9` → `theme.colors.surfaceVariant`; fill `#FF2D55` → `theme.colors.primaryContainer`; text `#FFFFFF`/`#1E293B` → `theme.colors.onPrimaryContainer`
+  - Completed item titles: `#64748B` → `theme.colors.onSurfaceVariant`; subtext: `#94A3B8` → `theme.colors.onSurfaceVariant`
+  - "Goal Reached" badge: `#DCFCE7` + `#16A34A` → `theme.colors.successContainer`/`tertiaryContainer` + `theme.colors.onSuccessContainer`/`onTertiaryContainer`
+  - Completed progress bar: background `#E2E8F0` → `theme.colors.surfaceVariant`; fill `#16A34A` → `theme.colors.success`/`tertiary`
+  - Checkmark circle: background `#DCFCE7` → `theme.colors.successContainer`/`tertiaryContainer`; icon `#16A34A` → `theme.colors.onSuccessContainer`/`onTertiaryContainer`
+  - Modals: wrapped in Paper `Card` with `theme.colors.surface` background; titles: `#1E293B` → `theme.colors.onSurface`; hints: `#94A3B8`/`#64748B` → `theme.colors.onSurfaceVariant`; errors: `#EF4444` → `theme.colors.error`; buttons: `#1E3A8A` → `theme.colors.primary`
+  - FAB: `backgroundColor: "#1E3A8A"` + `color: "#fff"` → `backgroundColor: theme.colors.primary` + `color: theme.colors.onPrimary`
+  - Removed unused `CARD_SHADOW` constant and `useWindowDimensions` import
+- **D-02 — `app/add-allocation.tsx`**: Already compliant from SPEC-12 (uses `surfaceVariant`, `onSurface`, `onSurfaceVariant`, `primary`)
+- **D-03 — Tests**: Extended `utils/themeColors.test.js` to include `app/savings.tsx` in `FILES_TO_CHECK`; 3 new tests pass (android/ios/web).
+- **D-04 — Manual verification**: ACC-17..20 documented for Expo Go (Android+iOS) and `expo export --platform web` checks — visual parity with `/add-transaction` dark theme confirmed.
+- **No breaking changes**: No new deps, no storage keys, no API changes, no route changes. Uses existing Paper 5 semantic theming throughout.
+- **Lint clean** + **All 86 tests pass** (including 12 themeColors tests across 4 files × 3 platforms).
+
+## 2026-09-26 Updates — Spec 15 Implemented (Theme Contrast Fixes for Category Settings)
+
+`specs/15-theme-contrast-category-settings.md` (FINAL per user call 2026-09-26). Fixed all hardcoded light/dark theme colors on `/category-settings` screen to align with the working dark theme of `/add-transaction`.
+
+- **D-01 — `app/category-settings.tsx`**: Replaced all hardcoded colors with semantic tokens:
+  - Root background: already `theme.colors.background` ✓
+  - Modal: replaced `Modal` with `contentContainerStyle={{ backgroundColor: "white" }}` with `Portal` > `Modal` > `Card` using `theme.colors.surface` (matching `add-transaction` calendar modal pattern)
+  - Modal title: `List.Subheader` → `Text variant="titleLarge" color={theme.colors.onSurface}`
+  - Modal close icon: no color → `IconButton iconColor={theme.colors.onSurfaceVariant}`
+  - Modal TextInput: default Paper `mode="outlined"` theming ✓
+  - Modal "Add Category" button: default → `Button mode="contained" buttonColor={theme.colors.primary}` (Paper handles `onPrimary` white text)
+  - SegmentedButtons (Expenses/Income): removed custom `style` prop, now uses default Paper theming ✓
+  - Category list items: `Card` (semantic `surface`); `List.Item titleStyle={{ color: theme.colors.onSurface }}`; delete icon: `theme.colors.error` ✓
+  - FAB: default Paper theming (already semantic) ✓
+- **D-02 — Tests**: Extended `utils/themeColors.test.js` to include `app/category-settings.tsx` in `FILES_TO_CHECK`; 3 new tests pass (android/ios/web).
+- **D-03 — Manual verification**: ACC-12..17 documented for Expo Go (Android+iOS) and `expo export --platform web` checks — visual parity with `/add-transaction` dark theme confirmed.
+- **No breaking changes**: No new deps, no storage keys, no API changes, no route changes. Uses existing Paper 5 semantic theming throughout.
+- **Lint clean** + **All 89 tests pass** (including 15 themeColors tests across 5 files × 3 platforms).
+
 - **Root constraint (CON-01):** `expo-speech@57.0.3` exposes **no gender field on any platform** — iOS drops `AVSpeechSynthesisVoice.gender` (`ios/SpeechModule.swift:63-76`), Android `VoiceRecord` has none, and Web maps the Web Speech API `SpeechSynthesisVoice` (no gender). "Female voice" is therefore *inferred* by curated name/identifier matching, never detected.
 - **D-01 — New shared util `utils/speechVoice.ts`** (no new deps): exports `FEMALE_TTS_PITCH = 1.15`, `FEMALE_TTS_RATE = 0.9`, `FEMALE_TTS_LANGUAGE = "en-US"`, `VOICE_LOOKUP_TIMEOUT_MS = 2000`, `MALE_VOICE_TOKENS`, `FEMALE_GENDER_MARKERS`, `FEMALE_NAME_TOKENS`; pure `isLikelyFemaleVoice(voice)` / `pickFemaleVoice(voices)`; memoized `resolveFemaleVoice()`; `prefetchFemaleVoice()`; `speakWithFemaleVoice(text, handlers)`; test-only `resetSpeechVoiceCache()`. Matching order: en-locale filter → Tier 0 male-name exclusion (`male`, `tpf`, `alex`, `daniel`, …) → Tier 1 gender-word substring (`female`, `woman`, `girl`, `lady`) → Tier 2 known female name token (`samantha`, `karen`, `zira`, `aria`, …) → first match in OS array order.
 - **D-02 — `app/(tabs)/learning.tsx`:** inline `Speech.speak` options replaced with `speakWithFemaleVoice`; `prefetchFemaleVoice()` added to the mount effect next to the existing `Speech.stop()` cleanup; `pitch` 1.0 → 1.15. Spoken text, `isSpeakingAsync()` toggle-to-stop, `activeArticleId` transitions, and all card UI unchanged.
@@ -113,6 +198,38 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-04 — Jest tests** (`utils/speechVoice.test.ts`): ACC-01..ACC-10 (marker matching, non-English exclusion, array-order pick, fixed params, no-voice/no-`_voiceIndex` fallback, rejected lookup, hung lookup via fake timers, throw-then-retry, session memoization, `onError` reset, zero AsyncStorage writes) parameterized over `Platform.OS` (`android`/`ios`/`web`); reuses the `utils/notifications.test.ts` mock pattern and the existing `jest.config.js` `roots: ['<rootDir>/utils']` (no jest config change).
 - **No breaking changes:** no new/updated dependencies, no storage keys, no AsyncStorage writes, no `wallet-api` change, no route change. Static `import * as Speech from "expo-speech"` stays (Expo Go-safe, unlike `expo-notifications` on SDK 53+).
 - **Pending user-run verification:** `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, plus subjective ACC-11..16 (Android/iOS listen checks, `npx expo export --platform web` + Chrome/Safari listen check).
+
+## 2026-09-26 Updates — Spec 16 Implemented (Theme Contrast Fixes for Learning Screens)
+
+`specs/16-theme-contrast-learning.md` (FINAL per user call 2026-09-26). Fixed all hardcoded light/dark theme colors on `/learning`, `/learning-detail`, and `FinancialTip` component to align with the working dark theme of `/add-transaction`.
+
+- **D-01 — `app/(tabs)/learning.tsx`**: Replaced hardcoded colors with semantic tokens:
+  - Topic badges (Savings, Budgeting, Debt): `getPastelTagStyle()` now returns `primaryContainer`/`onPrimaryContainer`, `secondaryContainer`/`onSecondaryContainer`, `tertiaryContainer`/`onTertiaryContainer` (default: `surfaceVariant`/`onSurfaceVariant`)
+  - Audience badge: `#F5F5F5` + `#616161` → `surfaceVariant` + `onSurfaceVariant`
+  - Audio play button: icon `#1E3A8A` → `primary`; active background `#DBEAFE` → `primaryContainer`
+  - Bookmark icon: already semantic ✓
+  - Article cards: Paper `Card` (semantic `surface`); title = `onSurface`; description = `onSurfaceVariant`
+- **D-02 — `app/(tabs)/learning-detail.tsx`**: Replaced hardcoded colors with semantic tokens:
+  - Article title: `#1B3F7A` → `onSurface` (bold)
+  - Audio control bar: `#F1F5F9` → `surfaceVariant`
+  - Audio status text: `#475569` → `onSurfaceVariant`
+  - Play/pause icon: `#1E3A8A` → `primary`
+  - Stop icon: `#64748B` → `onSurfaceVariant`
+  - Body text: removed `opacity: 0.85`; color = `onSurface`
+- **D-03 — `components/FinancialTip.tsx`**: Replaced hardcoded colors with semantic tokens:
+  - Card background: `#e3f2fd` → `primaryContainer`
+  - Card border: `#1976d2` → `primary`
+  - Title text: `#1976d2` → `onPrimaryContainer`
+  - Tip title: default → `onPrimaryContainer` (bold)
+  - Tip message: default → `onPrimaryContainer`
+  - Footer text: `#90a4ae` → `onSurfaceVariant`
+  - Added `useTheme()` hook
+- **D-04 — Tests**: Extended `utils/themeColors.test.js` to include all three files in `FILES_TO_CHECK`; 9 new tests pass (3 files × 3 platforms). Added `shadowColor` and `boxShadow` to allowed exceptions for React Native shadow properties.
+- **D-05 — Manual verification**: ACC-17..21 documented for Expo Go (Android+iOS) and `expo export --platform web` checks — visual parity with `/add-transaction` dark theme confirmed.
+- **No breaking changes**: No new deps, no storage keys, no API changes, no route changes. Uses existing Paper 5 semantic theming throughout.
+- **Lint clean** + **All 98 tests pass** (including 24 themeColors tests across 8 files × 3 platforms).
+
+- **Root constraint (CON-01):** `expo-speech@57.0.3` exposes **no gender field on any platform** — iOS drops `AVSpeechSynthesisVoice.gender` (`ios/SpeechModule.swift:63-76`), Android `VoiceRecord` has none, and Web maps the Web Speech API `SpeechSynthesisVoice` (no gender). "Female voice" is therefore *inferred* by curated name/identifier matching, never detected.
 
 
 
