@@ -1,5 +1,5 @@
 import { View, StyleProp, ViewStyle } from "react-native";
-import { Card, Text, IconButton } from "react-native-paper";
+import { Card, Text, IconButton, useTheme } from "react-native-paper";
 import { useState, useEffect, useMemo } from "react";
 import { FinancialTipData, getDateContextTips } from "../utils/financialLiteracy";
 
@@ -33,6 +33,7 @@ export function FinancialTip({
   dateBased = true,
   style,
 }: FinancialTipProps) {
+  const theme = useTheme();
   const [tipIndex, setTipIndex] = useState(0);
 
   const tips = useMemo(() => {
@@ -51,18 +52,32 @@ export function FinancialTip({
   const tip = tips[tipIndex % tips.length];
 
   return (
-    <Card style={[{ margin: 16, marginTop: 8, backgroundColor: "#e3f2fd", borderRadius: 12, borderLeftWidth: 4, borderLeftColor: "#1976d2" }, style]}>
+    <Card
+      style={[
+        {
+          margin: 16,
+          marginTop: 8,
+          borderRadius: 12,
+          borderLeftWidth: 4,
+          borderLeftColor: theme.colors.primary,
+          backgroundColor: theme.colors.primaryContainer,
+        },
+        style,
+      ]}
+    >
       <Card.Content style={{ flexDirection: "row", alignItems: "center" }}>
         <View style={{ flex: 1 }}>
-          <Text variant="labelSmall" style={{ color: "#1976d2", marginBottom: 4, fontWeight: "bold" }}>
+          <Text variant="labelSmall" style={{ color: theme.colors.onPrimaryContainer, marginBottom: 4, fontWeight: "bold" }}>
             {title}
           </Text>
-          <Text variant="bodyMedium" style={{ fontWeight: "700", marginBottom: 2 }}>
+          <Text variant="bodyMedium" style={{ fontWeight: "700", marginBottom: 2, color: theme.colors.onPrimaryContainer }}>
             {tip.title}
           </Text>
-          <Text variant="bodyMedium">{tip.message}</Text>
+          <Text variant="bodyMedium" style={{ color: theme.colors.onPrimaryContainer }}>
+            {tip.message}
+          </Text>
           {showFooter && (
-            <Text variant="bodySmall" style={{ color: "#90a4ae", fontSize: 11, fontStyle: "italic", marginTop: 6 }}>
+            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontSize: 11, fontStyle: "italic", marginTop: 6 }}>
               📹 In the future, there will be suggested video links here.
             </Text>
           )}
