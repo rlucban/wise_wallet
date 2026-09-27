@@ -143,8 +143,8 @@ export default function LoginScreen() {
             return;
         }
 
-        if (!passcode.trim()) {
-            setPinError("PIN is required");
+        if (!passcode.trim() || passcode.length !== 4) {
+            setPinError("Passcode must be exactly 4 digits");
             return;
         }
 
@@ -308,8 +308,9 @@ export default function LoginScreen() {
                                     <Text style={styles.fieldLabel}>PIN</Text>
                                     <TextInput
                                         value={passcode}
-                                        onChangeText={(text) => { setPasscode(text); setPinError(""); }}
+                                        onChangeText={(text) => { setPasscode(text.replace(/[^0-9]/g, "").slice(0, 4)); setPinError(""); }}
                                         keyboardType="numeric"
+                                        maxLength={4}
                                         secureTextEntry={!showPin}
                                         style={styles.input}
                                         textColor="#1a237e"

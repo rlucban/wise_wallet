@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { View, ScrollView, Alert, Platform, StyleSheet } from "react-native";
 import { Appbar, List, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
@@ -213,6 +213,9 @@ export default function SettingsScreen() {
     onClose?: () => void;
   }>({ visible: false, type: "success", title: "", message: "" });
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+
+  // Web-only ref for hidden file input
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
    const setAutoBackup = async (value: boolean) => {
      await updateProfile({ autoBackup: value });
@@ -691,32 +694,111 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleExportJSON = async () => {
+  const isValidWiseWalletBackup = (data: unknown): boolean => {
+    if (!data || typeof data !== "object") return false;
+    const obj = data as Record<string, unknown>;
+    // Check for at least one expected top-level key
+    const expectedKeys = ["profile", "settings", "categories", "transactions", "dues", "savingsItems"];
+    return expectedKeys.some((k) => k in obj);
+  };
+
+  const exportJSONWeb = async () => {
+    try {
+      const json = await exportData();
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `wisewallet_backup_${timestamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showMessage("success", "Export Successful", "Data exported successfully!");
+    } catch (e) {
+      console.error(e);
+      showMessage("error", "Export Failed", "Failed to export data. Please try again.");
+    }
+  };
+
+  const exportJSONMobile = async () => {
     try {
       const json = await exportData();
       const fileUri = `${FileSystem.documentDirectory}WiseWallet_Backup_${Date.now()}.json`;
-      const encoding = FileSystem.EncodingType ? FileSystem.EncodingType.UTF8 : 'utf8';
+      const encoding = FileSystem.EncodingType ? FileSystem.EncodingType.UTF8 : "utf8";
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding });
       await Sharing.shareAsync(fileUri);
+      showMessage("success", "Export Successful", "Data exported successfully!");
     } catch (e) {
       console.error(e);
-      alert("Export failed");
+      showMessage("error", "Export Failed", "Failed to export data. Please try again.");
+    }
+  };
+
+  const handleExportJSON = async () => {
+    if (Platform.OS === "web") {
+      await exportJSONWeb();
+    } else {
+      await exportJSONMobile();
+    }
+  };
+
+  const importJSONWeb = async () => {
+    if (!fileInputRef.current) return;
+    fileInputRef.current.value = "";
+    fileInputRef.current.click();
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      if (!isValidWiseWalletBackup(data)) {
+        showMessage("error", "Invalid Backup File", "Please select a valid WiseWallet backup file.");
+        return;
+      }
+
+      await importData(text);
+      showMessage("success", "Import Successful", "Data imported successfully! Please restart the app to see changes.");
+    } catch (e) {
+      console.error(e);
+      showMessage("error", "Import Failed", "Failed to import data. The file may be corrupted or invalid.");
+    }
+  };
+
+  const importJSONMobile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: "application/json" });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const fileUri = result.assets[0].uri;
+        const encoding = FileSystem.EncodingType ? FileSystem.EncodingType.UTF8 : "utf8";
+        const jsonString = await FileSystem.readAsStringAsync(fileUri, { encoding });
+        const data = JSON.parse(jsonString);
+
+        if (!isValidWiseWalletBackup(data)) {
+          showMessage("error", "Invalid Backup File", "Please select a valid WiseWallet backup file.");
+          return;
+        }
+
+        await importData(jsonString);
+        showMessage("success", "Import Successful", "Data imported successfully! Please restart the app to see changes.");
+      }
+    } catch (e) {
+      console.error(e);
+      showMessage("error", "Import Failed", "Failed to import data. Please try again.");
     }
   };
 
   const handleImportJSON = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({ type: 'application/json' });
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const fileUri = result.assets[0].uri;
-        const encoding = FileSystem.EncodingType ? FileSystem.EncodingType.UTF8 : 'utf8';
-        const jsonString = await FileSystem.readAsStringAsync(fileUri, { encoding });
-        await importData(jsonString);
-        alert("Import successful! Data has been restored. Please restart the app or switch accounts to see the changes.");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Import failed");
+    if (Platform.OS === "web") {
+      await importJSONWeb();
+    } else {
+      await importJSONMobile();
     }
   };
 
@@ -917,6 +999,15 @@ export default function SettingsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: paperTheme.colors.background }}>
+      {Platform.OS === "web" && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          style={{ display: "none" }}
+          onChange={handleFileSelect}
+        />
+      )}
       <Appbar.Header style={{ backgroundColor: paperTheme.colors.background, elevation: 0 }}>
         <Appbar.Content title="Settings" titleStyle={{ fontWeight: "700" }} />
       </Appbar.Header>
@@ -999,9 +1090,12 @@ export default function SettingsScreen() {
               </View>
               <Switch value={isDarkMode} onValueChange={toggleTheme} />
             </View>
-            <Text variant="bodySmall" style={{ marginLeft: 52, color: paperTheme.colors.outline }}>
-              Language: English
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+              <View style={{ width: 36 }} />
+              <Text variant="bodySmall" style={{ color: paperTheme.colors.outline, fontSize: 12, lineHeight: 16 }}>
+                Language: English
+              </Text>
+            </View>
           </Card.Content>
         </Card>
 
@@ -1075,9 +1169,12 @@ export default function SettingsScreen() {
                 <List.Icon icon="lock-outline" color={paperTheme.colors.onSurfaceVariant} />
                 <Text variant="bodyLarge" style={{ marginLeft: 12 }}>Passcode</Text>
               </View>
-              <Text variant="bodySmall" style={{ marginLeft: 52, color: paperTheme.colors.outline }}>
-                Require PIN to unlock the app on startup
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+                <View style={{ width: 36 }} />
+                <Text variant="bodySmall" style={{ color: paperTheme.colors.outline, fontSize: 12, lineHeight: 16 }}>
+                  Require PIN to unlock the app on startup
+                </Text>
+              </View>
             </View>
 
             {isPasscodeEnabled ? (
@@ -1128,7 +1225,7 @@ export default function SettingsScreen() {
             <TextInput
               label="Current PIN"
               value={deletePinInput}
-              onChangeText={(t) => { setDeletePinInput(t); setDeletePinError(""); setPinVerified(false); }}
+              onChangeText={(t) => { setDeletePinInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setDeletePinError(""); setPinVerified(false); }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
@@ -1220,7 +1317,7 @@ export default function SettingsScreen() {
             <TextInput
               label="Current PIN"
               value={pinVerificationInput}
-              onChangeText={(t) => { setPinVerificationInput(t); setVerificationError(""); }}
+              onChangeText={(t) => { setPinVerificationInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setVerificationError(""); }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
@@ -1292,7 +1389,7 @@ export default function SettingsScreen() {
             <TextInput
               label="PIN"
               value={pinInput}
-              onChangeText={setPinInput}
+              onChangeText={(t) => setPinInput(t.replace(/[^0-9]/g, "").slice(0, 4))}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
@@ -1311,7 +1408,7 @@ export default function SettingsScreen() {
             <TextInput
               label="New PIN"
               value={pinSetupInput}
-              onChangeText={setPinSetupInput}
+              onChangeText={(t) => setPinSetupInput(t.replace(/[^0-9]/g, "").slice(0, 4))}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
@@ -1336,7 +1433,7 @@ export default function SettingsScreen() {
               <TextInput
                 label="Current Passcode"
                 value={currentPasscodeInput}
-                onChangeText={(t) => { setCurrentPasscodeInput(t); setChangePasscodeError(""); }}
+                onChangeText={(t) => { setCurrentPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setChangePasscodeError(""); }}
                 secureTextEntry
                 keyboardType="numeric"
                 maxLength={4}
@@ -1347,7 +1444,7 @@ export default function SettingsScreen() {
             <TextInput
               label="New Passcode"
               value={newPasscodeInput}
-              onChangeText={(t) => { setNewPasscodeInput(t); setChangePasscodeError(""); }}
+              onChangeText={(t) => { setNewPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setChangePasscodeError(""); }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
@@ -1357,7 +1454,7 @@ export default function SettingsScreen() {
             <TextInput
               label="Confirm New Passcode"
               value={confirmPasscodeInput}
-              onChangeText={(t) => { setConfirmPasscodeInput(t); setChangePasscodeError(""); }}
+              onChangeText={(t) => { setConfirmPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setChangePasscodeError(""); }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
