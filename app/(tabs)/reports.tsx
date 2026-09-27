@@ -199,12 +199,27 @@ export default function ReportsScreen() {
           anchor={
             <TouchableOpacity
               onPress={() => setMenuVisible(true)}
-              style={{ flexDirection: "row", alignItems: "center", marginRight: 8, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#CBD5E1", elevation: 2, ...Platform.select({ web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.08)" }, default: { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2 } }) }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginRight: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 8,
+                backgroundColor: theme.colors.surface,
+                borderWidth: 1,
+                borderColor: theme.colors.outline,
+                elevation: 2,
+                ...Platform.select({
+                  web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.08)" },
+                  default: { shadowColor: theme.colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 2 },
+                }),
+              }}
             >
-              <Text variant="labelLarge" style={{ fontWeight: "600", color: "#1E3A8A", marginRight: 4 }}>
+              <Text variant="labelLarge" style={{ fontWeight: "600", color: theme.colors.primary, marginRight: 4 }}>
                 {PERIOD_LABELS[period]}
               </Text>
-              <MaterialCommunityIcons name="chevron-down" size={18} color="#1E3A8A" />
+              <MaterialCommunityIcons name="chevron-down" size={18} color={theme.colors.primary} />
             </TouchableOpacity>
           }
         >
@@ -214,16 +229,16 @@ export default function ReportsScreen() {
         </Menu>
       </Appbar.Header>
 
-      {/* Full-Width Navy Date Banner */}
-      <View style={{ marginHorizontal: 16, marginTop: 12, backgroundColor: "#1E3A8A", borderRadius: 12, flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 8 }}>
+      {/* Full-Width Date Banner */}
+      <View style={{ marginHorizontal: 16, marginTop: 12, backgroundColor: theme.colors.primaryContainer, borderRadius: 12, flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 8 }}>
         <TouchableOpacity onPress={() => shiftPeriod("left")} style={{ padding: 8 }}>
-          <MaterialCommunityIcons name="chevron-left" size={24} color="#FFFFFF" />
+          <MaterialCommunityIcons name="chevron-left" size={24} color={theme.colors.onPrimaryContainer} />
         </TouchableOpacity>
-        <Text variant="titleMedium" style={{ flex: 1, textAlign: "center", color: "#FFFFFF", fontWeight: "700" }}>
+        <Text variant="titleMedium" style={{ flex: 1, textAlign: "center", color: theme.colors.onPrimaryContainer, fontWeight: "700" }}>
           {currentRange.label}
         </Text>
         <TouchableOpacity onPress={() => shiftPeriod("right")} style={{ padding: 8 }}>
-          <MaterialCommunityIcons name="chevron-right" size={24} color="#FFFFFF" />
+          <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onPrimaryContainer} />
         </TouchableOpacity>
       </View>
 
@@ -231,38 +246,38 @@ export default function ReportsScreen() {
         {/* 3-Column Summary Cards */}
         <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingTop: 16, gap: 10 }}>
           {/* Expense Card */}
-          <View style={{ flex: 1, backgroundColor: "#fff", borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#FEE2E2", justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
-              <MaterialCommunityIcons name="arrow-down-circle" size={22} color="#DC2626" />
+          <View style={{ flex: 1, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.errorContainer, justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
+              <MaterialCommunityIcons name="arrow-down-circle" size={22} color={theme.colors.error} />
             </View>
-            <Text variant="labelSmall" style={{ color: "#94A3B8", fontWeight: "600", letterSpacing: 0.5 }}>EXPENSE</Text>
-            <Text variant="titleMedium" style={{ color: "#DC2626", fontWeight: "800", marginTop: 4 }}>{formatAmount(expense)}</Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", letterSpacing: 0.5 }}>EXPENSE</Text>
+            <Text variant="titleMedium" style={{ color: theme.colors.error, fontWeight: "800", marginTop: 4 }}>{formatAmount(expense)}</Text>
           </View>
 
           {/* Income Card */}
-          <View style={{ flex: 1, backgroundColor: "#fff", borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#DCFCE7", justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
-              <MaterialCommunityIcons name="arrow-up-circle" size={22} color="#16A34A" />
+          <View style={{ flex: 1, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.tertiaryContainer, justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
+              <MaterialCommunityIcons name="arrow-up-circle" size={22} color={theme.colors.tertiary} />
             </View>
-            <Text variant="labelSmall" style={{ color: "#94A3B8", fontWeight: "600", letterSpacing: 0.5 }}>INCOME</Text>
-            <Text variant="titleMedium" style={{ color: "#16A34A", fontWeight: "800", marginTop: 4 }}>{formatAmount(income)}</Text>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", letterSpacing: 0.5 }}>INCOME</Text>
+            <Text variant="titleMedium" style={{ color: theme.colors.tertiary, fontWeight: "800", marginTop: 4 }}>{formatAmount(income)}</Text>
           </View>
 
           {/* Total Card */}
-          <View style={{ flex: 1, backgroundColor: "#fff", borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: "#DBEAFE", justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
-              <MaterialCommunityIcons name="wallet-outline" size={22} color="#1E3A8A" />
+          <View style={{ flex: 1, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.primaryContainer, justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
+              <MaterialCommunityIcons name="wallet-outline" size={22} color={theme.colors.primary} />
             </View>
-            <Text variant="labelSmall" style={{ color: "#94A3B8", fontWeight: "600", letterSpacing: 0.5 }}>TOTAL</Text>
-            <Text variant="titleMedium" style={{ color: "#1E3A8A", fontWeight: "800", marginTop: 4 }}>
+            <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", letterSpacing: 0.5 }}>TOTAL</Text>
+            <Text variant="titleMedium" style={{ color: theme.colors.primary, fontWeight: "800", marginTop: 4 }}>
               {net >= 0 ? "+" : ""}{formatAmount(net)}
             </Text>
           </View>
         </View>
 
         {/* Monthly Expense by Month (Bar Graph) */}
-        <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: "#fff", borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700", color: "#1E293B" }}>Monthly Expense by Month</Text>
+        <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700", color: theme.colors.onSurface }}>Monthly Expense by Month</Text>
           <MonthlyTrendChart
             labels={trend.labels}
             income={trend.income}
@@ -273,8 +288,8 @@ export default function ReportsScreen() {
         </View>
 
         {/* Income vs Expenses (Pie graph) */}
-        <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: "#fff", borderRadius: 16, padding: 20, alignItems: "center", ...CARD_SHADOW }}>
-          <Text variant="titleMedium" style={{ fontWeight: "700", color: "#1E293B", marginBottom: 16, alignSelf: "flex-start" }}>
+        <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, alignItems: "center", ...CARD_SHADOW }}>
+          <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurface, marginBottom: 16, alignSelf: "flex-start" }}>
             Income vs Expenses
           </Text>
 
@@ -286,37 +301,37 @@ export default function ReportsScreen() {
             centerValue={formatAmount(totalAll)}
             centerCaption="Total"
             emptyMessage="No data this period"
-            mutedColor="#94A3B8"
-            textColor="#1E293B"
+            mutedColor={theme.colors.onSurfaceVariant}
+            textColor={theme.colors.onSurface}
           />
         </View>
 
         {/* Expense Breakdown */}
         {expenseBreakdown.length > 0 && (
-          <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: "#fff", borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
             <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
-              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: "#FEE2E2", justifyContent: "center", alignItems: "center", marginRight: 8 }}>
-                <MaterialCommunityIcons name="arrow-down-circle" size={16} color="#DC2626" />
+              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: theme.colors.errorContainer, justifyContent: "center", alignItems: "center", marginRight: 8 }}>
+                <MaterialCommunityIcons name="arrow-down-circle" size={16} color={theme.colors.error} />
               </View>
-              <Text variant="titleMedium" style={{ fontWeight: "700", color: "#1E293B" }}>Expense Categories</Text>
+              <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurface }}>Expense Categories</Text>
             </View>
 
             {expenseBreakdown.map((item, i) => {
               const pct = expense > 0 ? ((item.value / expense) * 100) : 0;
               return (
                 <View key={i} style={{ flexDirection: "row", alignItems: "center", marginBottom: i < expenseBreakdown.length - 1 ? 14 : 0 }}>
-                  <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#FEF2F2", justifyContent: "center", alignItems: "center", marginRight: 10 }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: theme.colors.errorContainer, justifyContent: "center", alignItems: "center", marginRight: 10 }}>
                     <MaterialCommunityIcons name={renderCategoryIcon(item.name)} size={18} color={item.color} />
                   </View>
                   <View style={{ flex: 1, marginRight: 10 }}>
-                    <Text variant="bodySmall" style={{ fontWeight: "600", color: "#1E293B" }}>{item.name}</Text>
-                    <View style={{ height: 5, backgroundColor: "#FEE2E2", borderRadius: 3, marginTop: 5, overflow: "hidden" }}>
+                    <Text variant="bodySmall" style={{ fontWeight: "600", color: theme.colors.onSurface }}>{item.name}</Text>
+                    <View style={{ height: 5, backgroundColor: theme.colors.errorContainer, borderRadius: 3, marginTop: 5, overflow: "hidden" }}>
                       <View style={{ height: "100%", width: `${Math.max(pct, 2)}%`, backgroundColor: item.color, borderRadius: 3 }} />
                     </View>
                   </View>
                   <View style={{ alignItems: "flex-end" }}>
-                    <Text variant="bodySmall" style={{ fontWeight: "700", color: "#DC2626" }}>-{formatAmount(item.value)}</Text>
-                    <Text variant="labelSmall" style={{ color: "#94A3B8", marginTop: 1 }}>{pct.toFixed(1)}%</Text>
+                    <Text variant="bodySmall" style={{ fontWeight: "700", color: theme.colors.error }}>-{formatAmount(item.value)}</Text>
+                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 1 }}>{pct.toFixed(1)}%</Text>
                   </View>
                 </View>
               );
@@ -326,30 +341,30 @@ export default function ReportsScreen() {
 
         {/* Income Breakdown */}
         {incomeBreakdown.length > 0 && (
-          <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: "#fff", borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
             <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
-              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: "#DCFCE7", justifyContent: "center", alignItems: "center", marginRight: 8 }}>
-                <MaterialCommunityIcons name="arrow-up-circle" size={16} color="#16A34A" />
+              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: theme.colors.tertiaryContainer, justifyContent: "center", alignItems: "center", marginRight: 8 }}>
+                <MaterialCommunityIcons name="arrow-up-circle" size={16} color={theme.colors.tertiary} />
               </View>
-              <Text variant="titleMedium" style={{ fontWeight: "700", color: "#1E293B" }}>Income Sources</Text>
+              <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurface }}>Income Sources</Text>
             </View>
 
             {incomeBreakdown.map((item, i) => {
               const pct = income > 0 ? ((item.value / income) * 100) : 0;
               return (
                 <View key={i} style={{ flexDirection: "row", alignItems: "center", marginBottom: i < incomeBreakdown.length - 1 ? 14 : 0 }}>
-                  <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#F0FDF4", justifyContent: "center", alignItems: "center", marginRight: 10 }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: theme.colors.tertiaryContainer, justifyContent: "center", alignItems: "center", marginRight: 10 }}>
                     <MaterialCommunityIcons name={renderCategoryIcon(item.name)} size={18} color={item.color} />
                   </View>
                   <View style={{ flex: 1, marginRight: 10 }}>
-                    <Text variant="bodySmall" style={{ fontWeight: "600", color: "#1E293B" }}>{item.name}</Text>
-                    <View style={{ height: 5, backgroundColor: "#DCFCE7", borderRadius: 3, marginTop: 5, overflow: "hidden" }}>
+                    <Text variant="bodySmall" style={{ fontWeight: "600", color: theme.colors.onSurface }}>{item.name}</Text>
+                    <View style={{ height: 5, backgroundColor: theme.colors.tertiaryContainer, borderRadius: 3, marginTop: 5, overflow: "hidden" }}>
                       <View style={{ height: "100%", width: `${Math.max(pct, 2)}%`, backgroundColor: item.color, borderRadius: 3 }} />
                     </View>
                   </View>
                   <View style={{ alignItems: "flex-end" }}>
-                    <Text variant="bodySmall" style={{ fontWeight: "700", color: "#16A34A" }}>+{formatAmount(item.value)}</Text>
-                    <Text variant="labelSmall" style={{ color: "#94A3B8", marginTop: 1 }}>{pct.toFixed(1)}%</Text>
+                    <Text variant="bodySmall" style={{ fontWeight: "700", color: theme.colors.tertiary }}>+{formatAmount(item.value)}</Text>
+                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 1 }}>{pct.toFixed(1)}%</Text>
                   </View>
                 </View>
               );
@@ -358,22 +373,22 @@ export default function ReportsScreen() {
         )}
 
         {/* Export */}
-        <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: "#fff", borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <Text variant="titleMedium" style={{ marginBottom: 12, fontWeight: "700", color: "#1E293B" }}>Export Data</Text>
+        <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <Text variant="titleMedium" style={{ marginBottom: 12, fontWeight: "700", color: theme.colors.onSurface }}>Export Data</Text>
           <View style={{ flexDirection: "row", gap: 12 }}>
             <TouchableOpacity
-              style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: "#F1F5F9", alignItems: "center" }}
+              style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: theme.colors.surfaceVariant, alignItems: "center" }}
               onPress={() => exportToCSV(filteredTransactions)}
             >
-              <MaterialCommunityIcons name="file-excel" size={22} color="#1E3A8A" />
-              <Text variant="labelSmall" style={{ fontWeight: "700", color: "#1E3A8A", marginTop: 4 }}>CSV</Text>
+              <MaterialCommunityIcons name="file-excel" size={22} color={theme.colors.primary} />
+              <Text variant="labelSmall" style={{ fontWeight: "700", color: theme.colors.primary, marginTop: 4 }}>CSV</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: "#F1F5F9", alignItems: "center" }}
+              style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: theme.colors.surfaceVariant, alignItems: "center" }}
               onPress={() => exportToPDF(filteredTransactions, formatAmount)}
             >
-              <MaterialCommunityIcons name="file-pdf-box" size={22} color="#DC2626" />
-              <Text variant="labelSmall" style={{ fontWeight: "700", color: "#DC2626", marginTop: 4 }}>PDF</Text>
+              <MaterialCommunityIcons name="file-pdf-box" size={22} color={theme.colors.error} />
+              <Text variant="labelSmall" style={{ fontWeight: "700", color: theme.colors.error, marginTop: 4 }}>PDF</Text>
             </TouchableOpacity>
           </View>
         </View>

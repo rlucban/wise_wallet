@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { View, ScrollView, Alert } from "react-native";
-import { TextInput, Button, Text, useTheme, Appbar, Card, Chip, SegmentedButtons, Checkbox, Portal, Modal } from "react-native-paper";
+import { TextInput, Button, Text, useTheme, Appbar, Card, Chip, SegmentedButtons, Portal, Modal, Switch } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Calendar } from "react-native-calendars";
 import { useDues } from "../hooks/useDues";
@@ -26,6 +26,12 @@ export default function AddDue() {
     const [customCategory, setCustomCategory] = useState("");
     const [loading, setLoading] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    useEffect(() => {
+        if (frequency === "once") {
+            setAutoProcess(false);
+        }
+    }, [frequency]);
 
     const categoryOptions = useMemo(() => ensureOthersOption(categories, type), [categories, type]);
     const othersCategory = useMemo(() => categoryOptions.find((c) => c.name === "Others"), [categoryOptions]);
@@ -108,10 +114,22 @@ export default function AddDue() {
                         ))}
                     </View>
 
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                        <Text variant="bodyLarge">Auto-Process</Text>
-                        <Checkbox status={autoProcess ? "checked" : "unchecked"} onPress={() => setAutoProcess(!autoProcess)} />
-                    </View>
+                    {frequency !== "once" && (
+                        <View style={{ flexDirection: "column", gap: 4, marginBottom: 16, paddingHorizontal: 4 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                                <Text variant="bodyLarge">Auto-Process</Text>
+                                <Switch
+                                    value={autoProcess}
+                                    onValueChange={setAutoProcess}
+                                    thumbColor={autoProcess ? theme.colors.primary : theme.colors.outline}
+                                    trackColor={{ true: theme.colors.primaryContainer, false: theme.colors.surfaceVariant }}
+                                />
+                            </View>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                                Automatically record transaction when due date arrives
+                            </Text>
+                        </View>
+                    )}
 
                     <TextInput label="Title" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
 
