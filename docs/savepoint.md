@@ -243,6 +243,26 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
   - `label="New Allocation"`
 - **No breaking changes**: No new deps, no storage keys, no API changes. Uses existing semantic tokens.
 
+## 2026-09-27 Updates — Spec 18 Implemented (Scheduled Dues Fixes)
+
+`specs/18-scheduled-dues-fixes.md` (FINAL per user call 2026-09-27). Fixed Auto-Process conditional logic, mobile responsive layout, and replaced emoji with vector icons on Scheduled Dues screens.
+
+- **D-01/D-02 — Auto-Process conditional logic** (`app/add-due.tsx`, `app/dues.tsx` edit modal):
+  - Added `useEffect` to auto-uncheck `autoProcess` when `frequency` becomes `"once"`
+  - Wrapped Auto-Process row in `{frequency !== "once" && (...)}` so it's hidden for one-time dues
+  - Works on both Add Due screen and Edit modal in dues list
+- **D-03/D-05 — Mobile responsive card layout** (`app/dues.tsx` `renderItem`):
+  - Restructured upcoming due card from single flex-row to two-section column layout
+  - Top section: icon + title/date/amount/freq on left; badges (OVERDUE/DUE/AUTO) in wrapped row on right; action buttons (Pay/Edit/Delete) in separate wrapped row
+  - Bottom section: full-width insight block with lightbulb icon + text, `flexWrap: "wrap"`, separated by border
+  - Badges now use container styling with background colors to prevent collision with buttons
+- **D-04 — Emoji replaced with vector icon**:
+  - Replaced `💡` prefix in projection message with `<MaterialCommunityIcons name="lightbulb" size={14} color={theme.colors.tertiary} />`
+  - Removed 💡 from edit modal time-of-month tip
+  - Uses existing `MaterialCommunityIcons` — no new dependencies
+- **D-06 — `utils/financialLiteracy.ts`** already returned plain string (no emoji), no change needed
+- **Lint clean** + **TypeScript clean** — no new errors or warnings
+
 ## 2026-09-27 Updates — Spec 12 Implemented (Add Allocation Validation Feedback)
 
 `specs/12-add-allocation-validation-feedback.md` (FINAL per user call 2026-09-27). Added inline validation, error feedback, and toast notifications to the Add Allocation screen.
@@ -258,6 +278,22 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **Lint clean** + **TypeScript clean** — no new errors or warnings.
 
 - **Root constraint (CON-01):** `expo-speech@57.0.3` exposes **no gender field on any platform** — iOS drops `AVSpeechSynthesisVoice.gender` (`ios/SpeechModule.swift:63-76`), Android `VoiceRecord` has none, and Web maps the Web Speech API `SpeechSynthesisVoice` (no gender). "Female voice" is therefore *inferred* by curated name/identifier matching, never detected.
+
+
+## 2026-09-27 Updates — Spec 19 Implemented (Reports Dark Mode Contrast)
+
+`specs/19-reports-dark-mode-contrast.md` (FINAL per user call 2026-09-27). Fixed all hardcoded light/dark theme colors on Reports screen to use semantic theme tokens.
+
+- **D-01/D-02/D-03** — Replaced all hardcoded `#fff`/`#FFFFFF` card backgrounds with `theme.colors.surface`; icon backgrounds with `theme.colors.errorContainer`/`tertiaryContainer`/`primaryContainer`; text colors with `theme.colors.onSurface`, `onSurfaceVariant`, `error`, `tertiary`, `primary`.
+- **D-04** — Menu dropdown: `backgroundColor: theme.colors.surface`, border `theme.colors.outline`, text/icon `theme.colors.primary`.
+- **D-05** — Date banner: `backgroundColor: theme.colors.primaryContainer`, text/icons `theme.colors.onPrimaryContainer`.
+- **D-06** — Chart containers: `theme.colors.surface`, titles `theme.colors.onSurface`.
+- **D-07** — Breakdown cards: headers/category names `theme.colors.onSurface`, progress backgrounds `theme.colors.errorContainer`/`tertiaryContainer`, amounts `theme.colors.error`/`tertiary`, percentages `theme.colors.onSurfaceVariant`.
+- **D-08** — Export card: `theme.colors.surface`, buttons `theme.colors.surfaceVariant`, icons `theme.colors.primary`/`error`.
+- **D-09** — DonutChart props: `textColor={theme.colors.onSurface}`, `mutedColor={theme.colors.onSurfaceVariant}`.
+- **D-10** — CARD_SHADOW kept (Paper elevation handles shadows).
+- **Charts unchanged** — `MonthlyTrendChart` and `DonutChart` already used `theme.colors.*` internally; no logic changes.
+- **Lint clean** + **TypeScript clean** — no new errors or warnings.
 
 
 

@@ -66,6 +66,12 @@ export default function DuesScreen() {
     }
   }, [dues]);
 
+  useEffect(() => {
+    if (frequency === "once") {
+      setAutoProcess(false);
+    }
+  }, [frequency]);
+
   const categoryOptions = useMemo(() => ensureOthersOption(categories, type), [categories, type]);
   const othersCategory = useMemo(() => categoryOptions.find((c) => c.name === "Others"), [categoryOptions]);
   const isOthersSelected = !!othersCategory && selectedCategoryId === othersCategory.id;
@@ -290,80 +296,89 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
     const isToday = new Date(due.date).toDateString() === new Date().toDateString();
 
     if (item.section === "upcoming") {
+      const projection = getRecurringProjectionMessage(due, formatAmount);
+
       return (
         <Card style={{ marginBottom: 12, borderRadius: 16, backgroundColor: theme.colors.surface }}>
           <Card.Content>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <View style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: theme.colors.surfaceVariant,
-                justifyContent: "center",
-                alignItems: "center",
-                marginRight: 12,
-              }}>
-                <MaterialCommunityIcons
-                  name={due.type === "income" ? "arrow-up-circle" : "arrow-down-circle"}
-                  size={24}
-                  color={due.type === "income" ? theme.colors.primary : theme.colors.error}
-                />
+            <View style={{ flexDirection: "column", gap: 8 }}>
+
+              <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", flex: 1, minWidth: 0 }}>
+                  <View style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    backgroundColor: theme.colors.surfaceVariant,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    marginRight: 12,
+                    flexShrink: 0,
+                  }}>
+                    <MaterialCommunityIcons
+                      name={due.type === "income" ? "arrow-up-circle" : "arrow-down-circle"}
+                      size={24}
+                      color={due.type === "income" ? theme.colors.primary : theme.colors.error}
+                    />
+                  </View>
+
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text variant="titleSmall" style={{ fontWeight: isToday ? "bold" : "600", color: theme.colors.onSurface }}>
+                      {due.title}
+                    </Text>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
+                      {new Date(due.date).toLocaleDateString()}  {formatAmount(due.amount)}  {FREQUENCY_LABELS[due.frequency || "once"]}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4, marginLeft: 8 }}>
+                  {isOverdue(due) && (
+                    <Text
+                      variant="labelSmall"
+                      style={{
+                        color: theme.colors.error,
+                        fontWeight: "bold",
+                        fontSize: 10,
+                        backgroundColor: theme.colors.errorContainer,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 4,
+                      }}
+                    >
+                      OVERDUE
+                    </Text>
+                  )}
+                  {isToday && (
+                    <Text
+                      variant="labelSmall"
+                      style={{
+                        color: theme.colors.primary,
+                        fontWeight: "bold",
+                        fontSize: 10,
+                        backgroundColor: theme.colors.primaryContainer,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 4,
+                      }}
+                    >
+                      {due.type === "income" ? "RECEIVABLE" : "DUE"}
+                    </Text>
+                  )}
+                  {due.autoProcess && (
+                    <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: theme.colors.surfaceVariant, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                      <MaterialCommunityIcons name="lightning-bolt" size={12} color={theme.colors.tertiary} style={{ marginRight: 2 }} />
+                      <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", fontSize: 10 }}>AUTO</Text>
+                    </View>
+                  )}
+                </View>
               </View>
 
-              <View style={{ flex: 1 }}>
-                <Text variant="titleSmall" style={{ fontWeight: isToday ? "bold" : "600", color: theme.colors.onSurface }}>
-                  {due.title}
-                </Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 2 }}>
-                  {new Date(due.date).toLocaleDateString()}  {formatAmount(due.amount)}  {FREQUENCY_LABELS[due.frequency || "once"]}
-                </Text>
-                {getRecurringProjectionMessage(due, formatAmount) && (
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", marginTop: 2 }}>
-                    💡 {getRecurringProjectionMessage(due, formatAmount)}
-                  </Text>
-                )}
-              </View>
-
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                {isOverdue(due) && (
-                  <Text
-                    variant="labelSmall"
-                    style={{
-                      color: theme.colors.error,
-                      marginRight: 8,
-                      fontWeight: "bold",
-                      fontSize: 10,
-                    }}
-                  >
-                    OVERDUE
-                  </Text>
-                )}
-                {isToday && (
-                  <Text
-                    variant="labelSmall"
-                    style={{
-                      color: theme.colors.primary,
-                      marginRight: 8,
-                      fontWeight: "bold",
-                      fontSize: 10,
-                    }}
-                  >
-                    {due.type === "income" ? "RECEIVABLE" : "DUE"}
-                  </Text>
-                )}
-                {due.autoProcess && (
-                  <MaterialCommunityIcons
-                    name="lightning-bolt"
-                    size={16}
-                    color={theme.colors.onSurfaceVariant}
-                    style={{ marginRight: 4 }}
-                  />
-                )}
+              <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
                 <Button
                   mode="outlined"
                   compact
                   onPress={() => recordTransaction(due)}
-                  style={{ marginRight: 4 }}
                   theme={{ colors: { primary: theme.colors.primary, outline: theme.colors.primary } }}
                 >
                   {due.type === "income" ? "Receive" : "Pay"}
@@ -371,6 +386,24 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
                 <IconButton icon="pencil-outline" onPress={() => handleEdit(due)} size={20} />
                 <IconButton icon="delete" onPress={() => setDeleteTarget(due)} iconColor={theme.colors.error} size={20} />
               </View>
+
+              {projection && (
+                <Text
+                  variant="bodySmall"
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    fontSize: 12,
+                    marginTop: 8,
+                    paddingTop: 8,
+                    borderTopWidth: 1,
+                    borderTopColor: theme.colors.outline,
+                    lineHeight: 18,
+                  }}
+                >
+                  {projection}
+                </Text>
+              )}
+
             </View>
           </Card.Content>
         </Card>
@@ -516,10 +549,12 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
             ))}
           </View>
 
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <Text variant="bodyLarge">Auto-Process</Text>
-            <Checkbox status={autoProcess ? "checked" : "unchecked"} onPress={() => setAutoProcess(!autoProcess)} />
-          </View>
+          {frequency !== "once" && (
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <Text variant="bodyLarge">Auto-Process</Text>
+              <Checkbox status={autoProcess ? "checked" : "unchecked"} onPress={() => setAutoProcess(!autoProcess)} />
+            </View>
+          )}
 
           <TextInput label="Title" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
           <TextInput label="Amount" value={amount} onChangeText={(t) => setAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} left={<TextInput.Affix text="₱" />} />
@@ -533,9 +568,9 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
              style={{ marginBottom: 8 }}
            />
 
-           <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontStyle: "italic", marginBottom: 16 }}>
-             💡 {getTimeOfMonthTip(date).title}: {getTimeOfMonthTip(date).message}
-           </Text>
+<Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, fontStyle: "italic", marginBottom: 16 }}>
+              {getTimeOfMonthTip(date).title}: {getTimeOfMonthTip(date).message}
+            </Text>
 
           <Text style={{ marginBottom: 8, fontWeight: "600" }}>Category (Optional)</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: isOthersSelected ? 8 : 16 }}>
