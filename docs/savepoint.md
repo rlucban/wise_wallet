@@ -243,6 +243,20 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
   - `label="New Allocation"`
 - **No breaking changes**: No new deps, no storage keys, no API changes. Uses existing semantic tokens.
 
+## 2026-09-27 Updates — Spec 12 Implemented (Add Allocation Validation Feedback)
+
+`specs/12-add-allocation-validation-feedback.md` (FINAL per user call 2026-09-27). Added inline validation, error feedback, and toast notifications to the Add Allocation screen.
+
+- **D-01 — `useToast` integration.** Added `import { useToast } from "../context/ToastContext"` and `const { showToast } = useToast();` in `AddAllocation`.
+- **D-02/D-03 — Real-time validation logic.** Computed `initialBalanceNum` and `cleanGoal` from state on every render. Derived `isInitialBalanceInvalid` (≤0, >MAX_AMOUNT, NaN, or > available balance when available ≥ 0) and `isGoalInvalid` (if provided: ≤0, >MAX_AMOUNT, NaN). Combined into `isFormInvalid`.
+- **D-06 — Inline helper text.** Red warning under Initial Balance field when `availableBalance >= 0 && initialBalanceNum > availableBalance`: "Insufficient available balance to create this allocation." Uses `theme.colors.error`.
+- **D-07 — Negative balance label highlight.** "Available balance:" label renders with `theme.colors.error` and `fontWeight: "600"` when `availableBalance < 0`; otherwise `theme.colors.onSurfaceVariant` and `fontWeight: "400"`.
+- **D-08 — Button disabled styling.** Button disabled when `loading || isFormInvalid`. Disabled state uses explicit colors: `buttonColor={theme.colors.onSurface}`, `color={theme.colors.onSurface}` (≈ `bg-slate-700` / `text-slate-400` in dark, `bg-slate-300` / `text-slate-500` in light) with `cursor: not-allowed` on web. No opacity reduction — per CON-08.
+- **D-09 — Toast replaces Alert.** All validation branches in `handleSubmit` replaced with early returns calling `showToast("Cannot create allocation. Your initial balance exceeds your current available balance.")`. Save failure also uses toast.
+- **D-10 — Happy path unchanged.** Valid submissions (title + valid initial balance ≤ available balance + valid optional goal) save and navigate back without regression.
+- **Exported `MAX_AMOUNT`.** `utils/amount.ts` now exports `MAX_AMOUNT` constant for cross-file use.
+- **Lint clean** + **TypeScript clean** — no new errors or warnings.
+
 - **Root constraint (CON-01):** `expo-speech@57.0.3` exposes **no gender field on any platform** — iOS drops `AVSpeechSynthesisVoice.gender` (`ios/SpeechModule.swift:63-76`), Android `VoiceRecord` has none, and Web maps the Web Speech API `SpeechSynthesisVoice` (no gender). "Female voice" is therefore *inferred* by curated name/identifier matching, never detected.
 
 

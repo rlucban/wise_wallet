@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { View, ScrollView, Alert } from "react-native";
+import { View, ScrollView } from "react-native";
 import { TextInput, Button, Text, useTheme, Appbar, Card } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { useUserProfile } from "../context/UserProfileContext";
 import { useTransactions } from "../hooks/useTransactions";
-import { formatNumberInput } from "../utils/amount";
+import { formatNumberInput, MAX_AMOUNT } from "../utils/amount";
+import { useToast } from "../context/ToastContext";
 
 export default function AddAllocation() {
     const router = useRouter();
@@ -15,6 +16,7 @@ export default function AddAllocation() {
     const { formatAmount } = useCurrencyActions();
     const { transactions } = useTransactions();
     const { profile } = useUserProfile();
+    const { showToast } = useToast();
 
     const [title, setTitle] = useState("");
     const [balance, setBalance] = useState("");
@@ -28,28 +30,24 @@ export default function AddAllocation() {
         return initialBalance + totalIncome - totalExpense;
     })();
 
-    const handleSubmit = async () => {
-        const cleanBalance = parseFloat(balance.toString().replace(/[^0-9.]/g, "")) || 0;
-        if (!title || isNaN(cleanBalance) || cleanBalance <= 0) {
-            Alert.alert("Invalid Input", "Please provide a title and amount.");
-            return;
-        }
-        if (cleanBalance > 10000000) {
-            Alert.alert("Invalid Amount", "Amount must not exceed 10,000,000.");
-            return;
-        }
-        if (cleanBalance > availableBalance) {
-            Alert.alert("Insufficient Balance", `You only have ${formatAmount(availableBalance)} available to allocate.`);
-            return;
-        }
+    const initialBalanceNum = parseFloat(balance.toString().replace(/[^0-9.]/g, "")) || 0;
+    const cleanGoal = parseFloat(goalAmount.toString().replace(/[^0-9.]/g, "")) || 0;
 
-        const cleanGoal = parseFloat(goalAmount.toString().replace(/[^0-9.]/g, "")) || 0;
-        if (goalAmount && (isNaN(cleanGoal) || cleanGoal <= 0)) {
-            Alert.alert("Invalid Goal", "Please enter a valid goal amount.");
-            return;
-        }
-        if (cleanGoal > 10000000) {
-            Alert.alert("Invalid Goal", "Goal amount must not exceed 10,000,000.");
+    const isInitialBalanceInvalid =
+        initialBalanceNum <= 0 ||
+        initialBalanceNum > MAX_AMOUNT ||
+        isNaN(initialBalanceNum) ||
+        (availableBalance >= 0 && initialBalanceNum > availableBalance);
+
+    const isGoalInvalid =
+        goalAmount.trim() !== "" &&
+        (cleanGoal <= 0 || cleanGoal > MAX_AMOUNT || isNaN(cleanGoal));
+
+    const isFormInvalid = !title.trim() || isInitialBalanceInvalid || isGoalInvalid;
+
+    const handleSubmit = async () => {
+        if (isFormInvalid) {
+            showToast("Cannot create allocation. Your initial balance exceeds your current available balance.");
             return;
         }
 
@@ -57,18 +55,24 @@ export default function AddAllocation() {
         try {
             await addItem({
                 title,
-                balance: cleanBalance,
+                balance: initialBalanceNum,
                 target_amount: cleanGoal > 0 ? cleanGoal : undefined,
                 updatedAt: Date.now(),
             });
             router.back();
         } catch (e) {
             console.error("Failed to add allocation:", e);
-            Alert.alert("Error", "Failed to save allocation. Please try again.");
+            showToast("Failed to save allocation. Please try again.");
         } finally {
             setLoading(false);
         }
     };
+
+    const isButtonDisabled = loading || isFormInvalid;
+    const disabledBg = theme.colors.onSurface;
+    const disabledText = theme.colors.onSurface;
+    const buttonBg = isButtonDisabled ? disabledBg : theme.colors.primary;
+    const buttonTextColor = isButtonDisabled ? disabledText : "#fff";
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -101,6 +105,14 @@ export default function AddAllocation() {
                         style={{ marginBottom: 12 }}
                         left={<TextInput.Affix text="₱" />}
                     />
+                    {availableBalance >= 0 && initialBalanceNum > availableBalance && (
+                        <Text
+                            variant="bodySmall"
+                            style={{ color: theme.colors.error, marginTop: 4, marginBottom: 8 }}
+                        >
+                            Insufficient available balance to create this allocation.
+                        </Text>
+                    )}
 
                     <TextInput
                         label="Goal Amount (Optional)"
@@ -113,7 +125,14 @@ export default function AddAllocation() {
                         placeholder="e.g. 10,000"
                     />
 
-                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>
+                    <Text
+                        variant="bodySmall"
+                        style={{
+                            color: availableBalance < 0 ? theme.colors.error : theme.colors.onSurfaceVariant,
+                            fontWeight: availableBalance < 0 ? "600" : "400",
+                            marginBottom: 8,
+                        }}
+                    >
                         Available balance: {formatAmount(availableBalance)}
                     </Text>
 
@@ -128,10 +147,10 @@ export default function AddAllocation() {
                     mode="contained"
                     onPress={handleSubmit}
                     loading={loading}
-                    disabled={loading}
-                    buttonColor={theme.colors.primary}
+                    disabled={isButtonDisabled}
+                    buttonColor={buttonBg}
                     style={{ paddingVertical: 4 }}
-                    color="#fff"
+                    color={buttonTextColor}
                 >
                     Create Allocation
                 </Button>
