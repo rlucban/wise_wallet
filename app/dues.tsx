@@ -280,7 +280,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
     }
     if (item.kind === "completed-header") {
       return (
-        <Text variant="titleMedium" style={{ marginBottom: 8, marginTop: 16, color: theme.colors.onSurfaceVariant, fontWeight: "500" }}>
+        <Text variant="titleMedium" style={{ marginBottom: 8, marginTop: 16, color: theme.colors.onSurface, fontWeight: "600" }}>
           Completed
         </Text>
       );
@@ -291,7 +291,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
 
     if (item.section === "upcoming") {
       return (
-        <Card style={{ marginBottom: 12, borderRadius: 16 }}>
+        <Card style={{ marginBottom: 12, borderRadius: 16, backgroundColor: theme.colors.surface }}>
           <Card.Content>
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <View style={{
@@ -378,7 +378,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
     }
 
     return (
-      <Card style={{ marginBottom: 12, borderRadius: 16 }}>
+      <Card style={{ marginBottom: 12, borderRadius: 16, backgroundColor: theme.colors.surface }}>
         <Card.Content>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <View style={{
@@ -562,7 +562,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
             />
           )}
 
-<Button mode="contained" onPress={handleSubmit} disabled={!title || !amount}>Save Changes</Button>
+<Button mode="contained" onPress={handleSubmit} disabled={!title || !amount} buttonColor={theme.colors.primary} color="#fff">Save Changes</Button>
             </Card.Content>
           </Card>
         </Modal>
@@ -640,14 +640,13 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
          </Modal>
        </Portal>
 
-       <FAB
-          icon="plus"
-          label="Due"
-          style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
-
-          color="#fff"
-          onPress={() => router.push("/add-due")}
-        />
+<FAB
+           icon="plus"
+           label="Due"
+           style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
+           color="#fff"
+           onPress={() => router.push("/add-due")}
+         />
     </View>
   );
 }

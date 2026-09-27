@@ -80,7 +80,7 @@ export default function AddDue() {
             </Appbar.Header>
 
             <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-                <Card style={{ padding: 20, borderRadius: 16, backgroundColor: theme.colors.surfaceVariant }}>
+                <Card style={{ padding: 20, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                     <Text variant="titleMedium" style={{ marginBottom: 16, color: theme.colors.onSurface, fontWeight: "700" }}>
                         Due Details
                     </Text>
@@ -172,6 +172,7 @@ export default function AddDue() {
                     loading={loading}
                     disabled={loading || !title || !amount}
                     buttonColor={theme.colors.primary}
+                    color="#fff"
                     style={{ paddingVertical: 4 }}
                 >
                     Save Scheduled Due

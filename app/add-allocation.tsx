@@ -78,7 +78,7 @@ export default function AddAllocation() {
             </Appbar.Header>
 
             <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-                <Card style={{ padding: 20, borderRadius: 16, backgroundColor: theme.colors.surfaceVariant }}>
+                <Card style={{ padding: 20, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                     <Text variant="titleMedium" style={{ marginBottom: 16, color: theme.colors.onSurface, fontWeight: "700" }}>
                         Allocation Details
                     </Text>
@@ -131,6 +131,7 @@ export default function AddAllocation() {
                     disabled={loading}
                     buttonColor={theme.colors.primary}
                     style={{ paddingVertical: 4 }}
+                    color="#fff"
                 >
                     Create Allocation
                 </Button>

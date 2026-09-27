@@ -57,7 +57,7 @@ export default function CategorySettings() {
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
         {filteredCategories.map((cat) => (
-          <Card key={cat.id} style={{ marginBottom: 8 }}>
+          <Card key={cat.id} style={{ marginBottom: 8, backgroundColor: theme.colors.surface }}>
             <List.Item
               title={cat.name}
               titleStyle={{ color: theme.colors.onSurface }}
@@ -88,7 +88,7 @@ export default function CategorySettings() {
           <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
             <Card.Content style={{ padding: 20 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <Text variant="titleLarge" color={theme.colors.onSurface}>
+                <Text variant="titleLarge" style={{ color: theme.colors.onSurface }}>
                   Add {type === "income" ? "Income" : "Expense"} Category
                 </Text>
                 <IconButton
@@ -104,7 +104,7 @@ export default function CategorySettings() {
                 mode="outlined"
                 style={{ marginBottom: 16 }}
               />
-              <Button mode="contained" onPress={handleAdd} buttonColor={theme.colors.primary}>
+              <Button mode="contained" onPress={handleAdd} buttonColor={theme.colors.primary} color="#fff">
                 Add Category
               </Button>
             </Card.Content>
@@ -127,7 +127,8 @@ export default function CategorySettings() {
 
       <FAB
         icon="plus"
-        style={{ position: "absolute", margin: 16, right: 0, bottom: 0 }}
+        style={{ position: "absolute", margin: 16, right: 0, bottom: 0, backgroundColor: theme.colors.primary }}
+        color="#fff"
         onPress={() => setModalVisible(true)}
       />
     </View>

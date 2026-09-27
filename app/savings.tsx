@@ -295,7 +295,7 @@ export default function SavingsScreen() {
                                     const progressPercent = hasGoal ? Math.min(Math.round((currentBalance / target) * 100), 100) : 0;
 
                                     return (
-                                        <Card key={item.id} style={{ marginBottom: 12, borderRadius: 16, elevation: 3 }}>
+                                        <Card key={item.id} style={{ marginBottom: 12, borderRadius: 16, elevation: 3, backgroundColor: theme.colors.surface }}>
                                             <Card.Content style={{ paddingVertical: 12, paddingHorizontal: 16 }}>
                                                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                                                     {/* Left: Title + Progress Bar + Percentage Text */}
@@ -392,13 +392,13 @@ export default function SavingsScreen() {
                                     const target = item.target_amount || 0;
 
                                     return (
-                                        <Card key={item.id} style={{ marginBottom: 12, borderRadius: 16, elevation: 3 }}>
+                                        <Card key={item.id} style={{ marginBottom: 12, borderRadius: 16, elevation: 3, backgroundColor: theme.colors.surface }}>
                                             <Card.Content style={{ paddingVertical: 12, paddingHorizontal: 16 }}>
                                                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                                                     {/* Left: Title + Amount + Completed Tag */}
                                                     <View style={{ flex: 1, marginRight: 12 }}>
                                                         <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
-                                                            <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurfaceVariant }}>
+                                                            <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurface }}>
                                                                 {item.title}
                                                             </Text>
                                                             <View style={{
@@ -406,9 +406,9 @@ export default function SavingsScreen() {
                                                                 paddingHorizontal: 8,
                                                                 paddingVertical: 2,
                                                                 borderRadius: 10,
-                                                                backgroundColor: theme.colors.successContainer || theme.colors.tertiaryContainer,
+                                                                backgroundColor: (theme.colors as any).successContainer || theme.colors.tertiaryContainer,
                                                             }}>
-                                                                <Text variant="labelSmall" style={{ color: theme.colors.onSuccessContainer || theme.colors.onTertiaryContainer, fontWeight: "700" }}>
+                                                                <Text variant="labelSmall" style={{ color: (theme.colors as any).onSuccessContainer || theme.colors.onTertiaryContainer, fontWeight: "700" }}>
                                                                     Goal Reached
                                                                 </Text>
                                                             </View>
@@ -422,7 +422,7 @@ export default function SavingsScreen() {
                                                             <View style={{
                                                                 height: "100%",
                                                                 width: "100%",
-                                                                backgroundColor: theme.colors.success || theme.colors.tertiary,
+                                                                backgroundColor: (theme.colors as any).success || theme.colors.tertiary,
                                                                 borderRadius: 4,
                                                             }} />
                                                         </View>
@@ -433,12 +433,12 @@ export default function SavingsScreen() {
                                                         width: 48,
                                                         height: 48,
                                                         borderRadius: 24,
-                                                        backgroundColor: theme.colors.successContainer || theme.colors.tertiaryContainer,
+                                                        backgroundColor: (theme.colors as any).successContainer || theme.colors.tertiaryContainer,
                                                         justifyContent: "center",
                                                         alignItems: "center",
                                                         marginRight: 12,
                                                     }}>
-                                                        <MaterialCommunityIcons name="checkmark-circle" size={28} color={theme.colors.onSuccessContainer || theme.colors.onTertiaryContainer} />
+                                                        <MaterialCommunityIcons name="checkmark-circle" size={28} color={(theme.colors as any).onSuccessContainer || theme.colors.onTertiaryContainer} />
                                                     </View>
 
                                                     {/* Far Right: Only Delete */}
@@ -464,7 +464,7 @@ export default function SavingsScreen() {
                             <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Edit Allocation</Text>
                             <TextInput label="Name" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
                             <TextInput label="Goal Amount (Optional)" value={goalAmount} onChangeText={(t) => setGoalAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} placeholder="e.g. 10,000" />
-                            <Button mode="contained" onPress={handleEditItem} buttonColor={theme.colors.primary}>Save Changes</Button>
+                            <Button mode="contained" onPress={handleEditItem} buttonColor={theme.colors.primary} color="#fff">Save Changes</Button>
                         </Card.Content>
                     </Card>
                 </Modal>
@@ -498,7 +498,7 @@ export default function SavingsScreen() {
                                     {transferInError}
                                 </Text>
                             )}
-                            <Button mode="contained" onPress={handleTransferIn} disabled={!transferInValid} buttonColor={theme.colors.primary}>Confirm</Button>
+                            <Button mode="contained" onPress={handleTransferIn} disabled={!transferInValid} buttonColor={theme.colors.primary} color="#fff">Confirm</Button>
                         </Card.Content>
                     </Card>
                 </Modal>
@@ -508,7 +508,7 @@ export default function SavingsScreen() {
                     <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                         <Card.Content style={{ padding: 20 }}>
                             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                                <Text variant="titleLarge" color={theme.colors.onSurface}>Transfer Money Out</Text>
+                                <Text variant="titleLarge" style={{ color: theme.colors.onSurface }}>Transfer Money Out</Text>
                                 <IconButton icon="close" size={24} onPress={closeTransferOutModal} />
                             </View>
                             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>This creates an income transaction \u2014 money returns to your main balance.</Text>
@@ -530,7 +530,7 @@ export default function SavingsScreen() {
                                     {transferOutError}
                                 </Text>
                             )}
-                            <Button mode="contained" onPress={handleTransferOut} disabled={!transferOutAmountValid} buttonColor={theme.colors.primary}>Confirm</Button>
+                            <Button mode="contained" onPress={handleTransferOut} disabled={!transferOutAmountValid} buttonColor={theme.colors.primary} color="#fff">Confirm</Button>
                         </Card.Content>
                     </Card>
                 </Modal>
@@ -549,14 +549,13 @@ export default function SavingsScreen() {
                 />
             </Portal>
 
-            <FAB
-                icon="plus"
-                label="New Allocation"
-                style={{ position: "absolute", margin: 16, right: 0, bottom: 0, borderRadius: 20, backgroundColor: theme.colors.primary }}
-
-                color="#fff"
-                onPress={() => router.push("/add-allocation")}
-            />
+<FAB
+        icon="plus"
+        label="New Allocation"
+        style={{ position: "absolute", margin: 16, right: 0, bottom: 0, borderRadius: 20, backgroundColor: theme.colors.primary }}
+        color="#fff"
+        onPress={() => router.push("/add-allocation")}
+      />
 
             <Snackbar
                 visible={!!toastMessage}

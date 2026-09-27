@@ -79,14 +79,15 @@ export default function LearningScreen() {
 
     const getPastelTagStyle = (topic: string, theme: ReturnType<typeof useThemeData>["theme"]) => {
         const colors = theme?.colors ?? {};
+        const c = colors as any;
         // Use available container colors with fallbacks for secondary/tertiary
         // Use 'in' operator to safely check for property existence
-        const hasSecondary = "secondaryContainer" in colors;
-        const hasTertiary = "tertiaryContainer" in colors;
-        const secondaryBg = hasSecondary ? colors.secondaryContainer : colors.primaryContainer;
-        const secondaryText = hasSecondary ? colors.onSecondaryContainer : colors.onPrimaryContainer;
-        const tertiaryBg = hasTertiary ? colors.tertiaryContainer : colors.errorContainer;
-        const tertiaryText = hasTertiary ? colors.onTertiaryContainer : colors.onErrorContainer;
+        const hasSecondary = "secondaryContainer" in c;
+        const hasTertiary = "tertiaryContainer" in c;
+        const secondaryBg = hasSecondary ? c.secondaryContainer : c.primaryContainer;
+        const secondaryText = hasSecondary ? c.onSecondaryContainer : c.onPrimaryContainer;
+        const tertiaryBg = hasTertiary ? c.tertiaryContainer : c.errorContainer;
+        const tertiaryText = hasTertiary ? c.onTertiaryContainer : c.onErrorContainer;
         
         switch (topic) {
             case "Savings":
@@ -135,11 +136,15 @@ export default function LearningScreen() {
                                     onPress={() => setActiveFilter(filter)}
                                     style={[
                                         styles.filterChip,
-                                        activeFilter === filter && { backgroundColor: theme.colors.primaryContainer },
+                                        activeFilter === filter
+                                            ? { backgroundColor: theme.colors.primaryContainer }
+                                            : { borderColor: theme.colors.outline },
                                     ]}
                                     textStyle={[
                                         styles.filterChipText,
-                                        activeFilter === filter && { color: theme.colors.primary, fontWeight: "700" },
+                                        activeFilter === filter
+                                            ? { color: theme.colors.onPrimaryContainer, fontWeight: "700" }
+                                            : { color: theme.colors.onSurface },
                                     ]}
                                 >
                                     {filter}
@@ -164,10 +169,10 @@ export default function LearningScreen() {
                         </View>
 
                         {filteredResources.length === 0 ? (
-                            <Card style={[styles.emptyCard, { borderColor: theme.colors.outline }]}>
+                            <Card style={[styles.emptyCard, { borderColor: theme.colors.outline, backgroundColor: theme.colors.surface }]}>
                                 <Card.Content style={styles.emptyContent}>
                                     <MaterialCommunityIcons name="book-open-page-variant-outline" size={40} color={theme.colors.outline} />
-                                    <Text variant="bodyMedium" style={[styles.emptyText, { color: theme.colors.outline }]}>
+                                    <Text variant="bodyMedium" style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
                                         No articles match your filters.
                                     </Text>
                                 </Card.Content>
