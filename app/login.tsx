@@ -79,7 +79,7 @@ export default function LoginScreen() {
             }
         } else {
             if (Platform.OS === "web") {
-                showAlert("Login Failed", "Invalid user name and PIN.");
+                showAlert("Login Failed", "Invalid email and PIN.");
                 return;
             }
             showAlert(
@@ -95,7 +95,7 @@ export default function LoginScreen() {
                             const localDuplicate = usersList.find((u) => (u.name as string).toLowerCase() === name.trim().toLowerCase());
 
                             if (localDuplicate) {
-                                showAlert("Username Taken", "This username is already registered on this device.");
+                                showAlert("Email Taken", "This email is already registered on this device.");
                                 return;
                             }
 
@@ -139,7 +139,7 @@ export default function LoginScreen() {
         setPinError("");
 
         if (!name.trim()) {
-            setNameError("Email or username is required");
+            setNameError("Email is required");
             return;
         }
 
@@ -210,7 +210,7 @@ export default function LoginScreen() {
                     } else {
                         showAlert(
                             "Login Failed",
-                            "Invalid credentials. Please check your email/username and PIN."
+                            "Invalid credentials. Please check your email address and PIN."
                         );
                     }
                 } catch {
@@ -218,7 +218,7 @@ export default function LoginScreen() {
                 }
             } else {
                 console.info("No local user found, server returned 401");
-                showAlert("Login Failed", "Invalid user name and PIN.");
+                showAlert("Login Failed", "Invalid email and PIN.");
                 setLoading(false);
                 return;
             }
@@ -286,7 +286,7 @@ export default function LoginScreen() {
 
                             <Card style={styles.card}>
                                 <Card.Content>
-                                    <Text style={styles.fieldLabel}>Email or Username</Text>
+                                    <Text style={styles.fieldLabel}>Email</Text>
                                     <TextInput
                                         value={name}
                                         onChangeText={(text) => { setName(text); setNameError(""); }}
@@ -298,7 +298,7 @@ export default function LoginScreen() {
                                         error={!!nameError}
                                         autoCapitalize="none"
                                         keyboardType="email-address"
-                                        placeholder="Enter email or username"
+                                        placeholder="Enter your email address"
                                         left={<TextInput.Icon icon="account-outline" color="#1a237e" />}
                                     />
                                     <HelperText type="error" visible={!!nameError}>
@@ -318,7 +318,7 @@ export default function LoginScreen() {
                                         outlineColor="#e0e0e0"
                                         activeOutlineColor="#3949ab"
                                         error={!!pinError}
-                                        placeholder="Enter 4-digit PIN"
+                                        placeholder="Enter a 4-digit PIN"
                                         left={<TextInput.Icon icon="lock-outline" color="#1a237e" />}
                                         right={
                                             <TextInput.Icon
@@ -360,10 +360,7 @@ export default function LoginScreen() {
 
                                     <View style={styles.infoBox}>
                                         <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 6 }}>
-                                            • Cloud accounts use email + PIN
-                                        </Text>
-                                        <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 2 }}>
-                                            • Local accounts use username + PIN
+                                            • Cloud and Local accounts use email + PIN
                                         </Text>
                                         <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 2 }}>
                                             • Login auto-detects account type

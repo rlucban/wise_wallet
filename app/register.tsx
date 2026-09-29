@@ -5,6 +5,7 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import { useRouter } from 'expo-router';
 import { useAuthActions } from '../context/AuthContext';
 import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
+import { validateRegisterInput } from '../utils/registerValidation';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type AccountMode = "online" | "offline";
@@ -16,10 +17,10 @@ export default function RegisterScreen() {
 
     const [accountMode, setAccountMode] = useState<AccountMode>("online");
     const effectiveMode: AccountMode = isWeb ? "online" : accountMode;
-    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
     const [passcode, setPasscode] = useState("");
     const [loading, setLoading] = useState(false);
-    const [nameError, setNameError] = useState("");
+    const [emailError, setEmailError] = useState("");
     const [pinError, setPinError] = useState("");
     const [showPin, setShowPin] = useState(false);
 
@@ -34,7 +35,7 @@ export default function RegisterScreen() {
         setDialog({ visible: true, title, message, buttons });
     };
 
-    const createLocalAccount = async (username: string, pin: string): Promise<boolean> => {
+    const createLocalAccount = async (emailAddr: string, pin: string): Promise<boolean> => {
         if (Platform.OS === "web") {
             showAlert("Not Available on Web", "Local-only accounts cannot be created on web. Please register an online account.");
             return false;
@@ -43,15 +44,15 @@ export default function RegisterScreen() {
         const offlineId = generateUUID();
 
         const users = await getUsers();
-        const localDuplicate = users.find((u) => (u.name as string).toLowerCase() === username.toLowerCase());
+        const localDuplicate = users.find((u) => (u.name as string).toLowerCase() === emailAddr.toLowerCase());
 
         if (localDuplicate) {
-            showAlert("Username Taken", "This username is already registered on this device. Please use a different username or login instead.");
+            showAlert("Email Taken", "This email address is already registered on this device. Please use a different email or login instead.");
             return false;
         }
 
-        await addUser(offlineId, username, pin);
-        await saveUserProfile({ name: username, isFirstRun: true, initialBalance: 0 }, offlineId);
+        await addUser(offlineId, emailAddr, pin);
+        await saveUserProfile({ name: emailAddr, isFirstRun: true, initialBalance: 0 }, offlineId);
         await initDb(offlineId);
         await setSetting('autoBackup', 'false');
         await login(offlineId, "offline_token");
@@ -123,69 +124,30 @@ export default function RegisterScreen() {
     };
 
     const handleRegister = async () => {
-        setNameError("");
+        setEmailError("");
         setPinError("");
 
-        if (!name.trim()) {
-            setNameError(effectiveMode === "online" ? "Email is required" : "Username is required");
+        const result = validateRegisterInput(email, passcode);
+
+        if (result.emailError) {
+            setEmailError(result.emailError);
             return;
         }
 
-        if (effectiveMode === "online") {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            const isEmail = emailRegex.test(name.trim());
-            if (!isEmail && Platform.OS === "web") {
-                setNameError("Please enter a valid email address");
-                return;
-            }
-            if (!isEmail && Platform.OS !== "web") {
-                // Username typed in online mode on mobile — attempt cloud registration first
-                setLoading(true);
-                try {
-                    const response = await fetch(`${API_URL}/auth/register`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ name: name.trim(), passcode: passcode.trim(), initialBalance: 0 }),
-                    });
-                    const responseData = await response.json();
-                    if (response.ok) {
-                        await addUser(responseData.data.user.id, name.trim(), passcode.trim());
-                        await saveUserProfile({ name: name.trim(), isFirstRun: true, initialBalance: 0 }, responseData.data.user.id);
-                        await initDb(responseData.data.user.id);
-                        await setSetting('autoBackup', 'true');
-                        await login(responseData.data.user.id, responseData.data.token);
-                        alert("Cloud account created successfully!");
-                        setLoading(false);
-                        return;
-                    } else {
-                        // Cloud registration failed (e.g., email not available) — fall through to local account
-                        console.info("Cloud registration failed, falling back to local account");
-                    }
-                } catch (e) {
-                    // Network error — fall through to local account
-                    console.info("Cloud registration network error, falling back to local account:", (e as Error).message);
-                }
-                // Fall through to createLocalAccount
-                const success = await createLocalAccount(name.trim(), passcode.trim());
-                if (!success) setLoading(false);
-                return;
-            }
-        }
-
-        if (!passcode.trim() || passcode.length !== 4) {
-            setPinError("Passcode must be exactly 4 digits");
+        if (result.pinError) {
+            setPinError(result.pinError);
             return;
         }
 
         setLoading(true);
 
         if (effectiveMode === "online") {
-            const success = await createCloudAccount(name.trim(), passcode.trim());
+            const success = await createCloudAccount(email.trim(), passcode.trim());
             if (!success) {
                 setLoading(false);
             }
         } else {
-            const success = await createLocalAccount(name.trim(), passcode.trim());
+            const success = await createLocalAccount(email.trim(), passcode.trim());
             if (!success) {
                 setLoading(false);
             }
@@ -244,7 +206,7 @@ export default function RegisterScreen() {
                                     <View style={styles.modeSelector}>
                                         <Button
                                             mode={accountMode === "online" ? "contained" : "outlined"}
-                                            onPress={() => { setAccountMode("online"); setName(""); setNameError(""); }}
+                                            onPress={() => { setAccountMode("online"); setEmail(""); setEmailError(""); }}
                                             style={[styles.modeBtn, accountMode === "online" && styles.modeBtnActive]}
                                             labelStyle={styles.modeBtnLabel}
                                             icon="cloud-outline"
@@ -254,7 +216,7 @@ export default function RegisterScreen() {
                                         </Button>
                                         <Button
                                             mode={accountMode === "offline" ? "contained" : "outlined"}
-                                            onPress={() => { setAccountMode("offline"); setName(""); setNameError(""); }}
+                                            onPress={() => { setAccountMode("offline"); setEmail(""); setEmailError(""); }}
                                             style={[styles.modeBtn, accountMode === "offline" && styles.modeBtnActive]}
                                             labelStyle={styles.modeBtnLabel}
                                             icon="cellphone-off"
@@ -266,24 +228,24 @@ export default function RegisterScreen() {
                                     ) : null}
 
                                     <Text style={styles.fieldLabel}>
-                                        {effectiveMode === "online" ? "Email" : "Username"}
+                                        Email
                                     </Text>
                                     <TextInput
-                                        value={name}
-                                        onChangeText={(text) => { setName(text); setNameError(""); }}
+                                        value={email}
+                                        onChangeText={(text) => { setEmail(text); setEmailError(""); }}
                                         style={styles.input}
                                         textColor="#1a237e"
                                         mode="outlined"
                                         outlineColor="#e0e0e0"
                                         activeOutlineColor="#3949ab"
-                                        error={!!nameError}
+                                        error={!!emailError}
                                         autoCapitalize="none"
-                                        keyboardType={effectiveMode === "online" ? "email-address" : "default"}
-                                        placeholder={effectiveMode === "online" ? "Enter your email" : "Choose a username"}
-                                        left={<TextInput.Icon icon={effectiveMode === "online" ? "email-outline" : "account-outline"} color="#1a237e" />}
+                                        keyboardType="email-address"
+                                        placeholder="Enter your email address"
+                                        left={<TextInput.Icon icon="email-outline" color="#1a237e" />}
                                     />
-                                    <HelperText type="error" visible={!!nameError}>
-                                        {nameError}
+                                    <HelperText type="error" visible={!!emailError}>
+                                        {emailError}
                                     </HelperText>
 
                                     <Text style={styles.fieldLabel}>PIN</Text>
