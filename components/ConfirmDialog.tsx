@@ -27,7 +27,11 @@ export default function ConfirmDialog({
   const theme = useTheme();
 
   return (
-    <Dialog visible={visible} onDismiss={loading ? undefined : onCancel}>
+    <Dialog
+      visible={visible}
+      onDismiss={loading ? undefined : onCancel}
+      style={{ maxWidth: 480, width: "90%", alignSelf: "center" }}
+    >
       <Dialog.Icon icon={icon} />
       <Dialog.Title style={{ textAlign: "center" }}>{title}</Dialog.Title>
       <Dialog.Content>

@@ -262,6 +262,64 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   on mismatch; Step 2 "Set Passcode" disabled until new fields match and are 4 digits; removed dead
   `getChangePasscodeError()`. D-02 `showPinSetup`: `onDismiss` calls `closePinSetupDialog()`;
   "Set Passcode" disabled until both fields match; `pinSetupError` displayed below Confirm field.
+- **2026-09-30 — Spec 26 FINAL + implemented.** `specs/26-responsive-dialogs-and-clear-data-flow.md`:
+  Responsive Dialog UI for Web/PWA and mobile, dialog dismissal fix, button styling, and centered text.
+  D-01 `components/ConfirmDialog.tsx`: added `style={{ maxWidth: 480, width: "90%", alignSelf: "center" }}`.
+  D-02 `app/(tabs)/settings.tsx`: added `styles.dialog` (`maxWidth: 480, width: "90%", alignSelf: "center"`)
+  and applied to all 9 Dialog instances; centered titles, descriptions, and action rows in `showPinPrompt`
+  and `showDeleteConfirmation`; fixed modal transition by closing `showPinPrompt` before opening
+  `showDeleteConfirmation`; gated cloud clear on `!isLocal`; styled Cancel buttons as `mode="outlined"` and
+  destructive buttons (`Clear Data`, `CLEAR EVERYTHING`, `Delete Permanently`) as `mode="contained"` with
+  error background and white text; updated `executeClearData` to close confirmation dialog immediately,
+  clear all data, and present `showMessage` success modal with "Cleared Successfully" redirecting to "/"
+  on dismiss; removed unused `useToast` import. See `docs/savepoint.md`.
+- **2026-09-30 — Spec 27 FINAL + implemented.** `specs/27-allocation-archive-functionality.md`:
+  Allocation Archive Functionality in Savings Screen.
+  D-01 `types/index.ts`: added optional `isArchived?: boolean` to `SavingsItem`.
+  D-02 `app/savings.tsx`: separated active and archived allocations (`activeAllocations`, `archivedItems`);
+  updated top card to display `TOTAL ACTIVE ALLOCATED`; added `handleArchiveItem` and archive buttons on
+  active and completed cards; added "Archived Allocations" section with subtotal header `Total Archived: ₱X.XX`;
+  enforced read-only state for archived cards by hiding Edit (pencil) and transfer buttons; added Restore
+  (`handleRestoreItem`) and Delete Permanently (`delete-forever-outline` wired to `ConfirmDialog`);
+- **2026-09-30 — Spec 28 FINAL + implemented.** `specs/28-dedicated-archived-allocations-screen.md`:
+  Dedicated Archived Allocations Screen & Header Navigation.
+  D-01 `app/savings.tsx`: added header action button `<Appbar.Action icon="archive-outline" onPress={() => router.push("/archived-allocations")} />`
+  on the right side of `Appbar.Header`; removed inline archived section; simplified `ConfirmDialog`.
+  D-02 `app/archived-allocations.tsx`: created dedicated Archived Allocations screen with back action header,
+  top `TOTAL ARCHIVED` card, empty state, read-only cards, Restore (`archive-arrow-up-outline`), and Delete Permanently
+  (`delete-forever-outline` wired to `ConfirmDialog`).
+- **2026-09-30 — Spec 29 FINAL + implemented.** `specs/29-transaction-icon-vibrancy-and-archive-blue-styling.md`:
+  Transaction Icon Color Vibrancy & Allocation Archive Blue Styling.
+  D-01 `components/TransactionList.tsx` & `app/(tabs)/index.tsx`: updated transaction icon containers
+  to use semantic `tertiaryContainer` (income) and `errorContainer` (expense) with matching vibrant icon colors.
+  D-02 `app/savings.tsx`: header `<Appbar.Action icon="archive-outline" />` and card `<IconButton icon="archive-arrow-down-outline" />`
+  now use system blue (`theme.colors.primary`).
+- **2026-09-30 — Spec 30 FINAL + implemented.** `specs/30-fix-transaction-details-hero-icon-and-revert-dashboard-green.md`:
+  Fix Transaction Details Hero Icon & Revert Dashboard Icon Container.
+  D-01 `components/TransactionList.tsx` & `app/(tabs)/index.tsx`: reverted icon container `backgroundColor`
+  back to `theme.colors.surfaceVariant` (green container removed).
+  D-02 `app/transaction-details.tsx`: fixed invisible hero icon above `+₱500.00` by updating icon color
+  from `#ffffff` to `isIncome ? "#16A34A" : "#DC2626"`.
+- **2026-09-30 — Spec 31 FINAL + implemented.** `specs/31-unify-transaction-category-icon-in-details.md`:
+  Unify Transaction Category Icon in Transaction Details.
+  D-01 `app/transaction-details.tsx`: added `renderCategoryIcon` helper and wired hero icon
+  `name` prop to match Dashboard Recent Activity dynamic icons.
+  See `docs/savepoint.md`.
+- **2026-09-30 — Spec 32 FINAL + implemented.** `specs/32-completed-dues-screen-and-transaction-deletion-lock.md`:
+  Dedicated Completed Dues Screen & Scheduled Transaction Deletion Lock.
+  D-01 `app/dues.tsx`: added top-right header action `<Appbar.Action icon="check-circle-outline" color={theme.colors.primary} onPress={() => router.push("/completed-dues")} />`;
+  removed completed dues from inline list; attached `dueId: item.id` during `recordTransaction()`.
+  D-02 `app/completed-dues.tsx`: created dedicated completed dues screen with back action header,
+  top `TOTAL COMPLETED` summary card, filter segments ("This Week", "This Month", "All"), read-only cards,
+  and `EmptyState`.
+  D-03 `app/_layout.tsx`: registered `<Stack.Screen name="completed-dues" />`.
+  D-04 `app/transaction-details.tsx`: locked delete action (`{!isScheduled && ( ... )}`) for transactions
+  originating from scheduled dues.
+  See `docs/savepoint.md`.
+- **2026-09-30 — Spec 33 FINAL + implemented.** `specs/33-settings-remove-json-label.md`:
+  Remove "(JSON)" Label from Settings Export & Import Buttons.
+  D-01 `app/(tabs)/settings.tsx`: changed button text from "Export Data (JSON)" and
+  "Import Data (JSON)" to "Export Data" and "Import Data".
   See `docs/savepoint.md`.
 
 ---
