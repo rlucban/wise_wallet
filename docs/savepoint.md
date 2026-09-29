@@ -350,9 +350,39 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
-## 2026-09-29 — SPEC-26: Unify Passcode Setup Into Single Step-by-Step Dialog
+## 2026-09-29 — SPEC-27: Unify Passcode Setup Into Single Step-by-Step Dialog
 - `specs/26-unify-passcode-dialog.md`: Finalized spec to eliminate the old `showPinSetup` dialog.
 - `app/(tabs)/settings.tsx` — D-01: "Set Passcode" button `onPress` changed from `setShowPinSetup(true)` to `setShowChangePasscodeDialog(true)`. All passcode flows now use one unified dialog.
 - `app/(tabs)/settings.tsx` — D-02: `handleChangePasscode` calls `setIsPasscodeEnabled(true)` and shows "Passcode Set" success message when no prior passcode exists (`!passcode` case).
 - `app/(tabs)/settings.tsx` — D-03: Removed `showPinSetup` dialog JSX, `closePinSetupDialog` + `confirmPinSetup` handler functions, and dead state vars (`showPinSetup`, `pinSetupInput`, `confirmPinSetupInput`, `pinSetupError`).
 - Flow: No passcode → "Set Passcode" → unified dialog skips Step 1 (no current PIN to verify) → New PIN + Confirm PIN appear directly → save. Existing passcode → "Change Passcode" → Step 1 (Current PIN + Verify) → Step 2 (New + Confirm).
+
+---
+
+## 2026-09-29 — SPEC-27 FINAL: Two-Device Single Transaction Log (Cloud)
+
+- `specs/27-two-device-single-transaction-log.md`: FINAL v1.0 per user call. Normative spec for converging two devices on the same Cloud `user.id` to one shared transaction log.
+- Context: web vs mobile each followed its own log; hypotheses H-1..H-5 (Local-vs-Cloud confusion, session kill, stale `updatedAt`/no delete propagation/no refetch, autoBackup OFF, duplicate identity from mobile username-fallback).
+- Key rules: fresh `updatedAt` on add + update (CON-04); server-delete-wins with ok-fetch guard (CON-06); OFF = fully isolated, zero transaction calls either direction (CON-11); autoBackup per-device, never synced (CON-10); keep global `sync_queue` + idempotent items (D-05); foreground/focus + pull-to-refresh only, no polling/push (CON-07); single-session stands with Session Ended path, never silent split-brain (CON-09).
+- Edge covered: A-OFF creates orphans (local-only, never POSTed) → B-ON never sees them; B's writes never pulled by A while OFF; re-enable auto-drains idempotently with transient "Syncing…" notice (D-08).
+- Deliverables D-01..D-08: diagnostics surface (truncated `user.id` + queue counts), writer/merge fixes, refetch triggers, queue scoping, jest ACC-01..05 + ACC-10..11 across android/ios/web, manual ACC-06..09 + ACC-12, docs.
+- Status: spec FINAL, implementation NOT started — awaiting explicit "code this for me" per standing rules.
+
+---
+
+## 2026-09-29 — SPEC-27 Implemented (Two-Device Single Transaction Log)
+
+Branch `spec-27-two-device-single-log` (from `main`). All 8 deliverables, lint-untested by agent (user runs CLIs):
+
+- **D-02/D-03 — `context/TransactionsContext.tsx`:** `addTransaction` stamps fresh `updatedAt`; `updateTransaction` bumps `updatedAt` (was preserving stale stamp, so edits never won LWW); queued payloads carry `{ userId, updatedAt }`; `deleteTransaction` records id in session-scoped excluded set; `fetchTransactions` early-outs with zero transaction calls when Local or Cloud+OFF (closes the fetch-merge enqueue leak), merges via `mergeTransactionSets` (LWW ties→remote, server-delete-wins guarded to `ok` array fetches only), persists last-server-id snapshot, `await processSyncQueue()`.
+- **New `utils/transactionSync.ts`:** pure `withFreshTimestamp`, `buildTransactionSyncPayload`, `isTransactionSyncPaused`, `mergeTransactionSets`, `countOrphanTransactions`, `truncateUserId` + persisted `get/setLastServerTxIds` (`user_{id}_last_server_tx_ids`).
+- **D-05 — `utils/syncProcessor.ts` + `utils/syncQueue.ts`:** drain asserts `item.userId === activeUserId` (legacy items without `userId` drain once as active user's; mismatches dequeue-with-warning, never send cross-user); `getQueueStats(activeUserId?)` + `useSyncStatus` filter stats/items to active user.
+- **D-04 — `app/(tabs)/index.tsx`:** pull-to-refresh (`RefreshControl`, native only) refetches tx/savings/dues/alerts; focus refetch pre-existed and is kept.
+- **D-01/D-08 — `app/(tabs)/settings.tsx` (`SyncStatusCard`):** diagnostics line (`ID abc123… · Backup on/off · N pending · M failed`, local variant), orphan line on OFF (`N local-only change(s) on this device — not on other devices`, zero network); re-enable paths toast `Sync on — syncing N local-only change(s)…` / up-to-date (no-cloud-data branch) and `Syncing N…` after merge.
+- **D-06 — tests:** new `utils/transactionSync.test.ts` (ACC-01..05, ACC-10..11 + payload/truncate/snapshot, `describe.each` android/ios/web); `utils/syncProcessor.test.ts` +2 (cross-user skip without send, legacy drain).
+- Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go Android+iOS + `expo export --platform web` manual ACC-06..09 + ACC-12.
+
+## 2026-09-29 — Test repair: `color="#fff"` → `theme.colors.onPrimary` (5 files)
+
+- `npm test` showed 15 pre-existing `themeColors` failures in files SPEC-27 never touched: `app/add-allocation.tsx:75`, `app/dues.tsx:744`, `app/add-due.tsx:198`, `app/savings.tsx:518`, `app/category-settings.tsx:131` — all `color="#fff"` on primary-background FAB/contained buttons.
+- Fixed with the repo's own SPEC-14/17 convention (`theme.colors.onPrimary`); no copy/layout/logic change. `transactionSync`, `syncProcessor`, `speechVoice`, `notifications` suites already passed.

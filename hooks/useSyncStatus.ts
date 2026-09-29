@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   getQueueStats,
   getLastSyncedAt,
   getSyncQueue,
+  queueItemUserId,
   SyncQueueItem,
 } from "../utils/syncQueue";
 import {
@@ -68,11 +70,19 @@ export function useSyncStatus() {
       return;
     }
 
+    const activeUserId = await AsyncStorage.getItem('activeUserId').catch(() => null);
     const [stats, lastSynced, items] = await Promise.all([
-      getQueueStats(),
+      getQueueStats(activeUserId),
       getLastSyncedAt(),
       getSyncQueue(),
     ]);
+
+    const scopedItems = activeUserId
+      ? items.filter(item => {
+          const owner = queueItemUserId(item);
+          return owner === null || owner === activeUserId;
+        })
+      : items;
 
     setStatus({
       total: stats.total,
@@ -82,7 +92,7 @@ export function useSyncStatus() {
       isSyncing: false,
       hasFailed: stats.failed > 0,
       hasPending: stats.pending > 0,
-      items,
+      items: scopedItems,
       backupDisabled: false,
     });
   }, []);

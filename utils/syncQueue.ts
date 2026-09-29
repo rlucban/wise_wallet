@@ -133,21 +133,35 @@ export async function getLastSyncedAt(): Promise<number | null> {
   }
 }
 
-export async function getQueueStats(): Promise<{
+export function queueItemUserId(item: SyncQueueItem): string | null {
+  return item.data && typeof item.data.userId === 'string'
+    ? (item.data.userId as string)
+    : null;
+}
+
+export async function getQueueStats(activeUserId?: string | null): Promise<{
   total: number;
   failed: number;
   pending: number;
   items: SyncQueueItem[];
 }> {
   const queue = await getSyncQueue();
-  const failed = queue.filter(item => item.lastError !== undefined).length;
-  const pending = queue.length - failed;
+  // SPEC-27 D-05 — diagnostics count the active user's items only.
+  // Legacy items without `userId` are attributed to the active user.
+  const scoped = activeUserId
+    ? queue.filter(item => {
+        const owner = queueItemUserId(item);
+        return owner === null || owner === activeUserId;
+      })
+    : queue;
+  const failed = scoped.filter(item => item.lastError !== undefined).length;
+  const pending = scoped.length - failed;
 
   return {
-    total: queue.length,
+    total: scoped.length,
     failed,
     pending,
-    items: queue,
+    items: scoped,
   };
 }
 

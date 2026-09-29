@@ -1,9 +1,9 @@
-import { View, TouchableOpacity, Platform } from "react-native";
+import { View, TouchableOpacity, Platform, RefreshControl } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { FAB, Text, Card, IconButton } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useFocusEffect } from "expo-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { startOfWeek, endOfWeek, isWithinInterval, format } from "date-fns";
 import { useThemeData } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
@@ -74,6 +74,18 @@ export default function Dashboard() {
       }
     }, [activeUserId, refetchTx, refetchSavings, refetchDues, refetchAlerts])
   );
+
+  // SPEC-27 D-04 — manual pull-to-refresh (foreground refetch above covers focus).
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    if (!activeUserId || refreshing) return;
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchTx(), refetchSavings(), refetchDues(), refetchAlerts()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [activeUserId, refreshing, refetchTx, refetchSavings, refetchDues, refetchAlerts]);
 
   const totalBadgeCount = useMemo(() => pendingDues.length + unreadCount, [pendingDues.length, unreadCount]);
 
@@ -310,6 +322,14 @@ export default function Dashboard() {
         ListEmptyComponent={<EmptyState icon="receipt" title="No transactions yet" subtitle="Tap + to add your first transaction" />}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={Platform.OS === "web" ? undefined : (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
+          />
+        )}
       />
 
       <FAB

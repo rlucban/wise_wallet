@@ -195,7 +195,7 @@ export default function AddDue() {
                     loading={loading}
                     disabled={loading || !title || !amount}
                     buttonColor={theme.colors.primary}
-                    color="#fff"
+                    color={theme.colors.onPrimary}
                     style={{ paddingVertical: 4 }}
                 >
                     Save Scheduled Due

@@ -128,7 +128,7 @@ export default function CategorySettings() {
       <FAB
         icon="plus"
         style={{ position: "absolute", margin: 16, right: 0, bottom: 0, backgroundColor: theme.colors.primary }}
-        color="#fff"
+        color={theme.colors.onPrimary}
         onPress={() => setModalVisible(true)}
       />
     </View>

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { View, ScrollView, Platform, StyleSheet } from "react-native";
 import { Appbar, List, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
@@ -11,7 +11,9 @@ import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
 import { usePasscode } from "../../context/PasscodeContext";
-import { useTransactionsActions } from "../../context/TransactionsContext";
+import { useTransactionsActions, useTransactionsData } from "../../context/TransactionsContext";
+import { useToast } from "../../context/ToastContext";
+import { countOrphanTransactions, getLastServerTxIds, truncateUserId } from "../../utils/transactionSync";
 import { useCategoriesActions } from "../../context/CategoriesContext";
 import { authFetch } from "../../utils/apiClient";
 import { useSyncStatus } from "../../hooks/useSyncStatus";
@@ -23,8 +25,34 @@ import ConfirmDialog from "../../components/ConfirmDialog";
 
 function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal: boolean }) {
   const { isOnline, checkConnectivity, isChecking } = useNetwork();
-  const { pending, lastSyncedAt, refresh: retryAll } = useSyncStatus();
+  const { pending, failed, lastSyncedAt, refresh: retryAll } = useSyncStatus();
+  const { activeUserId } = useAuth();
+  const { transactions } = useTransactionsData();
   const paperTheme = usePaperTheme();
+
+  // SPEC-27 D-01/D-08 — per-device diagnostics + OFF orphan count (zero network).
+  const [orphanCount, setOrphanCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (isLocal || !activeUserId) {
+        if (!cancelled) setOrphanCount(0);
+        return;
+      }
+      const lastServerIds = await getLastServerTxIds(activeUserId);
+      if (!cancelled) {
+        setOrphanCount(countOrphanTransactions(
+          transactions.map((t) => String(t.id)),
+          lastServerIds
+        ));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isLocal, activeUserId, transactions]);
+
+  const diagnostics = isLocal
+    ? `ID ${truncateUserId(activeUserId)} · Stored on this device`
+    : `ID ${truncateUserId(activeUserId)} · Backup ${autoBackup ? "on" : "off"} · ${pending} pending · ${failed} failed`;
 
   const getStatusColor = () => {
     if (isLocal) return { icon: "cellphone-off", text: "Local-only", color: paperTheme.colors.outline };
@@ -72,6 +100,14 @@ function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal:
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
             {isLocal ? "Data stored on device" : `Last sync: ${formatLastSync()}`}
           </Text>
+          <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
+            {diagnostics}
+          </Text>
+          {!isLocal && !autoBackup && orphanCount > 0 && (
+            <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
+              {`${orphanCount} local-only change(s) on this device — not on other devices`}
+            </Text>
+          )}
         </View>
       </View>
       {!autoBackup || isLocal ? null : pending > 0 && isOnline ? (
@@ -121,6 +157,7 @@ export default function SettingsScreen() {
   const { refetch: refetchCats } = useCategoriesActions();
   const repos = useRepositories();
   const isLocal = useIsLocalAccount();
+  const { showToast } = useToast();
 
   const handleLogout = async () => {
     await logout();
@@ -292,7 +329,19 @@ export default function SettingsScreen() {
          if (hasCloudData) {
            setShowConflictDialog(true);
          } else {
-           setAutoBackup(true);
+           // SPEC-27 D-08 — re-enable auto-drains orphans with a transient notice.
+           const localTxs = await repos.transactions.getAll();
+           const remoteIds = Array.isArray(txs)
+             ? (txs as Array<{ id: unknown }>).map((t) => String(t.id))
+             : [];
+           const orphans = countOrphanTransactions(
+             localTxs.map((t) => String(t.id)),
+             remoteIds
+           );
+           await setAutoBackup(true);
+           showToast(orphans > 0
+             ? `Sync on — syncing ${orphans} local-only change(s)…`
+             : "Sync on — everything is up to date.");
          }
      } catch (e) {
        console.error("Conflict check failed:", e);
@@ -430,6 +479,15 @@ export default function SettingsScreen() {
        }
 
        await setAutoBackup(true);
+
+       // SPEC-27 D-08 — transient notice while the re-enabled queue drains.
+       const reenableOrphans = countOrphanTransactions(
+         localTxs.map((t) => String(t.id)),
+         remoteTxs.map((t) => String(t.id))
+       );
+       if (reenableOrphans > 0) {
+         showToast(`Syncing ${reenableOrphans} local-only change(s)…`);
+       }
 
        console.info("[MergeLWW] Uploading merged data to cloud...");
 
