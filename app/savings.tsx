@@ -5,9 +5,7 @@ import { Appbar, Text, FAB, Portal, Modal, TextInput, Button, Card, IconButton, 
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
-import { useTransactions, useTransactionsActions } from "../hooks/useTransactions";
-import { useCategoriesData } from "../context/CategoriesContext";
-import { GLOBAL_CATEGORIES } from "../utils/db";
+import { useTransactions } from "../hooks/useTransactions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
 import { useUserProfile } from "../context/UserProfileContext";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
@@ -18,8 +16,6 @@ export default function SavingsScreen() {
     const theme = useTheme();
     const { items, updateItem, deleteItem, refetch } = useSavings();
     const { formatAmount } = useCurrencyActions();
-    const { addTransaction } = useTransactionsActions();
-    const { categories } = useCategoriesData();
     const { transactions } = useTransactions();
     const { profile } = useUserProfile();
 
@@ -119,18 +115,6 @@ export default function SavingsScreen() {
                 : item.balance + numAmount;
             await updateItem(selectedItemId, { balance: newBalance });
 
-            let savingsCat = categories.find(c => c.name === "Savings" && c.type === "expense");
-            if (!savingsCat) savingsCat = GLOBAL_CATEGORIES.find(c => c.name === "Others" && c.type === "expense");
-
-            await addTransaction({
-                title: `Transfer to ${item.title}`,
-                amount: numAmount,
-                type: "expense",
-                date: new Date().toISOString(),
-                category: savingsCat,
-                updatedAt: Date.now(),
-            });
-
             const goalReached = item.target_amount && newBalance >= item.target_amount;
             setTransferInModalVisible(false);
             setTransferAmount("");
@@ -163,18 +147,6 @@ export default function SavingsScreen() {
         try {
             await updateItem(selectedItemId, {
                 balance: item.balance - numAmount,
-            });
-
-            let savingsCat = categories.find(c => c.name === "Savings" && c.type === "income");
-            if (!savingsCat) savingsCat = GLOBAL_CATEGORIES.find(c => c.name === "Others" && c.type === "income");
-
-            await addTransaction({
-                title: `Transfer from ${item.title}`,
-                amount: numAmount,
-                type: "income",
-                date: new Date().toISOString(),
-                category: savingsCat,
-                updatedAt: Date.now(),
             });
 
             setTransferOutModalVisible(false);
@@ -243,22 +215,6 @@ export default function SavingsScreen() {
         setDeleteTarget(null);
         if (!item) return;
 
-        try {
-            if (item.balance > 0) {
-                let savingsCat = categories.find(c => c.name === "Savings" && c.type === "income");
-                if (!savingsCat) savingsCat = GLOBAL_CATEGORIES.find(c => c.name === "Others" && c.type === "income");
-                await addTransaction({
-                    title: `Return from ${item.title}`,
-                    amount: item.balance,
-                    type: "income",
-                    date: new Date().toISOString(),
-                    category: savingsCat,
-                    updatedAt: Date.now(),
-                });
-            }
-        } catch (e) {
-            console.error("Failed to create return transaction, deleting anyway:", e);
-        }
         await deleteItem(id);
     };
     return (
@@ -390,6 +346,12 @@ export default function SavingsScreen() {
                                 {completedItems.map((item) => {
                                     const currentBalance = item.balance || 0;
                                     const target = item.target_amount || 0;
+                                    type ExtendedColors = typeof theme.colors & {
+                                        successContainer?: string;
+                                        onSuccessContainer?: string;
+                                        success?: string;
+                                    };
+                                    const ec = theme.colors as ExtendedColors;
 
                                     return (
                                         <Card key={item.id} style={{ marginBottom: 12, borderRadius: 16, elevation: 3, backgroundColor: theme.colors.surface }}>
@@ -406,9 +368,9 @@ export default function SavingsScreen() {
                                                                 paddingHorizontal: 8,
                                                                 paddingVertical: 2,
                                                                 borderRadius: 10,
-                                                                backgroundColor: (theme.colors as any).successContainer || theme.colors.tertiaryContainer,
+                                                                backgroundColor: ec.successContainer || theme.colors.tertiaryContainer,
                                                             }}>
-                                                                <Text variant="labelSmall" style={{ color: (theme.colors as any).onSuccessContainer || theme.colors.onTertiaryContainer, fontWeight: "700" }}>
+                                                                <Text variant="labelSmall" style={{ color: ec.onSuccessContainer || theme.colors.onTertiaryContainer, fontWeight: "700" }}>
                                                                     Goal Reached
                                                                 </Text>
                                                             </View>
@@ -422,7 +384,7 @@ export default function SavingsScreen() {
                                                             <View style={{
                                                                 height: "100%",
                                                                 width: "100%",
-                                                                backgroundColor: (theme.colors as any).success || theme.colors.tertiary,
+                                                                backgroundColor: ec.success || theme.colors.tertiary,
                                                                 borderRadius: 4,
                                                             }} />
                                                         </View>
@@ -433,12 +395,12 @@ export default function SavingsScreen() {
                                                         width: 48,
                                                         height: 48,
                                                         borderRadius: 24,
-                                                        backgroundColor: (theme.colors as any).successContainer || theme.colors.tertiaryContainer,
+                                                        backgroundColor: ec.successContainer || theme.colors.tertiaryContainer,
                                                         justifyContent: "center",
                                                         alignItems: "center",
                                                         marginRight: 12,
                                                     }}>
-                                                        <MaterialCommunityIcons name="checkmark-circle" size={28} color={(theme.colors as any).onSuccessContainer || theme.colors.onTertiaryContainer} />
+                                                        <MaterialCommunityIcons name="checkmark-circle" size={28} color={ec.onSuccessContainer || theme.colors.onTertiaryContainer} />
                                                     </View>
 
                                                     {/* Far Right: Only Delete */}

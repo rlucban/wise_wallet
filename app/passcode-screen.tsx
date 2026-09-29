@@ -1,64 +1,94 @@
-import React, { useState } from "react";
-import { View, StyleSheet, TouchableOpacity } from "react-native";
-import { Text, IconButton, useTheme } from "react-native-paper";
+import React, { useState, useRef, useEffect } from "react";
+import { View, StyleSheet } from "react-native";
+import { Text, TextInput, useTheme, Card, HelperText } from "react-native-paper";
 import { usePasscode } from "../context/PasscodeContext";
 
 export default function PasscodeScreen() {
   const theme = useTheme();
   const { passcode, setIsUnlocked } = usePasscode();
   const [input, setInput] = useState("");
+  const [error, setError] = useState("");
+  const inputRef = useRef<{ focus: () => void }>(null);
 
-  const handlePress = (num: string) => {
-    if (input.length < 4) {
-      const newInput = input + num;
-      setInput(newInput);
-      if (newInput === passcode) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleInputChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 4);
+    setInput(cleaned);
+    setError("");
+
+    if (cleaned.length === 4) {
+      if (cleaned === passcode) {
         setIsUnlocked(true);
-      } else if (newInput.length === 4) {
-        // Wrong code
-        setTimeout(() => setInput(""), 300);
+      } else {
+        setError("Incorrect passcode. Please try again.");
+        setTimeout(() => {
+          setInput("");
+        }, 600);
       }
     }
   };
 
-  const handleDelete = () => {
-    setInput(input.slice(0, -1));
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text variant="headlineMedium" style={{ marginBottom: 40, fontWeight: "700" }}>
-        Enter Passcode
-      </Text>
+      <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
+        <Card.Content style={styles.cardContent}>
+          <Text variant="headlineSmall" style={styles.title}>
+            Enter Passcode
+          </Text>
+          <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+            Enter your 4-digit PIN to access WiseWallet
+          </Text>
 
-      <View style={styles.dotsContainer}>
-        {[1, 2, 3, 4].map((i) => (
-          <View
-            key={i}
-            style={[
-              styles.dot,
-              {
-                backgroundColor: input.length >= i ? theme.colors.primary : theme.colors.outlineVariant,
-              },
-            ]}
+          {/* Visual 4-dot indicator */}
+          <View style={styles.dotsContainer}>
+            {[1, 2, 3, 4].map((i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor:
+                      error
+                        ? theme.colors.error
+                        : input.length >= i
+                        ? theme.colors.primary
+                        : theme.colors.outlineVariant,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+
+          {/* Clean numeric text input with autoFocus and native keyboard */}
+          <TextInput
+            ref={inputRef}
+            mode="outlined"
+            label="4-Digit Passcode"
+            placeholder="••••"
+            value={input}
+            onChangeText={handleInputChange}
+            keyboardType="numeric"
+            secureTextEntry
+            maxLength={4}
+            error={!!error}
+            style={styles.input}
+            contentStyle={styles.inputContent}
+            autoFocus
           />
-        ))}
-      </View>
 
-      <View style={styles.keypad}>
-        {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
-          <TouchableOpacity key={num} style={styles.key} onPress={() => handlePress(num)}>
-            <Text variant="headlineSmall">{num}</Text>
-          </TouchableOpacity>
-        ))}
-        <View style={styles.key} />
-        <TouchableOpacity style={styles.key} onPress={() => handlePress("0")}>
-          <Text variant="headlineSmall">0</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.key} onPress={handleDelete}>
-          <IconButton icon="backspace-outline" />
-        </TouchableOpacity>
-      </View>
+          {error ? (
+            <HelperText type="error" visible={!!error} style={styles.errorText}>
+              {error}
+            </HelperText>
+          ) : null}
+        </Card.Content>
+      </Card>
     </View>
   );
 }
@@ -68,29 +98,50 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: 24,
+  },
+  card: {
+    width: "100%",
+    maxWidth: 380,
+    borderRadius: 24,
+    elevation: 4,
+  },
+  cardContent: {
+    alignItems: "center",
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  title: {
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  subtitle: {
+    marginBottom: 28,
+    textAlign: "center",
   },
   dotsContainer: {
     flexDirection: "row",
-    marginBottom: 60,
+    justifyContent: "center",
+    marginBottom: 28,
+    gap: 16,
   },
   dot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    marginHorizontal: 15,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
   },
-  keypad: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    width: 280,
-    justifyContent: "center",
+  input: {
+    width: "100%",
+    maxWidth: 260,
   },
-  key: {
-    width: 80,
-    height: 80,
-    justifyContent: "center",
-    alignItems: "center",
-    margin: 5,
-    borderRadius: 40,
+  inputContent: {
+    textAlign: "center",
+    letterSpacing: 10,
+    fontSize: 22,
+  },
+  errorText: {
+    textAlign: "center",
+    marginTop: 8,
   },
 });

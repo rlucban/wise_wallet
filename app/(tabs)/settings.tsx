@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { View, ScrollView, Alert, Platform, StyleSheet } from "react-native";
+import { View, ScrollView, Platform, StyleSheet } from "react-native";
 import { Appbar, List, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
@@ -115,7 +115,7 @@ export default function SettingsScreen() {
   const paperTheme = usePaperTheme();
   const { isDarkMode, toggleTheme } = useAppTheme();
   const { profile, updateProfile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
-  const { isPasscodeEnabled, passcode, setIsPasscodeEnabled, setPasscode, setIsUnlocked } = usePasscode();
+  const { isPasscodeEnabled, passcode, setIsPasscodeEnabled, setPasscode } = usePasscode();
   const { activeUserId, logout, login } = useAuth();
   const { refetch: refetchTx } = useTransactionsActions();
   const { refetch: refetchCats } = useCategoriesActions();
@@ -133,6 +133,8 @@ export default function SettingsScreen() {
     setNewPasscodeInput("");
     setConfirmPasscodeInput("");
     setChangePasscodeError("");
+    setPinStep(1);
+    setPinError(null);
   };
 
   const handleChangePasscode = () => {
@@ -140,54 +142,47 @@ export default function SettingsScreen() {
     const next = newPasscodeInput.trim();
     const confirm = confirmPasscodeInput.trim();
 
-    if (!/^\d{4}$/.test(current)) {
-      setChangePasscodeError("Please enter your current 4-digit passcode.");
-      return;
-    }
-    if (passcode && current !== passcode) {
-      setChangePasscodeError("Incorrect current passcode.");
+    if (passcode && (!/^\d{4}$/.test(current) || current !== passcode)) {
+      setChangePasscodeError("Incorrect current PIN.");
       return;
     }
     if (!/^\d{4}$/.test(next)) {
-      setChangePasscodeError("New passcode must be 4 digits.");
+      setChangePasscodeError("New PIN must be 4 digits.");
+      return;
+    }
+    if (passcode && next === current) {
+      setChangePasscodeError("New PIN must be different from current PIN.");
       return;
     }
     if (next !== confirm) {
-      setChangePasscodeError("New passcodes do not match.");
-      return;
-    }
-    if (next === current) {
-      setChangePasscodeError("New passcode must be different from the current passcode.");
+      setChangePasscodeError("New PINs do not match.");
       return;
     }
 
+    const isNewSetup = !passcode;
     setPasscode(next);
-    setShowChangePasscodeDialog(false);
-    setCurrentPasscodeInput("");
-    setNewPasscodeInput("");
-    setConfirmPasscodeInput("");
-    setChangePasscodeError("");
-    alert("Passcode changed successfully!");
-    setIsUnlocked(false);
+    if (isNewSetup) setIsPasscodeEnabled(true);
+    closeChangePasscodeDialog();
+    setMessageDialog({
+      visible: true,
+      type: "success",
+      title: isNewSetup ? "Passcode Set" : "Passcode Changed",
+      message: isNewSetup
+        ? "Your passcode has been set successfully."
+        : "Your passcode has been updated successfully.",
+    });
   };
 
-  const confirmPinSetup = () => {
-    if (pinSetupInput.length !== 4 || !/^\d{4}$/.test(pinSetupInput)) {
-      Alert.alert("Invalid PIN", "Please enter a 4-digit PIN.");
-      return;
-    }
-    setPasscode(pinSetupInput);
-    setIsPasscodeEnabled(true);
-    setIsUnlocked(false);
-    setShowPinSetup(false);
-    setPinSetupInput("");
-  };
 
-   const autoBackup = profile?.autoBackup ?? true;
+
+
+
+   const isValidEmail = (str: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
+   const isUsernameOnly = profile?.name && !isValidEmail(profile.name);
+   const autoBackup = isUsernameOnly || isLocal ? false : profile?.autoBackup ?? true;
+   const isEffectivelyLocal = isLocal || !!isUsernameOnly;
   const [isSyncing, setIsSyncing] = useState(false);
   const [showPinPrompt, setShowPinPrompt] = useState(false);
-  const [showPinSetup, setShowPinSetup] = useState(false);
-  const [pinSetupInput, setPinSetupInput] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [showPinVerificationDialog, setShowPinVerificationDialog] = useState(false);
@@ -201,6 +196,8 @@ export default function SettingsScreen() {
   const [newPasscodeInput, setNewPasscodeInput] = useState("");
   const [confirmPasscodeInput, setConfirmPasscodeInput] = useState("");
   const [changePasscodeError, setChangePasscodeError] = useState("");
+  const [pinStep, setPinStep] = useState(1);
+  const [pinError, setPinError] = useState<string | null>(null);
   const [deletePinInput, setDeletePinInput] = useState("");
   const [deletePinError, setDeletePinError] = useState("");
   const [pinVerified, setPinVerified] = useState(false);
@@ -1025,7 +1022,7 @@ export default function SettingsScreen() {
                <View style={{ marginLeft: 16 }}>
                  <Text variant="titleMedium">{profile?.name || "Wise User"}</Text>
                  <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
-                   {isLocal ? "Local-only account — stored on this device" : autoBackup ? "Cloud Sync Enabled" : "Cloud account — sync off"}
+                   {isEffectivelyLocal ? "Local-only account — stored on this device" : autoBackup ? "Cloud Sync Enabled" : "Cloud account — sync off"}
                  </Text>
                </View>
             </View>
@@ -1039,10 +1036,7 @@ export default function SettingsScreen() {
                 <List.Icon icon="cellphone-off" color={paperTheme.colors.onSurfaceVariant} />
                 <View style={{ marginLeft: 12, flex: 1 }}>
                   <Text variant="titleSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontWeight: "600" }}>
-                    Local-only Account
-                  </Text>
-                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, opacity: 0.8 }}>
-                    Your data is stored only on this device. Use "Make Online" below to enable cloud sync.
+                    Local-only Account: Your data is stored only on this device
                   </Text>
                 </View>
               </View>
@@ -1105,25 +1099,25 @@ export default function SettingsScreen() {
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>Data Management</Text>
 
-            <SyncStatusCard autoBackup={autoBackup} isLocal={isLocal} />
+            <SyncStatusCard autoBackup={autoBackup} isLocal={isEffectivelyLocal} />
 
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 }}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <List.Icon icon="cloud-sync" color={paperTheme.colors.onSurfaceVariant} />
                 <Text variant="bodyLarge" style={{ marginLeft: 12 }}>Auto-Backup</Text>
               </View>
-              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} />
+              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={isUsernameOnly || isLocal} />
             </View>
 
             <Divider style={{ marginVertical: 8 }} />
 
-            {!autoBackup && (
+            {(!autoBackup && !isEffectivelyLocal) && (
               <Button mode="outlined" icon="backup-restore" onPress={handleManualBackup} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
                 Backup Data to Cloud API Now
               </Button>
             )}
 
-            {!autoBackup && (
+            {(!autoBackup && !isEffectivelyLocal) && (
               <Button mode="outlined" icon="cloud-download" onPress={handleRestoreFromCloud} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
                 Restore Data from Cloud API
               </Button>
@@ -1147,7 +1141,7 @@ export default function SettingsScreen() {
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>Account</Text>
-            {isLocal && (
+            {isEffectivelyLocal && (
               <Button mode="contained" icon="cloud-upload-outline" onPress={() => handleToggleAutoBackup(true)} style={{ marginBottom: 8 }}>
                 Make Online
               </Button>
@@ -1190,7 +1184,7 @@ export default function SettingsScreen() {
               <Button
                 mode="outlined"
                 icon="lock-plus-outline"
-                onPress={() => setShowPinSetup(true)}
+                onPress={() => setShowChangePasscodeDialog(true)}
                 style={{ marginTop: 8 }}
               >
                 Set Passcode
@@ -1401,72 +1395,152 @@ export default function SettingsScreen() {
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={showPinSetup} onDismiss={() => { setShowPinSetup(false); setPinSetupInput(""); }}>
-          <Dialog.Title>Set Passcode</Dialog.Title>
-          <Dialog.Content>
-            <Text style={{ marginBottom: 16 }}>Enter a 4-digit PIN to secure the app on startup.</Text>
-            <TextInput
-              label="New PIN"
-              value={pinSetupInput}
-              onChangeText={(t) => setPinSetupInput(t.replace(/[^0-9]/g, "").slice(0, 4))}
-              secureTextEntry
-              keyboardType="numeric"
-              maxLength={4}
-            />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => { setShowPinSetup(false); setPinSetupInput(""); }}>Cancel</Button>
-            <Button onPress={confirmPinSetup}>Set Passcode</Button>
-          </Dialog.Actions>
-        </Dialog>
 
         <Dialog visible={showChangePasscodeDialog} onDismiss={closeChangePasscodeDialog}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-            <Dialog.Title>Change Passcode</Dialog.Title>
-            <IconButton icon="close" onPress={closeChangePasscodeDialog} />
-          </View>
+          {passcode ? (
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+              <Dialog.Title>{pinStep === 1 ? "Change Passcode" : "Enter New Passcode"}</Dialog.Title>
+              <IconButton icon="close" onPress={closeChangePasscodeDialog} />
+            </View>
+          ) : (
+            <Dialog.Title>Set Passcode</Dialog.Title>
+          )}
           <Dialog.Content>
-            <Text style={{ marginBottom: 16 }}>
-              {passcode ? "Enter your current passcode, then choose a new 4-digit passcode." : "Choose a new 4-digit passcode."}
-            </Text>
-            {passcode && (
-              <TextInput
-                label="Current Passcode"
-                value={currentPasscodeInput}
-                onChangeText={(t) => { setCurrentPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setChangePasscodeError(""); }}
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={4}
-                mode="outlined"
-                style={{ marginBottom: 12 }}
-              />
+            {passcode ? (
+              // Step 1: Verify current passcode when existing passcode exists
+              pinStep === 1 ? (
+                <View>
+                  <Text style={{ marginBottom: 16 }}>
+                    Enter your current passcode to verify.
+                  </Text>
+                  {pinError ? (
+                    <Text style={{ color: paperTheme.colors.error, marginBottom: 8 }}>
+                      {pinError}
+                    </Text>
+                  ) : null}
+                  <TextInput
+                    label="Current Passcode"
+                    value={currentPasscodeInput}
+                    onChangeText={(t) => {
+                      setCurrentPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                      setPinError(null);
+                    }}
+                    secureTextEntry
+                    keyboardType="numeric"
+                    maxLength={4}
+                    style={{ marginBottom: 12 }}
+                  />
+                </View>
+              ) : (
+                // Step 2: Enter new passcode after verification
+                <View>
+                  <Text style={{ marginBottom: 16 }}>
+                    Enter your new passcode.
+                  </Text>
+                  <TextInput
+                    label="New Passcode"
+                    value={newPasscodeInput}
+                    onChangeText={(t) => {
+                      setNewPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                      setChangePasscodeError("");
+                    }}
+                    secureTextEntry
+                    keyboardType="numeric"
+                    maxLength={4}
+                    style={{ marginBottom: 12 }}
+                  />
+                  <TextInput
+                    label="Confirm New Passcode"
+                    value={confirmPasscodeInput}
+                    onChangeText={(t) => {
+                      setConfirmPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                      setChangePasscodeError("");
+                    }}
+                    secureTextEntry
+                    keyboardType="numeric"
+                    maxLength={4}
+                    style={{ marginBottom: 12 }}
+                  />
+                  {changePasscodeError ? (
+                    <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>
+                      {changePasscodeError}
+                    </Text>
+                  ) : null}
+                </View>
+              )
+            ) : (
+              // No existing passcode: directly show new passcode fields
+              <View>
+                <Text style={{ marginBottom: 16 }}>
+                  Choose a new 4-digit passcode.
+                </Text>
+                <TextInput
+                  label="New Passcode"
+                  value={newPasscodeInput}
+                  onChangeText={(t) => {
+                    setNewPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                    setChangePasscodeError("");
+                  }}
+                  secureTextEntry
+                  keyboardType="numeric"
+                  maxLength={4}
+                  style={{ marginBottom: 12 }}
+                />
+                <TextInput
+                  label="Confirm New Passcode"
+                  value={confirmPasscodeInput}
+                  onChangeText={(t) => {
+                    setConfirmPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                    setChangePasscodeError("");
+                  }}
+                  secureTextEntry
+                  keyboardType="numeric"
+                  maxLength={4}
+                  style={{ marginBottom: 12 }}
+                />
+                {changePasscodeError ? (
+                  <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>
+                    {changePasscodeError}
+                  </Text>
+                ) : null}
+              </View>
             )}
-            <TextInput
-              label="New Passcode"
-              value={newPasscodeInput}
-              onChangeText={(t) => { setNewPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setChangePasscodeError(""); }}
-              secureTextEntry
-              keyboardType="numeric"
-              maxLength={4}
-              mode="outlined"
-              style={{ marginBottom: 12 }}
-            />
-            <TextInput
-              label="Confirm New Passcode"
-              value={confirmPasscodeInput}
-              onChangeText={(t) => { setConfirmPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setChangePasscodeError(""); }}
-              secureTextEntry
-              keyboardType="numeric"
-              maxLength={4}
-              mode="outlined"
-            />
-            {changePasscodeError ? (
-              <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>{changePasscodeError}</Text>
-            ) : null}
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={closeChangePasscodeDialog}>Cancel</Button>
-            <Button onPress={handleChangePasscode}>Change Passcode</Button>
+            {passcode ? (
+              pinStep === 1 ? (
+                <Button
+                  onPress={() => {
+                    const current = currentPasscodeInput.trim();
+                    if (current === passcode) {
+                      setPinStep(2);
+                      setPinError(null);
+                    } else {
+                      setPinError("Incorrect Current PIN. Try again.");
+                      setCurrentPasscodeInput("");
+                    }
+                  }}
+                  disabled={currentPasscodeInput.trim().length !== 4}
+                >
+                  Verify Current PIN
+                </Button>
+              ) : (
+                <Button
+                  onPress={handleChangePasscode}
+                  disabled={newPasscodeInput.length !== 4 || newPasscodeInput !== confirmPasscodeInput}
+                >
+                  Set Passcode
+                </Button>
+              )
+            ) : (
+              <Button
+                onPress={handleChangePasscode}
+                disabled={newPasscodeInput.length !== 4 || newPasscodeInput !== confirmPasscodeInput}
+              >
+                Set Passcode
+              </Button>
+            )}
           </Dialog.Actions>
         </Dialog>
       </Portal>

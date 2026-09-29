@@ -249,6 +249,20 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   `style`, sets `borderRadius: 20` and `color="#fff"`. Eliminates faint/invisible
   washed-out buttons caused by passing `backgroundColor` as a direct component prop.
   See `docs/savepoint.md`.
+- **2026-09-29 — Spec 23 FINAL + implemented.** `specs/23-numamount-reference-and-dues-lint-fix.md`:
+  D-01 `app/add-transaction.tsx` declares `const numAmount = amount ? parseAmount(amount) : 0;`
+  at component scope, fixing the `ReferenceError: numAmount is not defined` runtime crash and
+  formatting warning text with `formatAmount(availableBalance)`.
+  D-02 `app/dues.tsx` removes unused `Alert` from `react-native` import, clearing the ESLint
+  `@typescript-eslint/no-unused-vars` warning. See `docs/savepoint.md`.
+- **2026-09-29 — Spec 25 FINAL + implemented.** `specs/25-passcode-modal-step-ui.md`:
+  Sequential step-by-step passcode dialog in `app/(tabs)/settings.tsx`. D-01 `showChangePasscodeDialog`:
+  title is step-aware ("Change Passcode" → "Enter New Passcode"); Step 1 Dialog.Actions "Verify Current PIN"
+  button has real onPress (was no-op), disabled until 4 digits, shows "Incorrect Current PIN. Try again."
+  on mismatch; Step 2 "Set Passcode" disabled until new fields match and are 4 digits; removed dead
+  `getChangePasscodeError()`. D-02 `showPinSetup`: `onDismiss` calls `closePinSetupDialog()`;
+  "Set Passcode" disabled until both fields match; `pinSetupError` displayed below Confirm field.
+  See `docs/savepoint.md`.
 
 ---
 

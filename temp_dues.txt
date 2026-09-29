@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { View } from "react-native";
+﻿import { useState, useEffect, useCallback, useMemo } from "react";
+import { View, Alert } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { Appbar, Text, Card, FAB, Portal, Modal, TextInput, Button, Checkbox, useTheme, Chip, IconButton, SegmentedButtons, Dialog } from "react-native-paper";
+import { Appbar, Text, Card, FAB, Portal, Modal, TextInput, Button, Checkbox, useTheme, Chip, IconButton, SegmentedButtons } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Calendar } from "react-native-calendars";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { useDues } from "../hooks/useDues";
-import { useTransactions, useTransactionsActions } from "../hooks/useTransactions";
+import { useTransactionsActions } from "../hooks/useTransactions";
 import { useUserProfile } from "../context/UserProfileContext";
 import { useCategoriesData } from "../context/CategoriesContext";
 import { Due, DueFrequency } from "../types";
@@ -38,7 +38,6 @@ export default function DuesScreen() {
   const { formatAmount } = useCurrencyActions();
   const { dues, addDue, updateDue, deleteDue, refetch } = useDues();
   const { addTransaction } = useTransactionsActions();
-  const { transactions } = useTransactions();
   const { categories } = useCategoriesData();
   const { profile } = useUserProfile();
   const initialBalance = profile?.initialBalance ?? 0;
@@ -57,11 +56,6 @@ export default function DuesScreen() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(undefined);
   const [customCategory, setCustomCategory] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Due | null>(null);
-  const [alertDialog, setAlertDialog] = useState<{ visible: boolean; title: string; message: string }>({
-    visible: false,
-    title: "",
-    message: "",
-  });
 
   useFocusEffect(
     useCallback(() => {
@@ -192,26 +186,50 @@ export default function DuesScreen() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      setAlertDialog({ visible: true, title: "Invalid Input", message: "Please enter a title." });
-      return;
-    }
+    if (!title) return;
     const numAmount = parseAmount(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      setAlertDialog({ visible: true, title: "Invalid Amount", message: "Please enter a valid amount." });
+      Alert.alert("Invalid Amount", "Please enter a valid amount.");
       return;
     }
     if (numAmount > 10000000) {
-      setAlertDialog({ visible: true, title: "Invalid Amount", message: "Amount must not exceed 10,000,000." });
+      Alert.alert("Invalid Amount", "Amount must not exceed 10,000,000.");
       return;
     }
     if (isOthersSelected && !customCategory.trim()) {
-      setAlertDialog({ visible: true, title: "Invalid Category", message: "Please specify a category." });
+      Alert.alert("Invalid Category", "Please specify a category.");
       return;
     }
 
+    // Balance validation for expense due transactions
+    if (type === "expense") {
+      let totalPaidDues = 0;
+      dues.forEach((d) => {
+        if (d.completed) {
+          totalPaidDues += Number(d.amount || 0);
+        }
+      });
+
+      let activeAllocations = 0;
+      savingsItems.forEach((s) => {
+        if (s.target_amount && s.target_amount > 0 && s.balance < s.target_amount) {
+          activeAllocations += Number(s.target_amount - s.balance || 0);
+        }
+      });
+
+      const availableBalance = initialBalance - totalPaidDues - activeAllocations;
+
+      if (numAmount > availableBalance) {
+        Alert.alert(
+          "Insufficient Funds",
+          `You need â‚±${numAmount}, but your Available to Spend is only â‚±${availableBalance.toFixed(2)}. Please add income first.`
+        );
+        return;
+      }
+    }
+
     const payload = {
-      title: title.trim(),
+      title,
       amount: numAmount,
       date: date.toISOString(),
       type,
@@ -233,7 +251,7 @@ export default function DuesScreen() {
       }
       closeModal();
     } catch {
-      setAlertDialog({ visible: true, title: "Error", message: "Failed to save scheduled item." });
+      Alert.alert("Error", "Failed to save scheduled item.");
     }
   };
 
@@ -241,22 +259,27 @@ export default function DuesScreen() {
     try {
       // Balance validation for expense transactions
       if (item.type !== "income") {
+        let totalPaidDues = 0;
+        dues.forEach((d) => {
+          if (d.completed) {
+            totalPaidDues += Number(d.amount || 0);
+          }
+        });
 
-        const totalIncome = transactions
-          .filter((t) => t.type === "income" && t.title !== "Opening Balance")
-          .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-        const totalExpense = transactions
-          .filter((t) => t.type === "expense")
-          .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-        const totalReserved = savingsItems.reduce((sum, g) => sum + Number(g.balance || 0), 0);
-        const availableBalance = initialBalance + totalIncome - totalExpense - totalReserved;
+        let activeAllocations = 0;
+        savingsItems.forEach((s) => {
+          if (s.target_amount && s.target_amount > 0 && s.balance < s.target_amount) {
+            activeAllocations += Number(s.target_amount - s.balance || 0);
+          }
+        });
+
+        const availableBalance = initialBalance - totalPaidDues - activeAllocations;
 
         if (item.amount > availableBalance) {
-          setAlertDialog({
-            visible: true,
-            title: "Insufficient Balance",
-            message: `Cannot pay "${item.title}". You need ${formatAmount(item.amount)}, but your Available to Spend is only ${formatAmount(availableBalance)}. Please add income first.`,
-          });
+          Alert.alert(
+            "Insufficient Funds",
+            `You need â‚±${item.amount}, but your Available to Spend is only â‚±${availableBalance.toFixed(2)}. Please add income first.`
+          );
           return;
         }
       }
@@ -300,20 +323,11 @@ export default function DuesScreen() {
         });
       }
 
-       setAlertDialog({
-         visible: true,
-         title: "Transaction Recorded",
-         message: `${item.title} (${formatAmount(item.amount)}) has been recorded successfully.`,
-       });
+       Alert.alert("Recorded", "Transaction recorded successfully.");
      } catch (error) {
        console.error("Failed to record transaction:", error);
-       setAlertDialog({
-         visible: true,
-         title: "Error",
-         message: "Failed to record transaction.",
-       });
      }
-   }, [addTransaction, addDue, updateDue, categories, transactions, initialBalance, savingsItems, formatAmount]);
+   }, [addTransaction, addDue, updateDue, categories]);
 
    const confirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -602,7 +616,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
           )}
 
           <TextInput label="Title" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
-          <TextInput label="Amount" value={amount} onChangeText={(t) => setAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} left={<TextInput.Affix text="₱" />} />
+          <TextInput label="Amount" value={amount} onChangeText={(t) => setAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 12 }} left={<TextInput.Affix text="â‚±" />} />
 
            <TextInput
              label="Date"
@@ -661,23 +675,6 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
            onConfirm={confirmDelete}
            onCancel={() => setDeleteTarget(null)}
          />
-       </Portal>
-
-       <Portal>
-         <Dialog visible={alertDialog.visible} onDismiss={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
-           <Dialog.Icon icon={alertDialog.title === "Error" || alertDialog.title === "Insufficient Balance" ? "alert-circle-outline" : "check-circle-outline"} />
-           <Dialog.Title style={{ textAlign: "center" }}>{alertDialog.title}</Dialog.Title>
-           <Dialog.Content>
-             <Text variant="bodyMedium" style={{ textAlign: "center", lineHeight: 22 }}>
-               {alertDialog.message}
-             </Text>
-           </Dialog.Content>
-           <Dialog.Actions style={{ justifyContent: "center" }}>
-             <Button mode="contained" onPress={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
-               OK
-             </Button>
-           </Dialog.Actions>
-         </Dialog>
        </Portal>
 
        <Portal>
