@@ -8,5 +8,5 @@ export function isLocalAccountToken(token: string | null): boolean {
 
 export function useIsLocalAccount(): boolean {
   const { token } = useAuthData();
-  return isLocalAccountToken(token);
+  return token !== null && LOCAL_TOKENS.has(token);
 }

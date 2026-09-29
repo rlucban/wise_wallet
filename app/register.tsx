@@ -133,8 +133,41 @@ export default function RegisterScreen() {
 
         if (effectiveMode === "online") {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(name.trim())) {
+            const isEmail = emailRegex.test(name.trim());
+            if (!isEmail && Platform.OS === "web") {
                 setNameError("Please enter a valid email address");
+                return;
+            }
+            if (!isEmail && Platform.OS !== "web") {
+                // Username typed in online mode on mobile — attempt cloud registration first
+                setLoading(true);
+                try {
+                    const response = await fetch(`${API_URL}/auth/register`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ name: name.trim(), passcode: passcode.trim(), initialBalance: 0 }),
+                    });
+                    const responseData = await response.json();
+                    if (response.ok) {
+                        await addUser(responseData.data.user.id, name.trim(), passcode.trim());
+                        await saveUserProfile({ name: name.trim(), isFirstRun: true, initialBalance: 0 }, responseData.data.user.id);
+                        await initDb(responseData.data.user.id);
+                        await setSetting('autoBackup', 'true');
+                        await login(responseData.data.user.id, responseData.data.token);
+                        alert("Cloud account created successfully!");
+                        setLoading(false);
+                        return;
+                    } else {
+                        // Cloud registration failed (e.g., email not available) — fall through to local account
+                        console.info("Cloud registration failed, falling back to local account");
+                    }
+                } catch (e) {
+                    // Network error — fall through to local account
+                    console.info("Cloud registration network error, falling back to local account:", (e as Error).message);
+                }
+                // Fall through to createLocalAccount
+                const success = await createLocalAccount(name.trim(), passcode.trim());
+                if (!success) setLoading(false);
                 return;
             }
         }

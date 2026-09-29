@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { View, ScrollView } from "react-native";
-import { Image } from "expo-image";
-import { Appbar, Text, Card, Chip, Divider, useTheme } from "react-native-paper";
+import { View, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
+import { Appbar, Text, Card, useTheme } from "react-native-paper";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTransactions } from "../hooks/useTransactions";
 import { useCurrencyActions } from "../context/CurrencyContext";
@@ -23,6 +23,10 @@ export default function TransactionDetails() {
     setTransaction(found || null);
   }, [id, transactions]);
 
+  const isIncome = transaction?.type === "income";
+  const amountColor = isIncome ? theme.colors.primary : theme.colors.error;
+  const amountPrefix = isIncome ? "+" : "-";
+
   const handleDelete = async () => {
     if (transaction) {
       await deleteTransaction(transaction.id);
@@ -33,124 +37,127 @@ export default function TransactionDetails() {
 
   if (!transaction) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={{ flex: 1, width: "100%", alignItems: "center", backgroundColor: theme.colors.background }}>
         <Text>Transaction not found</Text>
       </View>
     );
   }
 
-  const isIncome = transaction.type === "income";
-
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} />
-        <Appbar.Content title="Transaction Details" />
-        {/* <Appbar.Action icon="pencil" onPress={() => router.push(`/edit-transaction?id=${transaction.id}`)} />
-        <Appbar.Action icon="delete" onPress={() => setDeleteDialogVisible(true)} /> */}
+    <View style={styles.container}>
+      <Appbar.Header
+        style={{
+          backgroundColor: theme.colors.surface,
+          elevation: 0,
+          flexDirection: "row",
+          justifyContent: "space-between",
+          width: "100%",
+          marginBottom: 6,
+        }}
+      >
+        <View style={styles.appbarLeft}>
+          <Appbar.BackAction onPress={() => router.back()} />
+          <Appbar.Content title="Transaction Details" titleStyle={{ fontWeight: "700" }} />
+        </View>
+        <View style={styles.appbarRight}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TouchableOpacity
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "#ffffff",
+                justifyContent: "center",
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: "#e2e8f0",
+              }}
+              onPress={() => router.push(`/edit-transaction?id=${transaction.id}`)}
+            >
+              <MaterialCommunityIcons name="pencil" size={20} color="#3b82f6" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: "#ffffff",
+                justifyContent: "center",
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: "#e2e8f0",
+              }}
+              onPress={() => setDeleteDialogVisible(true)}
+            >
+              <MaterialCommunityIcons name="delete-outline" size={20} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+        </View>
       </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
-        <Card style={{ marginBottom: 16 }}>
-          <Card.Content style={{ alignItems: "center", paddingVertical: 24 }}>
-            <Text variant="displayMedium" style={{ color: isIncome ? theme.colors.primary : theme.colors.error, fontWeight: "bold" }}>
-              {isIncome ? "+" : "-"}{formatAmount(transaction.amount)}
-            </Text>
-            <Chip icon={isIncome ? "arrow-up" : "arrow-down"} style={{ marginTop: 8 }}>
-              {isIncome ? "Income" : "Expense"}
-            </Chip>
-          </Card.Content>
-        </Card>
-
-        <Card style={{ marginBottom: 16 }}>
-          <Card.Content>
-            <View style={{ marginBottom: 12 }}>
-              <Text variant="labelSmall" style={{ color: "gray" }}>Category</Text>
-              <Text variant="titleMedium">{transaction.category?.name || "Others"}</Text>
-            </View>
-            <Divider style={{ marginVertical: 8 }} />
-
-            <View style={{ marginBottom: 12 }}>
-              <Text variant="labelSmall" style={{ color: "gray" }}>Date</Text>
-              <Text variant="titleMedium">{new Date(transaction.date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</Text>
-            </View>
-            <Divider style={{ marginVertical: 8 }} />
-
-            <View style={{ marginBottom: 12 }}>
-              <Text variant="labelSmall" style={{ color: "gray" }}>Payment Method</Text>
-              <Text variant="titleMedium">{transaction.paymentMethod || "Cash"}</Text>
-            </View>
-            <Divider style={{ marginVertical: 8 }} />
-
-            {transaction.establishment ? (
-              <>
-                <View style={{ marginBottom: 12 }}>
-                  <Text variant="labelSmall" style={{ color: "gray" }}>Establishment / Location</Text>
-                  <Text variant="titleMedium">{transaction.establishment}</Text>
-                </View>
-                <Divider style={{ marginVertical: 8 }} />
-              </>
-            ) : null}
-
-            {transaction.splitInfo ? (
-              <>
-                <View style={{ marginBottom: 12 }}>
-                  <Text variant="labelSmall" style={{ color: "gray" }}>Split Bill</Text>
-                  <Text variant="titleMedium">Split between {transaction.splitInfo.people} people</Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.primary, fontWeight: "bold" }}>
-                    {formatAmount(transaction.splitInfo.amountPerPerson)} each
-                  </Text>
-                  {transaction.splitInfo.notes ? (
-                    <Text variant="bodySmall" style={{ marginTop: 4, fontStyle: "italic" }}>
-                      Notes: {transaction.splitInfo.notes}
-                    </Text>
-                  ) : null}
-                </View>
-                <Divider style={{ marginVertical: 8 }} />
-              </>
-            ) : null}
-
-            {transaction.note ? (
-              <View style={{ marginBottom: 12 }}>
-                <Text variant="labelSmall" style={{ color: "gray" }}>Note</Text>
-                <Text variant="bodyLarge">
-                  {transaction.note.replace(/\s*\[Split Bill\].*$/s, "").trim()}
-                </Text>
-              </View>
-            ) : null}
-          </Card.Content>
-        </Card>
-
-        {transaction.receiptUrl && (
-          <Card style={{ marginBottom: 16 }}>
-            <Card.Content>
-              <Text variant="labelSmall" style={{ color: "gray", marginBottom: 8 }}>Receipt</Text>
-              <Image
-                source={{ uri: transaction.receiptUrl }}
-                style={{ width: "100%", height: 250, borderRadius: 8 }}
-                contentFit="cover"
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* Hero Summary Card */}
+        <Card style={styles.heroCard}>
+          <Card.Content style={styles.heroContent}>
+            <View style={styles.amountIcon}>
+              <MaterialCommunityIcons
+                name={isIncome ? "cash" : "arrow-down-circle"}
+                size={28}
+                color={isIncome ? "#ffffff" : "#ffffff"}
               />
-            </Card.Content>
-          </Card>
-        )}
+            </View>
+            <View style={styles.amountText}>
+              <Text variant="displayLarge" style={{ color: amountColor, fontWeight: "800" }}>
+                {amountPrefix}{formatAmount(transaction.amount)}
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, opacity: 0.8 }}>
+                {isIncome ? "Income" : "Expense"}
+              </Text>
+            </View>
+            <Text variant="titleMedium" style={{ marginTop: 4, color: theme.colors.onSurface }}>
+              {transaction.category?.name || "Others"}
+            </Text>
+          </Card.Content>
+        </Card>
 
-        {/* <Button
-          mode="outlined"
-          icon="pencil"
-          onPress={() => router.push(`/edit-transaction?id=${transaction.id}`)}
-          style={{ marginBottom: 8 }}
-        >
-          Edit Transaction
-        </Button> */}
+        {/* Detailed Fields Card */}
+        <Card style={styles.detailedCard}>
+          <Card.Content style={styles.detailedContent}>
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>TYPE</Text>
+              <Text style={styles.value}>{isIncome ? "Income" : "Expense"}</Text>
+            </View>
 
-        {/* <Button
-          mode="outlined"
-          icon="delete"
-          textColor={theme.colors.error}
-          onPress={() => setDeleteDialogVisible(true)}
-        >
-          Delete Transaction
-        </Button> */}
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>AMOUNT</Text>
+              <Text style={styles.value}>{amountPrefix}{formatAmount(transaction.amount)}</Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>TRANSACTION DATE</Text>
+              <Text style={styles.value}>
+                {new Date(transaction.date).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>PAYMENT METHOD / ACCOUNT</Text>
+              <Text style={styles.value}>
+                {transaction.paymentMethod || "Cash"}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={styles.label}>CATEGORY</Text>
+              <Text style={styles.value}>{transaction.category?.name || "Others"}</Text>
+            </View>
+          </Card.Content>
+        </Card>
       </ScrollView>
 
       <ConfirmDialog
@@ -164,3 +171,73 @@ export default function TransactionDetails() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    backgroundColor: "#f9fafb",
+  },
+  scrollContainer: {
+    flexGrow: 1,
+  },
+  appbarLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  appbarRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  heroCard: {
+    borderRadius: 20,
+    marginBottom: 24,
+    overflow: "hidden",
+    width: "100%",
+  },
+  heroContent: {
+    padding: 24,
+    alignItems: "center",
+  },
+  amountIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    backgroundColor: "#f9fafb",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  amountText: {
+    alignItems: "center",
+  },
+  detailedCard: {
+    borderRadius: 16,
+    marginBottom: 24,
+    width: "100%",
+  },
+  detailedContent: {
+    padding: 24,
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  label: {
+    textTransform: "uppercase",
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#64748b",
+    letterSpacing: 0.5,
+  },
+  value: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#64748b",
+    marginLeft: 8,
+  },
+});

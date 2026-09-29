@@ -12,8 +12,10 @@ import { isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, sta
 
 const TREND_MONTHS = 6;
 
-const EXPENSE_COLORS = ["#DC2626", "#F97316", "#F59E0B", "#EF4444", "#B91C1C", "#EA580C"];
-const INCOME_COLORS = ["#16A34A", "#10B981", "#059669", "#22C55E", "#047857", "#34D399"];
+const INCOME_COLOR = "#10b981";
+const INCOME_COLOR_DARK = "#16a34a";
+const EXPENSE_COLOR = "#ef4444";
+const EXPENSE_COLOR_DARK = "#dc2626";
 
 const renderCategoryIcon = (name?: string): string => {
   const n = (name || "").toLowerCase();
@@ -119,11 +121,11 @@ export default function ReportsScreen() {
     const segments: { name: string; value: number; color: string; type: "expense" | "income" }[] = [];
 
     Object.keys(expMap).forEach((cat, i) => {
-      segments.push({ name: cat, value: expMap[cat], color: EXPENSE_COLORS[i % EXPENSE_COLORS.length], type: "expense" });
+      segments.push({ name: cat, value: expMap[cat], color: i % 2 === 0 ? EXPENSE_COLOR : EXPENSE_COLOR_DARK, type: "expense" });
     });
 
     Object.keys(incMap).forEach((cat, i) => {
-      segments.push({ name: cat, value: incMap[cat], color: INCOME_COLORS[i % INCOME_COLORS.length], type: "income" });
+      segments.push({ name: cat, value: incMap[cat], color: i % 2 === 0 ? INCOME_COLOR : INCOME_COLOR_DARK, type: "income" });
     });
 
     return segments;
@@ -230,15 +232,15 @@ export default function ReportsScreen() {
       </Appbar.Header>
 
       {/* Full-Width Date Banner */}
-      <View style={{ marginHorizontal: 16, marginTop: 12, backgroundColor: theme.colors.primaryContainer, borderRadius: 12, flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 8 }}>
+      <View style={{ marginHorizontal: 16, marginTop: 12, backgroundColor: "#1a237e", borderRadius: 12, flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 8 }}>
         <TouchableOpacity onPress={() => shiftPeriod("left")} style={{ padding: 8 }}>
-          <MaterialCommunityIcons name="chevron-left" size={24} color={theme.colors.onPrimaryContainer} />
+          <MaterialCommunityIcons name="chevron-left" size={24} color="#ffffff" />
         </TouchableOpacity>
-        <Text variant="titleMedium" style={{ flex: 1, textAlign: "center", color: theme.colors.onPrimaryContainer, fontWeight: "700" }}>
+        <Text variant="titleMedium" style={{ flex: 1, textAlign: "center", color: "#ffffff", fontWeight: "700" }}>
           {currentRange.label}
         </Text>
         <TouchableOpacity onPress={() => shiftPeriod("right")} style={{ padding: 8 }}>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.onPrimaryContainer} />
+          <MaterialCommunityIcons name="chevron-right" size={24} color="#ffffff" />
         </TouchableOpacity>
       </View>
 
@@ -247,20 +249,20 @@ export default function ReportsScreen() {
         <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingTop: 16, gap: 10 }}>
           {/* Expense Card */}
           <View style={{ flex: 1, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.errorContainer, justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
-              <MaterialCommunityIcons name="arrow-down-circle" size={22} color={theme.colors.error} />
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: EXPENSE_COLOR_DARK, justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
+              <MaterialCommunityIcons name="arrow-down-circle" size={22} color="#ffffff" />
             </View>
             <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", letterSpacing: 0.5 }}>EXPENSE</Text>
-            <Text variant="titleMedium" style={{ color: theme.colors.error, fontWeight: "800", marginTop: 4 }}>{formatAmount(expense)}</Text>
+            <Text variant="titleMedium" style={{ color: EXPENSE_COLOR, fontWeight: "800", marginTop: 4 }}>-{formatAmount(expense)}</Text>
           </View>
 
           {/* Income Card */}
           <View style={{ flex: 1, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
-            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.tertiaryContainer, justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
-              <MaterialCommunityIcons name="arrow-up-circle" size={22} color={theme.colors.tertiary} />
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: INCOME_COLOR_DARK, justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
+              <MaterialCommunityIcons name="arrow-up-circle" size={22} color="#ffffff" />
             </View>
             <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", letterSpacing: 0.5 }}>INCOME</Text>
-            <Text variant="titleMedium" style={{ color: theme.colors.tertiary, fontWeight: "800", marginTop: 4 }}>{formatAmount(income)}</Text>
+            <Text variant="titleMedium" style={{ color: INCOME_COLOR, fontWeight: "800", marginTop: 4 }}>+{formatAmount(income)}</Text>
           </View>
 
           {/* Total Card */}

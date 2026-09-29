@@ -295,5 +295,64 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **Charts unchanged** — `MonthlyTrendChart` and `DonutChart` already used `theme.colors.*` internally; no logic changes.
 - **Lint clean** + **TypeScript clean** — no new errors or warnings.
 
+---
 
+## 2026-09-28 — Register: username fallback to local account on mobile
+- `app/register.tsx` `handleRegister`: in Online mode on mobile, if the user types a non-email username the strict email validation is skipped; a confirmation dialog ("Create Local Account?") is shown instead, and on confirm `createLocalAccount()` is called with that username and PIN.
+- Web path unchanged — non-email input in Online mode still shows "Please enter a valid email address" on web.
+- No changes to `createCloudAccount`, `createLocalAccount`, JSX, or styles.
 
+---
+
+## 2026-09-29 — Lint Cleanup (dues, savings, transaction-details)
+- `app/dues.tsx`: Added missing `dues`, `initialBalance`, and `savingsItems` dependencies to the `recordTransaction` `useCallback` dependency array.
+- `app/savings.tsx`: Removed unused `GLOBAL_CATEGORIES` import, unused `useTransactionsActions` / `useCategoriesData` hooks, and unused `addTransaction` / `categories` variable bindings.
+- `app/transaction-details.tsx`: Removed unused `Platform` import from `react-native`.
+- All 5 lint warnings/errors resolved cleanly.
+
+---
+
+## 2026-09-29 — Scheduled Dues: Available Balance Calculation & In-App Validation Dialog
+- `app/dues.tsx`: Fixed `recordTransaction` available balance calculation to incorporate transaction income and expenses via `useTransactions()` (`initialBalance + totalIncome - totalExpense - totalReserved`). Removed flawed loop subtracting unreached savings targets and past paid dues.
+- Replaced non-rendering `Alert.alert` calls on Web with a cross-platform `Dialog` in `Portal`, clearly informing the user if their balance is insufficient (`You need ₱X, but your Available to Spend is only ₱Y. Please add income first.`) or confirming successful payment.
+- Updated `useCallback` dependency array to include `transactions` and `formatAmount`.
+
+---
+
+## 2026-09-29 — Expense Creation & Available Balance Validation Fix
+- `app/add-transaction.tsx`: Restored missing `selectedMethodType` and `availablePaymentMethods` state declarations that previously caused `Uncaught Error: selectedMethodType is not defined`.
+- Fixed `availableBalance` calculation in `app/add-transaction.tsx` to use the standard formula (`initialBalance + totalIncome - totalExpenses - totalReserved`) via `useMemo`.
+- Replaced invisible `Alert.alert` calls on Web with an in-app `Dialog` inside a `<Portal>` in both `app/add-transaction.tsx` and `app/add-due.tsx`.
+- Removed artificial creation-time balance blocks on scheduled future dues in `app/add-due.tsx` and `app/dues.tsx` modal `handleSubmit`.
+
+---
+
+## 2026-09-29 — SPEC-23: Fix numAmount ReferenceError and Dues Alert Lint Warning
+- `specs/23-numamount-reference-and-dues-lint-fix.md`: Finalized spec for runtime error and lint cleanup.
+- `app/add-transaction.tsx` (D-01): Declared `const numAmount = amount ? parseAmount(amount) : 0;` at component scope, resolving `ReferenceError: numAmount is not defined`. Formatted helper warning text cleanly with `formatAmount(availableBalance)`.
+- `app/dues.tsx` (D-02): Removed unused `Alert` from `react-native` import, clearing the ESLint `@typescript-eslint/no-unused-vars` warning.
+
+---
+
+## 2026-09-29 — SPEC-25: Passcode Modal Step-by-Step UI Fix
+- `specs/25-passcode-modal-step-ui.md`: Finalized spec for sequential passcode dialog flow.
+- `app/(tabs)/settings.tsx` — D-01 (`showChangePasscodeDialog`):
+  - Title is now step-aware: Step 1 = "Change Passcode", Step 2 = "Enter New Passcode".
+  - Removed duplicate inline `<Button title="Verify Current PIN">` from `Dialog.Content` — verification is now driven exclusively by `Dialog.Actions`.
+  - Step 1 `Dialog.Actions` "Verify Current PIN" button: has a real `onPress` that compares input to stored passcode; disabled until exactly 4 digits entered; on mismatch shows "Incorrect Current PIN. Try again." and clears input; on match advances to Step 2.
+  - Step 2 "Set Passcode" button: disabled until both New and Confirm fields are 4 digits and identical.
+  - No-passcode path ("Set Passcode" flow from `showChangePasscodeDialog`): same disabled logic applied.
+  - Removed dead `getChangePasscodeError()` function (no longer referenced).
+- `app/(tabs)/settings.tsx` — D-02 (`showPinSetup`):
+  - `onDismiss` now calls `closePinSetupDialog()` instead of an inline lambda — ensures all fields + error state are reset on dismiss.
+  - "Set Passcode" button disabled until both fields are 4 digits and match.
+  - `pinSetupError` text rendered below Confirm field; cleared on any input change.
+
+---
+
+## 2026-09-29 — SPEC-26: Unify Passcode Setup Into Single Step-by-Step Dialog
+- `specs/26-unify-passcode-dialog.md`: Finalized spec to eliminate the old `showPinSetup` dialog.
+- `app/(tabs)/settings.tsx` — D-01: "Set Passcode" button `onPress` changed from `setShowPinSetup(true)` to `setShowChangePasscodeDialog(true)`. All passcode flows now use one unified dialog.
+- `app/(tabs)/settings.tsx` — D-02: `handleChangePasscode` calls `setIsPasscodeEnabled(true)` and shows "Passcode Set" success message when no prior passcode exists (`!passcode` case).
+- `app/(tabs)/settings.tsx` — D-03: Removed `showPinSetup` dialog JSX, `closePinSetupDialog` + `confirmPinSetup` handler functions, and dead state vars (`showPinSetup`, `pinSetupInput`, `confirmPinSetupInput`, `pinSetupError`).
+- Flow: No passcode → "Set Passcode" → unified dialog skips Step 1 (no current PIN to verify) → New PIN + Confirm PIN appear directly → save. Existing passcode → "Change Passcode" → Step 1 (Current PIN + Verify) → Step 2 (New + Confirm).

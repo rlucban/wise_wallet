@@ -79,7 +79,7 @@ export default function LearningScreen() {
 
     const getPastelTagStyle = (topic: string, theme: ReturnType<typeof useThemeData>["theme"]) => {
         const colors = theme?.colors ?? {};
-        const c = colors as any;
+        const c = colors as unknown as Record<string, string>;
         // Use available container colors with fallbacks for secondary/tertiary
         // Use 'in' operator to safely check for property existence
         const hasSecondary = "secondaryContainer" in c;

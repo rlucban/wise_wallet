@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
-import { View, ScrollView, Alert } from "react-native";
-import { TextInput, Button, Text, useTheme, Appbar, Card, Chip, SegmentedButtons, Portal, Modal, Switch } from "react-native-paper";
+import { View, ScrollView } from "react-native";
+import { TextInput, Button, Text, useTheme, Appbar, Card, Chip, SegmentedButtons, Portal, Modal, Switch, Dialog } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Calendar } from "react-native-calendars";
-import { useDues } from "../hooks/useDues";
 import { useCategoriesData } from "../context/CategoriesContext";
+import { useDues } from "../hooks/useDues";
 import { DueFrequency } from "../types";
 import { formatNumberInput, parseAmount } from "../utils/amount";
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
@@ -26,6 +26,11 @@ export default function AddDue() {
     const [customCategory, setCustomCategory] = useState("");
     const [loading, setLoading] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [alertDialog, setAlertDialog] = useState<{ visible: boolean; title: string; message: string }>({
+        visible: false,
+        title: "",
+        message: "",
+    });
 
     useEffect(() => {
         if (frequency === "once") {
@@ -38,28 +43,28 @@ export default function AddDue() {
     const isOthersSelected = !!othersCategory && selectedCategoryId === othersCategory.id;
 
     const handleSubmit = async () => {
-        if (!title) {
-            Alert.alert("Invalid Input", "Please enter a title.");
+        if (!title.trim()) {
+            setAlertDialog({ visible: true, title: "Invalid Input", message: "Please enter a title." });
             return;
         }
         const numAmount = parseAmount(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
-            Alert.alert("Invalid Amount", "Please enter a valid amount.");
+            setAlertDialog({ visible: true, title: "Invalid Amount", message: "Please enter a valid amount." });
             return;
         }
         if (numAmount > 10000000) {
-            Alert.alert("Invalid Amount", "Amount must not exceed 10,000,000.");
+            setAlertDialog({ visible: true, title: "Invalid Amount", message: "Amount must not exceed 10,000,000." });
             return;
         }
         if (isOthersSelected && !customCategory.trim()) {
-            Alert.alert("Invalid Category", "Please specify a category.");
+            setAlertDialog({ visible: true, title: "Invalid Category", message: "Please specify a category." });
             return;
         }
 
         setLoading(true);
         try {
             await addDue({
-                title,
+                title: title.trim(),
                 amount: numAmount,
                 date: date.toISOString(),
                 type,
@@ -72,7 +77,7 @@ export default function AddDue() {
             });
             router.back();
         } catch {
-            Alert.alert("Error", "Failed to save scheduled item.");
+            setAlertDialog({ visible: true, title: "Error", message: "Failed to save scheduled item." });
         } finally {
             setLoading(false);
         }
@@ -243,6 +248,23 @@ export default function AddDue() {
                         </Button>
                     </Card>
                 </Modal>
+            </Portal>
+
+            <Portal>
+                <Dialog visible={alertDialog.visible} onDismiss={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
+                    <Dialog.Icon icon="alert-circle-outline" />
+                    <Dialog.Title style={{ textAlign: "center" }}>{alertDialog.title}</Dialog.Title>
+                    <Dialog.Content>
+                        <Text variant="bodyMedium" style={{ textAlign: "center", lineHeight: 22 }}>
+                            {alertDialog.message}
+                        </Text>
+                    </Dialog.Content>
+                    <Dialog.Actions style={{ justifyContent: "center" }}>
+                        <Button mode="contained" onPress={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
+                            OK
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
             </Portal>
         </View>
     );

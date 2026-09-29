@@ -3,6 +3,9 @@ import { View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import Svg, { G, Line, Rect, Text as SvgText } from "react-native-svg";
 
+const INCOME_CHART_COLOR = "#10b981";
+const EXPENSE_CHART_COLOR = "#ef4444";
+
 interface MonthlyTrendChartProps {
   labels: string[];
   income: number[];
@@ -67,8 +70,8 @@ export function MonthlyTrendChart({
   return (
     <View>
       <View style={{ flexDirection: "row", justifyContent: "center", marginBottom: 12 }}>
-        <LegendDot color={theme.colors.primary} label="Income" />
-        <LegendDot color={theme.colors.error} label="Expense" />
+        <LegendDot color={INCOME_CHART_COLOR} label="Income" />
+        <LegendDot color={EXPENSE_CHART_COLOR} label="Expense" />
       </View>
       <Svg width={width} height={height}>
         {[1, 0.75, 0.5, 0.25, 0].map((tick, i) => {
@@ -111,7 +114,7 @@ export function MonthlyTrendChart({
                     width={barWidth}
                     height={incomeH}
                     rx={Math.min(4, barWidth / 2)}
-                    fill={theme.colors.primary}
+                    fill={INCOME_CHART_COLOR}
                   />
                   <SvgText
                     x={incomeX + barWidth / 2}
@@ -132,7 +135,7 @@ export function MonthlyTrendChart({
                     width={barWidth}
                     height={expenseH}
                     rx={Math.min(4, barWidth / 2)}
-                    fill={theme.colors.error}
+                    fill={EXPENSE_CHART_COLOR}
                   />
                   <SvgText
                     x={expenseX + barWidth / 2}

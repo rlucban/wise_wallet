@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, ScrollView, Alert } from "react-native";
+import { View, ScrollView } from "react-native";
 import { Image } from "expo-image";
 import {
   TextInput,
@@ -14,22 +14,27 @@ import {
   Appbar,
   Card,
   HelperText,
+  Dialog,
 } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { authFetch } from "../utils/apiClient";
 import * as ImagePicker from "expo-image-picker";
 import { Calendar } from "react-native-calendars";
 import { useTransactions } from "../hooks/useTransactions";
+import { useUserProfile } from "../context/UserProfileContext";
+import { useCurrencyActions } from "../context/CurrencyContext";
 import { Category, TransactionType, PaymentMethod, PaymentMethodInfo } from "../types";
 import { useCategoriesData } from "../context/CategoriesContext";
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
 import { ensureOthersOption, isOthersCategory } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { useSavings } from "../hooks/useSavings";
 
 export default function AddTransaction() {
   const router = useRouter();
-  const { addTransaction } = useTransactions();
+  const { addTransaction, transactions } = useTransactions();
   const { categories: availableCategories } = useCategoriesData();
+  const { items: savingsItems } = useSavings();
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -43,9 +48,29 @@ export default function AddTransaction() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
+  const numAmount = amount ? parseAmount(amount) : 0;
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethodInfo[]>([]);
   const [selectedMethodType, setSelectedMethodType] = useState<string>("cash");
+  const [alertDialog, setAlertDialog] = useState<{ visible: boolean; title: string; message: string }>({
+    visible: false,
+    title: "",
+    message: "",
+  });
+
+  const { profile } = useUserProfile();
+  const { formatAmount } = useCurrencyActions();
+
+  const availableBalance = useMemo(() => {
+    const initialBalance = Number(profile?.initialBalance || 0);
+    const totalIncome = transactions
+      .filter((t) => t.type === "income" && t.title !== "Opening Balance")
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const totalExpenses = transactions
+      .filter((t) => t.type === "expense")
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const totalReserved = savingsItems.reduce((sum, g) => sum + Number(g.balance || 0), 0);
+    return initialBalance + totalIncome - totalExpenses - totalReserved;
+  }, [profile, transactions, savingsItems]);
 
   useEffect(() => {
     fetchPaymentMethods();
@@ -146,11 +171,28 @@ export default function AddTransaction() {
         category: "Please select a category.",
         note: "Please shorten your note.",
       };
-      Alert.alert("Validation Error", msgs[firstErrorKey] || "Please fix the highlighted fields.");
+      setAlertDialog({
+        visible: true,
+        title: "Validation Error",
+        message: msgs[firstErrorKey] || "Please fix the highlighted fields.",
+      });
       return;
     }
 
     const numAmount = parseAmount(amount);
+
+    // Balance validation for expense transactions
+    if (type === "expense") {
+      if (numAmount > availableBalance) {
+        setAlertDialog({
+          visible: true,
+          title: "Insufficient Balance",
+          message: `Cannot record expense. You need ${formatAmount(numAmount)}, but your Available to Spend is only ${formatAmount(availableBalance)}. Please add income first.`,
+        });
+        return;
+      }
+    }
+
     const category: Category | null = isOthersCategory(selectedCategory) && customCategory.trim()
       ? { ...(selectedCategory as Category), name: customCategory.trim(), updatedAt: Date.now() }
       : selectedCategory;
@@ -171,6 +213,11 @@ export default function AddTransaction() {
       router.back();
     } catch (e) {
       console.warn("Failed to save transaction:", e);
+      setAlertDialog({
+        visible: true,
+        title: "Error",
+        message: "Failed to save transaction. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -217,6 +264,14 @@ export default function AddTransaction() {
         <HelperText type="error" visible={!!errors.amount} style={{ marginBottom: 8 }}>
           {errors.amount}
         </HelperText>
+
+        {type === "expense" && numAmount > availableBalance && (
+          <Text
+            style={{ color: theme.colors.error, marginBottom: 8, fontSize: 12 }}
+          >
+            {`Insufficient funds: Expense exceeds Available to Spend (${formatAmount(availableBalance)}).`}
+          </Text>
+        )}
 
         <TextInput
           label="Date"
@@ -430,6 +485,23 @@ export default function AddTransaction() {
               </Button>
             </Card>
           </Modal>
+        </Portal>
+
+        <Portal>
+          <Dialog visible={alertDialog.visible} onDismiss={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
+            <Dialog.Icon icon="alert-circle-outline" />
+            <Dialog.Title style={{ textAlign: "center" }}>{alertDialog.title}</Dialog.Title>
+            <Dialog.Content>
+              <Text variant="bodyMedium" style={{ textAlign: "center", lineHeight: 22 }}>
+                {alertDialog.message}
+              </Text>
+            </Dialog.Content>
+            <Dialog.Actions style={{ justifyContent: "center" }}>
+              <Button mode="contained" onPress={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
+                OK
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
         </Portal>
         </ScrollView>
     </View>
