@@ -3,6 +3,7 @@ import { AppState, AppStateStatus } from "react-native";
 import { API_URL } from "../utils/db";
 import { processSyncQueue, triggerSyncProcessing } from "../utils/syncProcessor";
 import { useIsLocalAccount } from "../utils/authMode";
+import { useAuthData } from "./AuthContext";
 
 interface HealthResult {
   online: boolean;
@@ -107,6 +108,7 @@ function getDeviceOnline(): boolean {
 
 export function NetworkProvider({ children }: { children: ReactNode }) {
   const isLocal = useIsLocalAccount();
+  const { activeUserId } = useAuthData();
   const isOnlineRef = useRef(true);
   const [isOnline, setIsOnline] = useState(true);
   const [isChecking, setIsChecking] = useState(false);
@@ -135,9 +137,13 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         setIsOnline(online);
 
         if (online && wasPreviouslyOffline) {
-          console.info("[Network] Back online - triggering sync queue processing");
-          triggerSyncProcessing(100);
-          await processSyncQueue();
+          if (!activeUserId) {
+            console.info("[Network] Back online while signed out — deferring sync queue processing until sign-in");
+          } else {
+            console.info("[Network] Back online - triggering sync queue processing");
+            triggerSyncProcessing(100);
+            await processSyncQueue();
+          }
         }
       }
 
@@ -151,7 +157,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsChecking(false);
     }
-  }, [isLocal]);
+  }, [isLocal, activeUserId]);
 
   const appStateRef = useRef(AppState.currentState);
 

@@ -104,7 +104,7 @@ export default function CategorySettings() {
                 mode="outlined"
                 style={{ marginBottom: 16 }}
               />
-              <Button mode="contained" onPress={handleAdd} buttonColor={theme.colors.primary} color="#fff">
+              <Button mode="contained" onPress={handleAdd} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>
                 Add Category
               </Button>
             </Card.Content>
@@ -128,7 +128,7 @@ export default function CategorySettings() {
       <FAB
         icon="plus"
         style={{ position: "absolute", margin: 16, right: 0, bottom: 0, backgroundColor: theme.colors.primary }}
-        color="#fff"
+        color={theme.colors.onPrimary}
         onPress={() => setModalVisible(true)}
       />
     </View>

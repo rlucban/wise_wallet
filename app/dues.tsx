@@ -642,7 +642,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
             />
           )}
 
-<Button mode="contained" onPress={handleSubmit} disabled={!title || !amount} buttonColor={theme.colors.primary} color="#fff">Save Changes</Button>
+        <Button mode="contained" onPress={handleSubmit} disabled={!title || !amount} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Save Changes</Button>
             </Card.Content>
           </Card>
         </Modal>
@@ -740,8 +740,8 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
 <FAB
            icon="plus"
            label="Due"
-           style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
-           color="#fff"
+            style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
+            color={theme.colors.onPrimary}
            onPress={() => router.push("/add-due")}
          />
     </View>

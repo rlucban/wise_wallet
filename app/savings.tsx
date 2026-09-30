@@ -426,7 +426,7 @@ export default function SavingsScreen() {
                             <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Edit Allocation</Text>
                             <TextInput label="Name" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
                             <TextInput label="Goal Amount (Optional)" value={goalAmount} onChangeText={(t) => setGoalAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} placeholder="e.g. 10,000" />
-                            <Button mode="contained" onPress={handleEditItem} buttonColor={theme.colors.primary} color="#fff">Save Changes</Button>
+                            <Button mode="contained" onPress={handleEditItem} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Save Changes</Button>
                         </Card.Content>
                     </Card>
                 </Modal>
@@ -460,7 +460,7 @@ export default function SavingsScreen() {
                                     {transferInError}
                                 </Text>
                             )}
-                            <Button mode="contained" onPress={handleTransferIn} disabled={!transferInValid} buttonColor={theme.colors.primary} color="#fff">Confirm</Button>
+                            <Button mode="contained" onPress={handleTransferIn} disabled={!transferInValid} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Confirm</Button>
                         </Card.Content>
                     </Card>
                 </Modal>
@@ -492,7 +492,7 @@ export default function SavingsScreen() {
                                     {transferOutError}
                                 </Text>
                             )}
-                            <Button mode="contained" onPress={handleTransferOut} disabled={!transferOutAmountValid} buttonColor={theme.colors.primary} color="#fff">Confirm</Button>
+                            <Button mode="contained" onPress={handleTransferOut} disabled={!transferOutAmountValid} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Confirm</Button>
                         </Card.Content>
                     </Card>
                 </Modal>
@@ -515,7 +515,7 @@ export default function SavingsScreen() {
         icon="plus"
         label="New Allocation"
         style={{ position: "absolute", margin: 16, right: 0, bottom: 0, borderRadius: 20, backgroundColor: theme.colors.primary }}
-        color="#fff"
+        color={theme.colors.onPrimary}
         onPress={() => router.push("/add-allocation")}
       />
 

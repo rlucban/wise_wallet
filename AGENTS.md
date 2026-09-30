@@ -263,6 +263,35 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   `getChangePasscodeError()`. D-02 `showPinSetup`: `onDismiss` calls `closePinSetupDialog()`;
   "Set Passcode" disabled until both fields match; `pinSetupError` displayed below Confirm field.
   See `docs/savepoint.md`.
+- **2026-09-30 — Spec 27 FINAL + implemented.** `specs/27-theme-onprimary-label-colors.md`:
+  D-01 `app/add-allocation.tsx` `buttonTextColor` enabled branch → `theme.colors.onPrimary` and
+  `disabledText` → `theme.colors.surface` (fixes an invisible disabled label that shared the
+  disabled `onSurface` fill); D-02 `app/add-due.tsx`, D-03 `app/dues.tsx` (FAB + edit-modal
+  Button), D-04 `app/savings.tsx` (FAB + 3 modal Buttons), D-05 `app/category-settings.tsx`
+  (FAB + Add Button) — all 9 remaining `#fff` labels → `theme.colors.onPrimary`.
+  `utils/themeColors.test.js` unchanged by design (guard not weakened); Home FAB
+  (`app/(tabs)/index.tsx`) left at `#fff` (out of scope). Light mode visually identical;
+  dark mode label contrast improved. See `docs/savepoint.md`.
+- **2026-09-30 — Spec 28 FINAL + implemented.** `specs/28-passcode-screen-ref-type.md`:
+  D-01 `app/passcode-screen.tsx:11` `useRef<any>(null)` → `useRef<NativeTextInput>(null)` (host `TextInput`
+  imported as `NativeTextInput`; Paper's `ref` needs `Ref<NativeTextInput> & Ref<TextInputHandles>` and
+  `TextInputHandles` is not exported by `react-native-paper`). Clears the last
+  `@typescript-eslint/no-explicit-any` warning (pre-existing, unrelated to Spec 27);
+  `eslint.config.js` untouched. Type-level only — auto-focus on mount preserved, no runtime change.
+  See `docs/savepoint.md`.
+- **2026-10-01 — Spec 30 FINAL v2.1 + implemented.** `specs/30-force-reauth-on-cold-start.md`:
+  every cold start now lands on Login/Register (Android + iOS + Web). v1.0's `isFirstRun`/`profileMerge`
+  half was deleted by user call — `UserProfileContext.tsx`, `login.tsx`, `register.tsx`,
+  `DEFAULT_PROFILE` byte-identical. D-01 `ColdStartSessionGuard` in `app/_layout.tsx`
+  (one-shot per process via `useRef`, gated on `isLoading` so it cannot race the restore in
+  `AuthContext.tsx:32-44`); D-02 `SystemResetManager` returns early with no `activeUserId`
+  (prevents `hardResetLocalData()` from wiping `master_users`/Local PINs); D-03 `lastActiveUserId`
+  key + one-shot pre-login reminder effect + check-only `hasNotificationPermission()` (no prompt
+  pre-login); D-04 stays **online-first** (branch unchanged; only the sync-queue trigger is gated
+  on `activeUserId`, since `sync_queue` is device-global and has no auth guard) — a signed-out
+  startup is never treated as a Local-only account. No jest tests added — lifecycle/storage code
+  the `roots: utils` setup can't render; stated as a §1.10 gap with a manual matrix.
+  See `docs/savepoint.md`.
 
 ---
 
