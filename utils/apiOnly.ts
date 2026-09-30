@@ -76,7 +76,15 @@ export function normalizeUserProfileResponse(
   data: unknown,
   userId: string
 ): Record<string, unknown> | null {
-  const rows = Array.isArray(data) ? data : data ? [data] : [];
+  // SPEC-36 CON-03 — the server wraps the row in a `{ profile }` envelope
+  // inside the response `data`. A bare object/array (local-plane callers) is
+  // still handled by the rules below unchanged.
+  const envelope =
+    data !== null && typeof data === "object" && !Array.isArray(data)
+      ? (data as Record<string, unknown>)["profile"]
+      : undefined;
+  const unwrapped = envelope === undefined ? data : envelope;
+  const rows = Array.isArray(unwrapped) ? unwrapped : unwrapped ? [unwrapped] : [];
   const records = rows.filter(
     (r): r is Record<string, unknown> =>
       !!r && typeof r === "object" && !Array.isArray(r)
@@ -122,27 +130,78 @@ export interface ApiIoResult {
   data?: unknown;
 }
 
+// SPEC-36 CON-05 — documented server envelopes: `GET` answers with the named
+// list (`{ transactions }`, …) and `POST` with the named single row
+// (`{ transaction }`, …). `authFetch` unwraps only the outer `data`, so these
+// inner wrappers are resolved here once for every consumer. Unknown shapes
+// pass through untouched.
+const LIST_ENVELOPE_KEY: Record<ApiEntity, string> = {
+  transactions: "transactions",
+  categories: "categories",
+  dues: "dues",
+  savingsItems: "savingsItems",
+  userProfiles: "profile",
+};
+
+const SINGLE_ENVELOPE_KEY: Record<ApiEntity, string> = {
+  transactions: "transaction",
+  categories: "category",
+  dues: "due",
+  savingsItems: "savingsItem",
+  userProfiles: "profile",
+};
+
+function unwrapEnvelope(
+  data: unknown,
+  key: string,
+  expectArray: boolean
+): unknown {
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    return data;
+  }
+  const inner = (data as Record<string, unknown>)[key];
+  if (inner === undefined) return data;
+  return expectArray && !Array.isArray(inner) ? data : inner;
+}
+
 export async function apiList(
   entity: ApiEntity,
   userId: string
 ): Promise<ApiIoResult> {
   const res = await authFetch<unknown>(LIST_ENDPOINT[entity](userId));
-  return { ok: res.ok, status: res.status, data: res.data };
+  return {
+    ok: res.ok,
+    status: res.status,
+    data: unwrapEnvelope(res.data, LIST_ENVELOPE_KEY[entity], true),
+  };
 }
 
 function toApiBody(
   entity: ApiEntity,
   item: Record<string, unknown>,
-  userId: string
+  userId: string,
+  isCreate = true
 ): Record<string, unknown> {
   if (entity === "transactions") {
     const category = item["category"] as { id?: unknown } | undefined;
-    return {
+    const body: Record<string, unknown> = {
       ...item,
       categoryId:
         item["categoryId"] ?? (category?.id !== undefined ? String(category.id) : null),
       userId,
     };
+    // SPEC-36 CON-04 — on create the server schema requires
+    // `paymentMethod.min(1)`; writers without one (onboarding's Opening
+    // Balance, due payments) send "" and are rejected with 400. Default to the
+    // form's own default (`app/add-transaction.tsx`) — the display fallback is
+    // already "Cash". Update is `.partial()` server-side, so the default MUST
+    // NOT be injected there: it would clobber a saved payment method.
+    if (isCreate) {
+      const method = item["paymentMethod"];
+      body["paymentMethod"] =
+        typeof method === "string" && method.length > 0 ? method : "cash";
+    }
+    return body;
   }
   return { ...item, userId };
 }
@@ -156,7 +215,11 @@ export async function apiCreate(
     method: "POST",
     body: JSON.stringify(toApiBody(entity, item, userId)),
   });
-  return { ok: res.ok, status: res.status, data: res.data };
+  return {
+    ok: res.ok,
+    status: res.status,
+    data: unwrapEnvelope(res.data, SINGLE_ENVELOPE_KEY[entity], false),
+  };
 }
 
 export async function apiUpdate(
@@ -167,7 +230,7 @@ export async function apiUpdate(
 ): Promise<ApiIoResult> {
   const res = await authFetch<unknown>(`${COLLECTION_ENDPOINT[entity]}/${id}`, {
     method: "PUT",
-    body: JSON.stringify(toApiBody(entity, item, userId)),
+    body: JSON.stringify(toApiBody(entity, item, userId, false)),
   });
   return { ok: res.ok, status: res.status, data: res.data };
 }
@@ -182,25 +245,23 @@ export async function apiDelete(
   return { ok: res.ok, status: res.status, data: res.data };
 }
 
-// Profile ensure-exists (CON-02c): GET → POST if missing → else PUT.
+// Profile ensure — PUT-by-userId, upsert-in-effect (single call).
+// SPEC-36 CON-02 — the server exposes NO `POST /userProfiles` route (live 404
+// "Cannot POST /api/userProfiles") and `PUT /:userId` is keyed by the USER id
+// (its repository filters `.eq('userId', userId)`), never the profile row id —
+// the pre-SPEC-36 "GET → POST-if-missing → PUT-by-row-id" chain was wrong on
+// both counts. No probe GET is needed: registration always pre-creates the row
+// (`authService.register`), so a genuinely absent row simply makes the PUT
+// fail and the caller surfaces it (CON-06). The server strips `id`/`userId`
+// from the body, so passing them is inert.
 export async function ensureCloudProfile(
   userId: string,
   profile: Record<string, unknown>
 ): Promise<boolean> {
-  const found = normalizeUserProfileResponse(
-    (await apiList("userProfiles", userId)).data,
-    userId
-  );
-  if (!found) {
-    const created = await apiCreate("userProfiles", profile, userId);
-    return created.ok;
-  }
-  const updated = await apiUpdate(
-    "userProfiles",
-    String((found["id"] as string | number | undefined) ?? userId),
-    { ...found, ...profile },
-    userId
-  );
+  const updated = await authFetch<unknown>(`userProfiles/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify({ ...profile, userId }),
+  });
   return updated.ok;
 }
 
