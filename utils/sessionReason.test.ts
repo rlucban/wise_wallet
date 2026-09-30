@@ -283,9 +283,11 @@ describe.each(["android", "ios", "web"] as const)("sessionReason SPEC-38 on %s",
       const uses = src.match(/buildAuthRegisterPayload\(/g) ?? [];
       // exactly two Cloud register call sites, both via the shared builder
       expect(uses.length).toBe(2);
-      // and no inline `{ name, passcode, initialBalance }` body survived
-      expect(src).not.toMatch(/initialBalance: 0 \}/);
+      // and no inline Cloud-register JSON body survived at either site
       expect(src).not.toMatch(/JSON\.stringify\(\{ name/);
+      // both call sites pass a deviceId; the pattern is deliberately
+      // lowercase-`d` so the import's `getOrCreateDeviceId,` cannot satisfy it
+      expect(src.match(/deviceId,/g) ?? []).toHaveLength(2);
     });
   });
 });
