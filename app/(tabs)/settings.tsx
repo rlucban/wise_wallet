@@ -7,7 +7,7 @@ import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
 import { setSetting, clearAllLocalData, exportData, importData, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
-import { parseVerifyLoginResponse, purgeUserDeviceData, resolveDeleteOutcome } from "../../utils/accountDelete";
+import { purgeUserDeviceData, resolveDeleteOutcome } from "../../utils/accountDelete";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
@@ -24,6 +24,10 @@ import {
   getDeviceOnline,
   isReregistrationAllowed,
   buildCloudRegisterPayload,
+  buildAuthLoginPayload,
+  classifyAuthLoginResult,
+  findAuthUserRow,
+  getOrCreateDeviceId,
   isValidReregistrationEmail,
   isValidReregistrationPin,
   REREGISTER_CONNECT_MESSAGE,
@@ -381,43 +385,55 @@ export default function SettingsScreen() {
      }
    };
 
-   const verifyPinForSync = async () => {
-     if (!pinVerificationInput.trim()) {
-       setVerificationError("PIN is required");
-       return;
-     }
-     setIsSyncing(true);
-     setVerificationError("");
-     try {
-       const response = await fetch(`${API_URL}/auth/login`, {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({
-           name: profile?.name || "",
-           passcode: pinVerificationInput.trim(),
-           force: true
-         }),
-       });
+    const verifyPinForSync = async () => {
+      if (!pinVerificationInput.trim()) {
+        setVerificationError("PIN is required");
+        return;
+      }
+      setIsSyncing(true);
+      setVerificationError("");
+      try {
+        // SPEC-31 CON-05 — same deviceId scheme as login; a session conflict
+        // is reported explicitly, never as a wrong PIN.
+        const deviceId = await getOrCreateDeviceId();
+        const response = await fetch(`${API_URL}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildAuthLoginPayload({
+            name: profile?.name || "",
+            passcode: pinVerificationInput.trim(),
+            deviceId,
+            force: true,
+          })),
+        });
+        const outcome = classifyAuthLoginResult({
+          ok: response.ok,
+          status: response.status,
+          body: await response.json().catch(() => null),
+        });
 
-       if (response.ok) {
-         setShowPinVerificationDialog(false);
-         setPinVerificationInput("");
-         const data = (await response.json()).data;
-         await login(data.user.id, data.token);
-         await setSetting('autoBackup', 'true');
-         await proceedWithBackupEnable();
-       } else {
-         setShowPinVerificationDialog(false);
-         setPinVerificationInput("");
-         setShowNewAccountDialog(true);
-       }
-     } catch (e) {
-       console.error("PIN verification failed:", e);
-       setVerificationError("Cannot reach server. Check your connection.");
-     } finally {
-       setIsSyncing(false);
-     }
-   };
+        if (outcome.outcome === "authenticated") {
+          setShowPinVerificationDialog(false);
+          setPinVerificationInput("");
+          await login(outcome.userId, outcome.token);
+          await setSetting('autoBackup', 'true');
+          await proceedWithBackupEnable();
+        } else if (outcome.outcome === "conflict") {
+          setShowPinVerificationDialog(false);
+          setPinVerificationInput("");
+          showMessage("error", "Session Active", "This account is already logged in on another device. Log in again to move the session here, then retry.");
+        } else {
+          setShowPinVerificationDialog(false);
+          setPinVerificationInput("");
+          setShowNewAccountDialog(true);
+        }
+      } catch (e) {
+        console.error("PIN verification failed:", e);
+        setVerificationError("Cannot reach server. Check your connection.");
+      } finally {
+        setIsSyncing(false);
+      }
+    };
 
    const proceedWithBackupEnable = async () => {
      setIsSyncing(true);
@@ -773,14 +789,17 @@ export default function SettingsScreen() {
 
     let pinVerified = false;
     try {
+      // SPEC-31 CON-05 — same deviceId scheme as login.
+      const deviceId = await getOrCreateDeviceId();
       const verifyRes = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.stringify(buildAuthLoginPayload({
           name: profile?.name || "",
           passcode: pinInput.trim(),
+          deviceId,
           force: true,
-        }),
+        })),
       });
       pinVerified = verifyRes.ok;
     } catch {
@@ -790,13 +809,14 @@ export default function SettingsScreen() {
     if (!pinVerified && activeUserId) {
       try {
         const users = await getUsers();
-        const user = users.find((u) => u.id === activeUserId);
+        // SPEC-31 CON-05 — match by id or case-insensitive name.
+        const user = findAuthUserRow(users, { id: activeUserId, name: profile?.name || "" });
         if (user) {
           const inputHash = await Crypto.digestStringAsync(
             Crypto.CryptoDigestAlgorithm.SHA256,
             pinInput.trim()
           );
-          pinVerified = user.passcode === inputHash;
+          pinVerified = user.passcode === inputHash || user.passcode === pinInput.trim();
         }
       } catch {
         // local verify failed too
@@ -982,53 +1002,62 @@ export default function SettingsScreen() {
     setDeleteConfirmed(false);
   };
 
-  const verifyAccountPin = async (pin: string): Promise<boolean> => {
-    let verified = false;
+  const verifyAccountPin = async (pin: string): Promise<"verified" | "conflict" | "invalid"> => {
     if (API_URL) {
       try {
+        // SPEC-31 CON-05 — same deviceId scheme as login.
+        const deviceId = await getOrCreateDeviceId();
         const res = await fetch(`${API_URL}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          body: JSON.stringify(buildAuthLoginPayload({
             name: profile?.name || "",
             passcode: pin.trim(),
+            deviceId,
             force: true,
-          }),
+          })),
         });
-        if (res.ok) {
+        const outcome = classifyAuthLoginResult({
+          ok: res.ok,
+          status: res.status,
+          body: await res.json().catch(() => null),
+        });
+        if (outcome.outcome === "authenticated") {
           // SPEC-28 D-01 — this force login kills the current JWT server-side,
           // so store the fresh token BEFORE any authenticated call follows.
-          const parsed = parseVerifyLoginResponse(
-            await res.json().catch(() => null)
-          );
-          if (parsed) {
-            await login(parsed.userId, parsed.token);
-            return true;
-          }
-          verified = true;
+          await login(outcome.userId, outcome.token);
+          return "verified";
         }
+        if (outcome.outcome === "conflict") {
+          return "conflict";
+        }
+        // rejected/unreachable — fall through to local verification
       } catch {
         // server unreachable — fall through to local verification
       }
     }
 
-    if (!verified && activeUserId) {
+    if (activeUserId) {
       try {
         const users = await getUsers();
-        const user = users.find((u) => u.id === activeUserId);
+        // SPEC-31 CON-05 — match by id or case-insensitive name; a stale
+        // session id MUST NOT lock out the legitimate row owner.
+        const user = findAuthUserRow(users, { id: activeUserId, name: profile?.name || "" });
         if (user) {
           const inputHash = await Crypto.digestStringAsync(
             Crypto.CryptoDigestAlgorithm.SHA256,
             pin.trim()
           );
-          verified = user.passcode === inputHash || user.passcode === pin.trim();
+          if (user.passcode === inputHash || user.passcode === pin.trim()) {
+            return "verified";
+          }
         }
       } catch {
         // local verification failed too
       }
     }
 
-    return verified;
+    return "invalid";
   };
 
   const handleVerifyDeletePin = async () => {
@@ -1039,9 +1068,11 @@ export default function SettingsScreen() {
     setIsSyncing(true);
     setDeletePinError("");
     try {
-      const verified = await verifyAccountPin(deletePinInput);
-      if (verified) {
+      const result = await verifyAccountPin(deletePinInput);
+      if (result === "verified") {
         setPinVerified(true);
+      } else if (result === "conflict") {
+        showMessage("error", "Session Active", "This account is already logged in on another device. Log in again to move the session here, then retry.");
       } else {
         setDeletePinError("Invalid PIN. Please try again.");
       }

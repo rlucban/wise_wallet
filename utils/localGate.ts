@@ -1,5 +1,7 @@
 // SPEC-30 — Local creation gate + re-registration promotion helpers.
-// Pure, zero-network, Expo Go safe, web-safe (no native imports).
+// SPEC-31 — Web never-local gate + Settings PIN-verification unification.
+// Zero-network, Expo Go safe, web-safe (no static native-only imports).
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type AccountMode = "online" | "offline";
 export type OfflineSuggestionChoice = "continue-offline" | "use-online";
@@ -97,6 +99,103 @@ export function guardPromotionToggle(args: {
   args.doFetch();
   args.doWrite();
   return { allowed: true, message: null };
+}
+
+// --- SPEC-31 D-01: web never enters Local mode ---
+
+export const WEB_LOGIN_CONNECT_MESSAGE =
+  "Connect to the internet to log in to your Online account.";
+
+export function isLocalAuthAllowed(platformOs: string): boolean {
+  return platformOs !== "web";
+}
+
+// --- SPEC-31 D-05: Settings PIN verification matches login ---
+
+export interface AuthLoginPayload {
+  name: string;
+  passcode: string;
+  deviceId: string;
+  force: boolean;
+}
+
+export function buildAuthLoginPayload(args: {
+  name: string;
+  passcode: string;
+  deviceId: string;
+  force: boolean;
+}): AuthLoginPayload {
+  return {
+    name: args.name.trim(),
+    passcode: args.passcode.trim(),
+    deviceId: args.deviceId,
+    force: args.force,
+  };
+}
+
+// Same read-or-generate scheme as app/login.tsx getDeviceId (stable per
+// device; uuid loaded lazily so this module keeps zero static native imports).
+export async function getOrCreateDeviceId(): Promise<string> {
+  let deviceId = await AsyncStorage.getItem("localDeviceId");
+  if (!deviceId) {
+    const { generateUUID } = require("./uuid");
+    deviceId = generateUUID() as string;
+    await AsyncStorage.setItem("localDeviceId", deviceId);
+  }
+  return deviceId;
+}
+
+export type AuthLoginOutcome =
+  | { outcome: "authenticated"; userId: string; token: string }
+  | { outcome: "conflict" }
+  | { outcome: "rejected" }
+  | { outcome: "unreachable" };
+
+// Mirrors app/login.tsx handleLogin semantics: ok + sessionConflict flag
+// (same truthiness) routes to the conflict path, never to wrong-PIN copy.
+export function classifyAuthLoginResult(args: {
+  ok: boolean;
+  status: number;
+  body: unknown;
+}): AuthLoginOutcome {
+  if (!args.ok && args.status === 0) {
+    return { outcome: "unreachable" };
+  }
+  const inner = (args.body as {
+    data?: { sessionConflict?: unknown; user?: { id?: unknown }; token?: unknown };
+  } | null)?.data;
+  if (args.ok && inner?.sessionConflict) {
+    return { outcome: "conflict" };
+  }
+  if (args.ok) {
+    const userId = String(inner?.user?.id ?? "");
+    const token = String(inner?.token ?? "");
+    if (userId && token) {
+      return { outcome: "authenticated", userId, token };
+    }
+  }
+  return { outcome: "rejected" };
+}
+
+// All-optional so generic DB rows (Record<string, unknown>) satisfy it
+// under strict mode; the matcher coerces with String() at runtime.
+export interface StoredUserRow {
+  id?: unknown;
+  name?: unknown;
+  passcode?: unknown;
+}
+
+// Local fallback matcher: exact id first, then case-insensitive name
+// (a stale session id MUST NOT lock out the legitimate row owner).
+export function findAuthUserRow<T extends StoredUserRow>(
+  users: T[],
+  args: { id: string; name: string }
+): T | undefined {
+  const byId = users.find((u) => String(u.id) === args.id);
+  if (byId) return byId;
+  const wanted = args.name.trim().toLowerCase();
+  if (!wanted) return undefined;
+  return users.find((u) => String(u.name ?? "").toLowerCase() === wanted);
 }
 
 // ACC-04 invariant checker: new cloud id differs + old keys byte-identical.

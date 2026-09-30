@@ -8,6 +8,7 @@ import { useUserProfileData } from '../context/UserProfileContext';
 import { addUser, saveUserProfile, API_URL, getUsers } from '../utils/db';
 import { isLocalAccountToken } from '../utils/authMode';
 import { isEmailShapedName } from '../utils/accountDelete';
+import { isLocalAuthAllowed, WEB_LOGIN_CONNECT_MESSAGE } from '../utils/localGate';
 import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -59,7 +60,26 @@ export default function LoginScreen() {
         return deviceId;
     };
 
-    const attemptLocalLogin = async () => {
+    const attemptLocalLogin = async (reason: "unreachable" | "lookup" = "lookup") => {
+        // SPEC-31 CON-01 — web never enters Local mode: no master_users
+        // consult, zero writes, zero session change.
+        if (!isLocalAuthAllowed(Platform.OS)) {
+            if (reason === "unreachable") {
+                showAlert("No Connection", WEB_LOGIN_CONNECT_MESSAGE, [
+                    { text: "Try Again", style: "cancel", onPress: () => setLoading(false) }
+                ]);
+            } else {
+                showAlert(
+                    "Login Failed",
+                    `No account found for "${name.trim()}". Don't have an account? Register to create one.`,
+                    [
+                        { text: "Register", onPress: () => router.replace("/register") },
+                        { text: "Try Again", style: "cancel", onPress: () => setLoading(false) }
+                    ]
+                );
+            }
+            return;
+        }
         const users = await getUsers();
         const localUser = users.find((u) => (u.name as string).toLowerCase() === name.trim().toLowerCase());
 
@@ -133,7 +153,7 @@ export default function LoginScreen() {
 
         if (!API_URL) {
             console.info("No API_URL configured, using local-only login");
-            await attemptLocalLogin();
+            await attemptLocalLogin("unreachable");
             setLoading(false);
             return;
         }
@@ -176,14 +196,17 @@ export default function LoginScreen() {
         } else if (lastResult.status === 401) {
             console.info("Cloud login returned 401 - checking local users...");
 
-            // SPEC-28 D-04 — a reachable server explicitly rejected these
-            // credentials. Email names are server-authoritative: never fall
-            // back to a (possibly ghost) local session, on any platform.
-            if (isEmailShapedName(name)) {
-                console.info("Email login rejected by server - hard fail, no local fallback");
+            // SPEC-28 D-04 + SPEC-31 CON-01 — a reachable server explicitly
+            // rejected these credentials. Email names are server-authoritative:
+            // never fall back to a (possibly ghost) local session, on any
+            // platform. Web hard-fails for ANY name (never local).
+            if (isEmailShapedName(name) || !isLocalAuthAllowed(Platform.OS)) {
+                console.info("Login rejected by server - hard fail, no local fallback");
                 showAlert(
                     "Login Failed",
-                    "Invalid email or PIN. This account may have been deleted."
+                    isEmailShapedName(name)
+                        ? "Invalid email or PIN. This account may have been deleted."
+                        : "Invalid user name and PIN."
                 );
                 setLoading(false);
                 return;
@@ -220,7 +243,7 @@ export default function LoginScreen() {
             console.info("Cloud login failed after retries, showing transient notice then local fallback");
             setOfflineNotice(true);
             setTimeout(() => setOfflineNotice(false), 3000);
-            await attemptLocalLogin();
+            await attemptLocalLogin("unreachable");
         }
 
         setLoading(false);

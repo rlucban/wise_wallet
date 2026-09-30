@@ -298,6 +298,15 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   `hooks/useCloudLink.ts` Alert → settings routing (web-safe). SPEC-04 D-06/D-07/ACC-06/D-09-mobile-note/CON-03
   retired per CON-07; ACC-10 preserved. User-run verification pending: tsc, `npm test`, eslint, Expo Go + web export.
   See `docs/savepoint.md`.
+- **2026-09-30 — Spec 31 FINAL + implemented.** `specs/31-web-never-local-and-logout-hygiene.md` v1.0.
+  D-01 web never local (`isLocalAuthAllowed` gate + `attemptLocalLogin` early-out: unreachable → Connect notice,
+  unknown/401 → plain failure + Register route, zero local reads/writes on web). D-02 logout hygiene
+  (`clearSessionCaches`, both token stores cleared, session-kill reuses helper; stored data preserved).
+  D-05 Settings PIN unification (shared `deviceId` on all three auth calls, explicit session-conflict notice
+  never reported as wrong PIN, fallback matches id-or-name). Retired: SPEC-04 ACC-10/DEC-04/D-09-web/D-06-web;
+  SPEC-28 CON-04/05-web-clauses/goal-row/ACC-09; SPEC-30 §1.3/DEC-02-web. `utils/localGate.test.ts` extended
+  (ACC-01..04 + ACC-07..09 × android/ios/web). User-run verification pending: tsc, `npm test`, eslint,
+  Expo Go + web export (ACC-05/06/10). See `docs/savepoint.md`.
 
 ---
 

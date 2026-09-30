@@ -447,3 +447,13 @@ Branch `spec-28-29-delete-and-queue` (stacked on `spec-27-two-device-single-log`
 - `hooks/useCloudLink.ts`: `Alert` dead-end replaced with web-safe settings routing (`shouldPrompt` + `goToSettings`, never auto-navigates).
 - SPEC-04 retirements per CON-07: D-06 mobile login-creation (removed), D-07 merge upgrade + ACC-06 (replaced by re-registration), D-09 mobile-unchanged note for login creation (now gated on all platforms), CON-03 irreversibility dialog (replaced — nothing converts, two coexisting accounts). SPEC-04 ACC-10 (grandfathered web locals keep PIN login) preserved; web promotion uses the same re-register flow (DEC-02).
 - Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go (ACC-06/07) + web export (ACC-08).
+
+## 2026-09-30 — SPEC-31 FINAL + implemented (v1.0)
+
+- `specs/31-web-never-local-and-logout-hygiene.md` FINAL per user call (v0.3 approved as-is).
+- D-01 web never local: `utils/localGate.ts` gains `isLocalAuthAllowed()` + `WEB_LOGIN_CONNECT_MESSAGE`; `app/login.tsx` `attemptLocalLogin(reason)` early-outs on web (unreachable → Connect notice, lookup → plain failure + Register route; zero `master_users` consult, zero writes, zero session change); 401 branch hard-fails for ANY name on web (SPEC-28 email rule extended). Native paths byte-identical behavior.
+- D-02 logout hygiene: `utils/cache.ts` gains `clearSessionCaches()` (cached id + settings cache); `utils/secureStorage.ts` `removeSecureItem` now clears BOTH SecureStore and the AsyncStorage fallback; `context/AuthContext.tsx` `logout()` + session-kill `handleAuthFailure` both reuse the helper; `master_users`, `user_{id}_*`, queues untouched.
+- D-05 PIN unification: `localGate.ts` gains `buildAuthLoginPayload`, `getOrCreateDeviceId` (same scheme as login), `classifyAuthLoginResult` (conflict/rejected/unreachable), `findAuthUserRow` (id or case-insensitive name); all three Settings `/auth/login` calls (`verifyPinForSync`, `verifyAccountPin` now tri-state, clear-data check) send `deviceId`; conflict shows "Session Active", never wrong-PIN copy; hashing/storage unchanged.
+- D-03 tests: `utils/localGate.test.ts` extended (ACC-01 gate matrix, ACC-02 login string-scan, ACC-03 hygiene preserves stored data, ACC-04 next-login key scoping, ACC-07 payload deviceId, ACC-08 conflict classifier, ACC-09 id-or-name matcher — all × android/ios/web).
+- Retirements per CON-02: SPEC-04 ACC-10/DEC-04/D-09-web/D-06-web; SPEC-28 CON-04/05-web-clauses/goal-row/ACC-09; SPEC-30 §1.3/DEC-02-web. SPEC-05 kill path reuses hygiene.
+- Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-05/06/10).

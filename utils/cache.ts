@@ -24,3 +24,10 @@ export function setCachedSetting(key: string, value: string | null): void {
 export function clearSettingsCache(): void {
   settingsCache.clear();
 }
+
+// SPEC-31 CON-03 — session hygiene: drop the cached identity AND cached
+// settings together so the next login never observes the previous session.
+export function clearSessionCaches(): void {
+  setCachedUserId(null);
+  settingsCache.clear();
+}
