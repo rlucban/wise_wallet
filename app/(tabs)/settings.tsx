@@ -6,16 +6,23 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
-import { setSetting, clearAllLocalData, exportData, importData, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
+import { setSetting, clearAllLocalData, exportData, importData, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
 import { purgeUserDeviceData, resolveDeleteOutcome } from "../../utils/accountDelete";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
 import { usePasscode } from "../../context/PasscodeContext";
 import { useTransactionsActions, useTransactionsData } from "../../context/TransactionsContext";
-import { useToast } from "../../context/ToastContext";
 import { countOrphanTransactions, getLastServerTxIds, truncateUserId } from "../../utils/transactionSync";
-import { useCategoriesActions } from "../../context/CategoriesContext";
+import { useCategoriesActions, useCategoriesData } from "../../context/CategoriesContext";
+import { useDues } from "../../hooks/useDues";
+import { useSavings } from "../../hooks/useSavings";
+import {
+  enterApiOnlyMode,
+  readReposSnapshot,
+  fetchServerSnapshot,
+  ensureCloudProfile,
+} from "../../utils/apiOnly";
 import { authFetch } from "../../utils/apiClient";
 import { useSyncStatus } from "../../hooks/useSyncStatus";
 import { useNetwork } from "../../context/NetworkContext";
@@ -40,7 +47,6 @@ import {
   REREGISTER_SUCCESS_MESSAGE,
 } from "../../utils/localGate";
 import * as Crypto from 'expo-crypto';
-import { Transaction, Category, Due, SavingsItem, UserProfile } from "../../types";
 import ConfirmDialog from "../../components/ConfirmDialog";
 import { KeyboardAwareDialog } from "../../components/KeyboardAwareDialog";
 
@@ -51,12 +57,16 @@ function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal:
   const { transactions } = useTransactionsData();
   const paperTheme = usePaperTheme();
 
+  // SPEC-34 CON-08 — API-only mode shows live state (no queue counts, no
+  // upload timestamp); OFF/Local cards keep today's copy.
+  const apiOnly = !isLocal && (Platform.OS === "web" || autoBackup);
+
   // SPEC-27 D-01/D-08 — per-device diagnostics + OFF orphan count (zero network).
   const [orphanCount, setOrphanCount] = useState(0);
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (isLocal || !activeUserId) {
+      if (isLocal || apiOnly || !activeUserId) {
         if (!cancelled) setOrphanCount(0);
         return;
       }
@@ -69,14 +79,21 @@ function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal:
       }
     })();
     return () => { cancelled = true; };
-  }, [isLocal, activeUserId, transactions]);
+  }, [isLocal, apiOnly, activeUserId, transactions]);
 
   const diagnostics = isLocal
     ? `ID ${truncateUserId(activeUserId)} · Stored on this device`
+    : apiOnly
+    ? `ID ${truncateUserId(activeUserId)} · Live`
     : `ID ${truncateUserId(activeUserId)} · Backup ${autoBackup ? "on" : "off"} · ${pending} pending · ${failed} failed${deadLetters > 0 ? ` · ${deadLetters} unsendable` : ""}`;
 
   const getStatusColor = () => {
     if (isLocal) return { icon: "cellphone-off", text: "Local-only", color: paperTheme.colors.outline };
+    if (apiOnly) {
+      if (isChecking) return { icon: "cloud-sync", text: "Checking...", color: paperTheme.colors.primary };
+      if (!isOnline) return { icon: "cloud-off", text: "Offline", color: paperTheme.colors.error };
+      return { icon: "cloud-check", text: "Live", color: paperTheme.colors.secondary };
+    }
     if (!autoBackup) return { icon: "cloud-off-outline", text: "Sync off", color: paperTheme.colors.outline };
     if (isChecking) return { icon: "cloud-sync", text: "Checking...", color: paperTheme.colors.primary };
     if (!isOnline) return { icon: "cloud-off", text: "Offline", color: paperTheme.colors.error };
@@ -119,19 +136,19 @@ function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal:
             {status.text}
           </Text>
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-            {isLocal ? "Data stored on device" : `Last sync: ${formatLastSync()}`}
+            {isLocal ? "Data stored on device" : apiOnly ? "Live from cloud" : `Last sync: ${formatLastSync()}`}
           </Text>
           <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
             {diagnostics}
           </Text>
-          {!isLocal && !autoBackup && orphanCount > 0 && (
+          {!isLocal && !apiOnly && !autoBackup && orphanCount > 0 && (
             <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
               {`${orphanCount} local-only change(s) on this device — not on other devices`}
             </Text>
           )}
         </View>
       </View>
-      {!autoBackup || isLocal ? null : pending > 0 && isOnline ? (
+      {apiOnly || !autoBackup || isLocal ? null : pending > 0 && isOnline ? (
         <Button
           mode="text"
           compact
@@ -175,10 +192,13 @@ export default function SettingsScreen() {
   const { isPasscodeEnabled, passcode, setIsPasscodeEnabled, setPasscode } = usePasscode();
   const { activeUserId, logout, login } = useAuth();
   const { refetch: refetchTx } = useTransactionsActions();
+  const { transactions: liveTransactions } = useTransactionsData();
   const { refetch: refetchCats } = useCategoriesActions();
+  const { categories: liveCategories } = useCategoriesData();
+  const { dues: liveDues, refetch: refetchDues } = useDues();
+  const { items: liveSavings, refetch: refetchSavings } = useSavings();
   const repos = useRepositories();
   const isLocal = useIsLocalAccount();
-  const { showToast } = useToast();
 
   const handleLogout = async () => {
     await logout();
@@ -242,12 +262,11 @@ export default function SettingsScreen() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [showPinPrompt, setShowPinPrompt] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showBackupDialog, setShowBackupDialog] = useState(false);
   const [showPinVerificationDialog, setShowPinVerificationDialog] = useState(false);
   const [pinVerificationInput, setPinVerificationInput] = useState("");
   const [verificationError, setVerificationError] = useState("");
   const [showNewAccountDialog, setShowNewAccountDialog] = useState(false);
-  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [showSyncExplainDialog, setShowSyncExplainDialog] = useState(false);
   // SPEC-30 D-03 — re-registration promotion (Local -> NEW Cloud identity).
   const [showReregisterHonesty, setShowReregisterHonesty] = useState(false);
   const [showReregisterExport, setShowReregisterExport] = useState(false);
@@ -281,6 +300,8 @@ export default function SettingsScreen() {
 
    const setAutoBackup = async (value: boolean) => {
      await updateProfile({ autoBackup: value });
+     // SPEC-34: the autoBackup flag is mode config, not entity data — the
+     // settings-key write stays even in API-only mode (drives OFF reloads).
      await setSetting('autoBackup', value.toString());
    };
 
@@ -368,23 +389,63 @@ export default function SettingsScreen() {
      }
    };
 
-   const handleToggleAutoBackup = async (val: boolean) => {
-     // SPEC-30 CON-03/CON-04 — Local ON routes to the single re-registration
-     // flow ("Register Online Account"). Cloud ON keeps the PIN verify flow.
-     if (isEffectivelyLocal) {
-       if (val) {
-         await startReregisterFlow();
-       }
-       return;
-     }
-     if (val) {
-       setVerificationError("");
-       setPinVerificationInput("");
-       setShowPinVerificationDialog(true);
-     } else {
-       setAutoBackup(false);
-     }
-   };
+    const handleToggleAutoBackup = async (val: boolean) => {
+      // SPEC-30 CON-03/CON-04 — Local ON routes to the single re-registration
+      // flow ("Register Online Account"). Cloud ON keeps the PIN verify flow.
+      if (isEffectivelyLocal) {
+        if (val) {
+          await startReregisterFlow();
+        }
+        return;
+      }
+      if (val) {
+        setVerificationError("");
+        setPinVerificationInput("");
+        setShowPinVerificationDialog(true);
+      } else {
+        await disableAutoBackupWithSeed();
+      }
+    };
+
+    // SPEC-34 CON-06 — ON→OFF seeds the frozen offline log from a verified
+    // snapshot (mobile, online). Web has no OFF persistence: profile flag
+    // only. Fetch failure → stay ON with a notice, no state change.
+    const disableAutoBackupWithSeed = async () => {
+      if (Platform.OS === "web" || !activeUserId) {
+        await updateProfile({ autoBackup: false });
+        return;
+      }
+      if (!getDeviceOnline()) {
+        showMessage("error", "No Connection", "Connect to the internet to turn auto-backup OFF with your latest data.");
+        return;
+      }
+      setIsSyncing(true);
+      try {
+        const snapshot = await fetchServerSnapshot(activeUserId);
+        if (!snapshot) {
+          showMessage("error", "Couldn't Reach Server", "Your data was not downloaded. Staying ON — try again when online.");
+          return;
+        }
+        await repos.transactions.upsertBulk(snapshot.transactions as never[]);
+        await repos.categories.upsertBulk(snapshot.categories as never[]);
+        await repos.dues.upsertBulk(snapshot.dues as never[]);
+        await repos.savingsItems.upsertBulk(snapshot.savingsItems as never[]);
+        if (snapshot.profile) {
+          await saveUserProfile(
+            { ...(snapshot.profile as object), autoBackup: false } as never,
+            activeUserId
+          );
+        }
+        await setAutoBackup(false);
+        await Promise.all([refetchTx(), refetchCats(), refetchProfile()]);
+        showMessage("success", "Auto-Backup Off", "Your latest cloud data is now stored on this device for offline use.");
+      } catch (e) {
+        console.error("Disable auto-backup failed:", e);
+        showMessage("error", "Couldn't Reach Server", "Staying ON — try again when online.");
+      } finally {
+        setIsSyncing(false);
+      }
+    };
 
     const verifyPinForSync = async () => {
       if (!pinVerificationInput.trim()) {
@@ -417,8 +478,8 @@ export default function SettingsScreen() {
           setShowPinVerificationDialog(false);
           setPinVerificationInput("");
           await login(outcome.userId, outcome.token);
-          await setSetting('autoBackup', 'true');
-          await proceedWithBackupEnable();
+          // SPEC-34 CON-05 — explain fetch-then-push before migrating.
+          setShowSyncExplainDialog(true);
         } else if (outcome.outcome === "conflict") {
           setShowPinVerificationDialog(false);
           setPinVerificationInput("");
@@ -436,42 +497,34 @@ export default function SettingsScreen() {
       }
     };
 
-   const proceedWithBackupEnable = async () => {
+   // SPEC-34 CON-04/CON-05 — OFF→ON runs PIN verify → explanation dialog →
+   // fetch-then-push migration (confirmSyncEnable). The old merge/conflict
+   // path is retired for this flow (CON-09 scoping).
+   const confirmSyncEnable = async () => {
+     if (!activeUserId) return;
+     setShowSyncExplainDialog(false);
      setIsSyncing(true);
      try {
-       const [txResult, catResult, profResult] = await Promise.all([
-           authFetch(`transactions?userId=${activeUserId}`),
-           authFetch(`categories?userId=${activeUserId}`),
-           authFetch(`userProfiles?userId=${activeUserId}`)
-         ]);
-         const txs = txResult.data || [];
-         const cats = catResult.data || [];
-         const profs = profResult.data || [];
-
-        const hasCloudData = (Array.isArray(txs) && txs.length > 0) ||
-          (Array.isArray(cats) && cats.length > 0) ||
-          (Array.isArray(profs) && profs.length > 0);
-
-         if (hasCloudData) {
-           setShowConflictDialog(true);
-         } else {
-           // SPEC-27 D-08 — re-enable auto-drains orphans with a transient notice.
-           const localTxs = await repos.transactions.getAll();
-           const remoteIds = Array.isArray(txs)
-             ? (txs as Array<{ id: unknown }>).map((t) => String(t.id))
-             : [];
-           const orphans = countOrphanTransactions(
-             localTxs.map((t) => String(t.id)),
-             remoteIds
-           );
-           await setAutoBackup(true);
-           showToast(orphans > 0
-             ? `Sync on — syncing ${orphans} local-only change(s)…`
-             : "Sync on — everything is up to date.");
-         }
+       const result = await enterApiOnlyMode({
+         userId: activeUserId,
+         readLocalSnapshot: () => readReposSnapshot(repos),
+       });
+       if (!result.ok) {
+         showMessage("error", "Couldn't Sync", "Your data was not changed. Check your connection and try again.");
+         return;
+       }
+       await setAutoBackup(true);
+       await Promise.all([
+         refetchTx(),
+         refetchCats(),
+         refetchDues(),
+         refetchSavings(),
+         refetchProfile()
+       ]);
+       showMessage("success", "Auto-Backup On", "Your data is now live from the cloud on all your devices.");
      } catch (e) {
-       console.error("Conflict check failed:", e);
-       alert("Failed to check for server conflicts. Please check your connection.");
+       console.error("Sync enable failed:", e);
+       showMessage("error", "Couldn't Sync", "Your data was not changed. Check your connection and try again.");
      } finally {
        setIsSyncing(false);
      }
@@ -551,192 +604,11 @@ export default function SettingsScreen() {
      }
    };
 
-   const handleMergeLWW = async () => {
-     setIsSyncing(true);
-     setShowConflictDialog(false);
+    // SPEC-34 CON-09 — the merge/conflict OFF→ON path is retired for the
+    // Cloud flow (fetch-then-push migration via confirmSyncEnable instead).
+    // Manual backup / restore buttons below keep their OFF-plane behavior.
 
-     try {
-        console.info("[MergeLWW] Starting Last-Write-Wins merge...");
-
-        const localTxs = await repos.transactions.getAll();
-        const localCats = await repos.categories.getAll();
-        const localDues = await repos.dues.getAll();
-        const localSavings = await repos.savingsItems.getAll();
-        const [localProfile] = await repos.profiles.getAll();
-
-       const [txResult, catResult, dueResult, savResult, profResult] = await Promise.all([
-          authFetch<Transaction[]>(`transactions?userId=${activeUserId}`),
-          authFetch<Category[]>(`categories?userId=${activeUserId}`),
-          authFetch<Due[]>(`dues?userId=${activeUserId}`),
-          authFetch<SavingsItem[]>(`savingsItems?userId=${activeUserId}`),
-          authFetch<UserProfile[]>(`userProfiles?userId=${activeUserId}`)
-        ]);
-
-        const remoteTxs = Array.isArray(txResult.data) ? txResult.data as Transaction[] : [];
-        const remoteCats = Array.isArray(catResult.data) ? catResult.data as Category[] : [];
-        const remoteDues = Array.isArray(dueResult.data) ? dueResult.data as Due[] : [];
-        const remoteSavings = Array.isArray(savResult.data) ? savResult.data as SavingsItem[] : [];
-        const remoteProfiles = Array.isArray(profResult.data) ? profResult.data as UserProfile[] : [];
-       const remoteProfile = remoteProfiles[0] || null;
-
-       const mergedTxs = mergeLWW(localTxs, remoteTxs);
-       const mergedCats = mergeLWW(localCats, remoteCats);
-       const mergedDues = mergeLWW(localDues, remoteDues);
-       const mergedSavings = mergeLWW(localSavings, remoteSavings);
-
-       console.info("[MergeLWW] Merged:", {
-         transactions: mergedTxs.length,
-         categories: mergedCats.length,
-         dues: mergedDues.length,
-         savingsItems: mergedSavings.length
-       });
-
-        await repos.transactions.upsertBulk(mergedTxs);
-        await repos.categories.upsertBulk(mergedCats);
-        await repos.dues.upsertBulk(mergedDues);
-        await repos.savingsItems.upsertBulk(mergedSavings);
-
-       if (localProfile && remoteProfile) {
-         const localTs = (localProfile as unknown as Record<string, unknown>).updatedAt || 0;
-         const remoteTs = (remoteProfile as unknown as Record<string, unknown>).updatedAt || 0;
-         if (remoteTs > localTs) {
-            await repos.profiles.upsert(remoteProfile as UserProfile);
-         }
-       }
-
-       await setAutoBackup(true);
-
-       // SPEC-27 D-08 — transient notice while the re-enabled queue drains.
-       const reenableOrphans = countOrphanTransactions(
-         localTxs.map((t) => String(t.id)),
-         remoteTxs.map((t) => String(t.id))
-       );
-       if (reenableOrphans > 0) {
-         showToast(`Syncing ${reenableOrphans} local-only change(s)…`);
-       }
-
-       console.info("[MergeLWW] Uploading merged data to cloud...");
-
-        if (localProfile || remoteProfile) {
-          const mergedProfile = remoteProfile && ((remoteProfile as unknown as Record<string, unknown>).updatedAt || 0) > ((localProfile as unknown as Record<string, unknown>)?.updatedAt || 0)
-           ? remoteProfile
-           : localProfile;
-
-           if (mergedProfile) {
-             const { data: profExisting } = await authFetch<UserProfile[]>(`userProfiles?userId=${activeUserId}`);
-
-             if (Array.isArray(profExisting) && profExisting.length > 0) {
-               await authFetch(`userProfiles/${(profExisting[0] as unknown as Record<string, unknown>).id}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...mergedProfile, userId: activeUserId })
-              }).catch(() => {});
-            } else {
-              await authFetch(`userProfiles`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...mergedProfile, userId: activeUserId })
-              }).catch(() => {});
-            }
-          }
-       }
-
-        for (const c of mergedCats) {
-          const { data: existing } = await authFetch(`categories?id=${c.id}`);
-
-          if (Array.isArray(existing) && existing.length > 0) {
-            await authFetch(`categories/${c.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ...c, userId: activeUserId })
-            }).catch(() => {});
-          } else {
-            await authFetch(`categories`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ...c, userId: activeUserId })
-            }).catch(() => {});
-          }
-        }
-
-        for (const d of mergedDues) {
-          const { data: existing } = await authFetch(`dues?id=${d.id}`);
-
-          if (Array.isArray(existing) && existing.length > 0) {
-            await authFetch(`dues/${d.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ...d, userId: activeUserId })
-            }).catch(() => {});
-          } else {
-            await authFetch(`dues`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ...d, userId: activeUserId })
-            }).catch(() => {});
-          }
-        }
-
-       for (const s of mergedSavings) {
-          const { data: existing } = await authFetch(`savingsItems?id=${s.id}`);
-
-          if (Array.isArray(existing) && existing.length > 0) {
-            await authFetch(`savingsItems/${s.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ...s, userId: activeUserId })
-            }).catch(() => {});
-          } else {
-            await authFetch(`savingsItems`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ...s, userId: activeUserId })
-            }).catch(() => {});
-          }
-        }
-
-        for (const t of mergedTxs) {
-          const { data: existing } = await authFetch(`transactions?id=${t.id}`);
-
-          const txData = {
-            ...t,
-            categoryId: t.category?.id ? String(t.category.id) : null,
-            userId: activeUserId
-          };
-
-          if (Array.isArray(existing) && existing.length > 0) {
-            await authFetch(`transactions/${t.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(txData)
-            }).catch(() => {});
-          } else {
-            await authFetch(`transactions`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(txData)
-            }).catch(() => {});
-          }
-        }
-
-       await Promise.all([
-         refetchTx(),
-         refetchCats(),
-         refetchProfile()
-       ]);
-
-       alert("Merge completed! Data has been synchronized using Last-Write-Wins.");
-       console.info("[MergeLWW] Merge completed successfully");
-
-     } catch (e) {
-       console.error("[MergeLWW] Merge failed:", e);
-       alert("Merge failed. Please check your connection and try again.");
-     } finally {
-       setIsSyncing(false);
-     }
-   };
-
-   const handleManualBackup = async () => {
+    const handleManualBackup = async () => {
     setIsSyncing(true);
     try {
        const txs = await repos.transactions.getAll();
@@ -887,9 +759,22 @@ export default function SettingsScreen() {
     return expectedKeys.some((k) => k in obj);
   };
 
-  const exportJSONWeb = async () => {
+  // SPEC-34 CON-01/CON-07 — API-only exports the live in-memory snapshot;
+  // local-persist exports from AsyncStorage via exportData().
+  const isApiOnlyPlane =
+    !isEffectivelyLocal && (Platform.OS === "web" || autoBackup);
+
+  const buildLiveSnapshotJson = () => JSON.stringify({
+    profile,
+    settings: { autoBackup: autoBackup.toString() },
+    categories: liveCategories,
+    transactions: liveTransactions,
+    dues: liveDues,
+    savingsItems: liveSavings,
+  });
+
+  const exportJSONWeb = async (json: string) => {
     try {
-      const json = await exportData();
       const blob = new Blob([json], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
@@ -907,9 +792,8 @@ export default function SettingsScreen() {
     }
   };
 
-  const exportJSONMobile = async () => {
+  const exportJSONMobile = async (json: string) => {
     try {
-      const json = await exportData();
       const fileUri = `${FileSystem.documentDirectory}WiseWallet_Backup_${Date.now()}.json`;
       const encoding = FileSystem.EncodingType ? FileSystem.EncodingType.UTF8 : "utf8";
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding });
@@ -922,10 +806,80 @@ export default function SettingsScreen() {
   };
 
   const handleExportJSON = async () => {
-    if (Platform.OS === "web") {
-      await exportJSONWeb();
-    } else {
-      await exportJSONMobile();
+    try {
+      const json = isApiOnlyPlane ? buildLiveSnapshotJson() : await exportData();
+      if (Platform.OS === "web") {
+        await exportJSONWeb(json);
+      } else {
+        await exportJSONMobile(json);
+      }
+    } catch (e) {
+      console.error(e);
+      showMessage("error", "Export Failed", "Failed to export data. Please try again.");
+    }
+  };
+
+  // SPEC-34 CON-07 — API-only import POSTs each entry to the cloud then
+  // refetches; per-entity failures are reported, never silent. OFF/Local
+  // import keeps today's local behavior.
+  const importApiSnapshot = async (data: Record<string, unknown>) => {
+    const failures: string[] = [];
+    const asRows = (v: unknown): Record<string, unknown>[] =>
+      Array.isArray(v)
+        ? (v as Record<string, unknown>[]).filter((r) => r && typeof r === "object")
+        : [];
+    setIsSyncing(true);
+    try {
+      for (const t of asRows(data["transactions"])) {
+        const category = t["category"] as { id?: unknown } | undefined;
+        const body = {
+          ...t,
+          categoryId: t["categoryId"] ?? (category?.id !== undefined ? String(category.id) : null),
+          userId: activeUserId,
+        };
+        await authFetch(`transactions`, { method: "POST", body: JSON.stringify(body) })
+          .then((r) => { if (!r.ok) failures.push("transactions"); })
+          .catch(() => { failures.push("transactions"); });
+      }
+      for (const c of asRows(data["categories"])) {
+        await authFetch(`categories`, { method: "POST", body: JSON.stringify({ ...c, userId: activeUserId }) })
+          .then((r) => { if (!r.ok) failures.push("categories"); })
+          .catch(() => { failures.push("categories"); });
+      }
+      for (const d of asRows(data["dues"])) {
+        await authFetch(`dues`, { method: "POST", body: JSON.stringify({ ...d, userId: activeUserId }) })
+          .then((r) => { if (!r.ok) failures.push("dues"); })
+          .catch(() => { failures.push("dues"); });
+      }
+      for (const s of asRows(data["savingsItems"])) {
+        await authFetch(`savingsItems`, { method: "POST", body: JSON.stringify({ ...s, userId: activeUserId }) })
+          .then((r) => { if (!r.ok) failures.push("savingsItems"); })
+          .catch(() => { failures.push("savingsItems"); });
+      }
+      if (data["profile"] && typeof data["profile"] === "object" && activeUserId) {
+        const profileOk = await ensureCloudProfile(
+          activeUserId,
+          data["profile"] as Record<string, unknown>
+        ).catch(() => false);
+        if (!profileOk) failures.push("profile");
+      }
+      await Promise.all([
+        refetchTx(),
+        refetchCats(),
+        refetchDues(),
+        refetchSavings(),
+        refetchProfile()
+      ]);
+      if (failures.length > 0) {
+        showMessage("error", "Import Partially Failed", `These sections did not upload: ${Array.from(new Set(failures)).join(", ")}. The rest is live — retry the failed parts.`);
+      } else {
+        showMessage("success", "Import Successful", "Data uploaded to your cloud account and refreshed!");
+      }
+    } catch (e) {
+      console.error(e);
+      showMessage("error", "Import Failed", "Failed to import data. Please try again.");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -948,6 +902,10 @@ export default function SettingsScreen() {
         return;
       }
 
+      if (isApiOnlyPlane) {
+        await importApiSnapshot(data as Record<string, unknown>);
+        return;
+      }
       await importData(text);
       showMessage("success", "Import Successful", "Data imported successfully! Please restart the app to see changes.");
     } catch (e) {
@@ -970,6 +928,10 @@ export default function SettingsScreen() {
           return;
         }
 
+        if (isApiOnlyPlane) {
+          await importApiSnapshot(data as Record<string, unknown>);
+          return;
+        }
         await importData(jsonString);
         showMessage("success", "Import Successful", "Data imported successfully! Please restart the app to see changes.");
       }
@@ -1579,17 +1541,6 @@ export default function SettingsScreen() {
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={showBackupDialog} onDismiss={() => setShowBackupDialog(false)}>
-          <Dialog.Title>Enable Auto-save</Dialog.Title>
-          <Dialog.Content>
-            <Text>Enabling Auto-save may overwrite your data during synchronization. Do you want to check for data on the server first?</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setShowBackupDialog(false)}>Cancel</Button>
-            <Button onPress={proceedWithBackupEnable} loading={isSyncing} disabled={isSyncing}>Proceed</Button>
-          </Dialog.Actions>
-        </Dialog>
-
         <Dialog visible={showReregisterHonesty} onDismiss={() => setShowReregisterHonesty(false)}>
           <Dialog.Title>{REREGISTER_HONESTY_TITLE}</Dialog.Title>
           <Dialog.Content>
@@ -1686,24 +1637,18 @@ export default function SettingsScreen() {
           </KeyboardAwareDialog>
         </Dialog>
 
-        <Dialog visible={showConflictDialog} onDismiss={() => setShowConflictDialog(false)}>
-          <Dialog.Title>Sync Conflict</Dialog.Title>
+        <Dialog visible={showSyncExplainDialog} onDismiss={() => setShowSyncExplainDialog(false)}>
+          <Dialog.Title>Turn Auto-Backup On?</Dialog.Title>
           <Dialog.Content>
-            <Text>We found data for your account on the server. How would you like to resolve this?</Text>
+            <Text style={{ marginBottom: 16 }}>
+              Turning ON will sync data: fetch cloud first, then push this device&apos;s entries. Your on-device data is preserved — nothing is deleted before it is uploaded.
+            </Text>
           </Dialog.Content>
-           <Dialog.Actions style={{ flexDirection: 'column' }}>
-              <Button mode="contained" onPress={handleMergeLWW} loading={isSyncing} disabled={isSyncing} style={{ width: '100%', marginBottom: 8 }}>
-                Merge (Last Write Wins)
-              </Button>
-              <Button mode="outlined" onPress={() => { setShowConflictDialog(false); setAutoBackup(true); handleManualBackup(); }} style={{ width: '100%', marginBottom: 8 }}>
-                Keep Local Only
-              </Button>
-              <Button mode="outlined" onPress={() => { setShowConflictDialog(false); setAutoBackup(true); performRestore(); }} style={{ width: '100%', marginBottom: 8 }}>
-                Keep Cloud Only
-              </Button>
-              <Button onPress={() => setShowConflictDialog(false)}>Cancel</Button>
-            </Dialog.Actions>
-         </Dialog>
+          <Dialog.Actions>
+            <Button onPress={() => setShowSyncExplainDialog(false)} disabled={isSyncing}>Cancel</Button>
+            <Button mode="contained" onPress={confirmSyncEnable} loading={isSyncing} disabled={isSyncing}>Turn ON</Button>
+          </Dialog.Actions>
+        </Dialog>
 
         <Dialog visible={showPinPrompt} onDismiss={() => setShowPinPrompt(false)}>
           <KeyboardAwareDialog>

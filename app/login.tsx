@@ -5,7 +5,7 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuthData, useAuthActions } from '../context/AuthContext';
 import { useUserProfileData } from '../context/UserProfileContext';
-import { addUser, saveUserProfile, API_URL, getUsers } from '../utils/db';
+import { addUser, API_URL, getUsers } from '../utils/db';
 import { isLocalAccountToken } from '../utils/authMode';
 import { isEmailShapedName } from '../utils/accountDelete';
 import { isLocalAuthAllowed, WEB_LOGIN_CONNECT_MESSAGE } from '../utils/localGate';
@@ -189,8 +189,10 @@ export default function LoginScreen() {
             }
 
             if (inner?.user && inner?.token) {
+                // SPEC-34 CON-02 — registry row only; entity seeding (if the
+                // plane is local-persist) happens in AuthLoader, and legacy
+                // caches migrate there. No profile entity write here.
                 await addUser(inner.user.id, name.trim(), passcode.trim());
-                await saveUserProfile({ name: name.trim(), isFirstRun: false, initialBalance: 0 }, inner.user.id);
                 await login(inner.user.id, inner.token);
             }
         } else if (lastResult.status === 401) {

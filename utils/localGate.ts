@@ -64,7 +64,7 @@ export const REREGISTER_FORM_TITLE = "Register Online Account";
 export const REREGISTER_SUCCESS_TITLE = "Online Account Ready";
 export const REREGISTER_SUCCESS_MESSAGE =
   "Your new Online account is ready with auto-backup ON.\n\n" +
-  "To carry data over, use Import Data (JSON) in Settings with the file you exported. " +
+  "To carry data over, use Import Data (JSON) in Settings with the file you exported \u2014 it will upload into your new Online account. " +
   "Your old Local profile is intact \u2014 log out and back in with your local username + PIN to return to it.";
 
 export function isReregistrationAllowed(deviceOnline: boolean): boolean {

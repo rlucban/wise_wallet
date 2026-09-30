@@ -2,11 +2,17 @@ import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-rout
 import { useEffect, useRef, useState } from "react";
 import { View, Text, Platform, StyleSheet } from "react-native";
 import { initMasterDb, initDb } from "../utils/db";
+import {
+  resolveActivePlane,
+  hasLegacyEntityKeys,
+  enterApiOnlyMode,
+  readReposSnapshot,
+} from "../utils/apiOnly";
 import { PaperProvider, Banner } from "react-native-paper";
 import { ThemeProvider, useThemeData } from "../context/ThemeContext";
 import { CurrencyProvider } from "../context/CurrencyContext";
 import { TransactionsProvider } from "../context/TransactionsContext";
-import { UserProfileProvider, useUserProfile } from "../context/UserProfileContext";
+import { UserProfileProvider, useUserProfile, useUserProfileData } from "../context/UserProfileContext";
 import { CategoriesProvider } from "../context/CategoriesContext";
 import { LanguageProvider } from "../context/LanguageContext";
 import { PasscodeProvider, usePasscode } from "../context/PasscodeContext";
@@ -23,9 +29,11 @@ import { hardResetLocalData } from "../utils/db";
 import { requestNotificationPermissions, scheduleDueNotifications } from "../utils/notifications";
 import { useRepositories } from "../context/RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
+import { ApiOfflineBanner, ApiOfflineGateBody, useApiOnlyOffline } from "../components/ApiOfflineBanner";
 
 function OfflineIndicator() {
   const { isOnline, checkConnectivity } = useNetwork();
+  const { plane } = useApiOnlyOffline();
   const [showBanner, setShowBanner] = useState(true);
 
   useEffect(() => {
@@ -33,6 +41,12 @@ function OfflineIndicator() {
       setShowBanner(true);
     }
   }, [isOnline]);
+
+  // SPEC-34 CON-03 — API-only offline is covered by ApiOfflineBanner (its
+  // generic "will sync automatically" copy would be wrong there).
+  if (plane === "api-only") {
+    return null;
+  }
 
   if (isOnline || !showBanner) {
     return null;
@@ -110,6 +124,33 @@ function SystemResetManager() {
   return null;
 }
 
+function MainStack() {
+  // SPEC-34 CON-03 — signed-in API-only sessions render the banner + gate
+  // instead of data screens while offline. Auth routes stay reachable
+  // (gate requires an active session).
+  const { gated } = useApiOnlyOffline();
+
+  if (gated) {
+    return <ApiOfflineGateBody />;
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="intro" options={{ animation: "fade" }} />
+      <Stack.Screen name="login" options={{ animation: "fade" }} />
+      <Stack.Screen name="register" options={{ animation: "fade" }} />
+      <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="add-transaction" options={{ presentation: "modal" }} />
+      <Stack.Screen name="edit-transaction" options={{ presentation: "modal" }} />
+      <Stack.Screen name="transaction-details" options={{ title: "Details" }} />
+      <Stack.Screen name="calendar" />
+      <Stack.Screen name="savings" />
+      <Stack.Screen name="payment-methods" options={{ animation: "slide_from_right" }} />
+    </Stack>
+  );
+}
+
 function MainLayout() {
   const { theme } = useThemeData();
   const { isPasscodeEnabled, isUnlocked } = usePasscode();
@@ -174,19 +215,8 @@ function MainLayout() {
       <NetworkProvider>
         <View style={{ flex: 1 }}>
           <OfflineIndicator />
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="intro" options={{ animation: "fade" }} />
-            <Stack.Screen name="login" options={{ animation: "fade" }} />
-            <Stack.Screen name="register" options={{ animation: "fade" }} />
-            <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="add-transaction" options={{ presentation: "modal" }} />
-            <Stack.Screen name="edit-transaction" options={{ presentation: "modal" }} />
-            <Stack.Screen name="transaction-details" options={{ title: "Details" }} />
-            <Stack.Screen name="calendar" />
-            <Stack.Screen name="savings" />
-            <Stack.Screen name="payment-methods" options={{ animation: "slide_from_right" }} />
-          </Stack>
+          <ApiOfflineBanner />
+          <MainStack />
         </View>
       </NetworkProvider>
     </PaperProvider>
@@ -200,26 +230,52 @@ export function AuthLoader({ children }: { children: React.ReactNode }) {
   const [dbLoading, setDbLoading] = useState(false);
   const [dbInitializedFor, setDbInitializedFor] = useState<string | null>(null);
   const repos = useRepositories();
+  const isLocal = useIsLocalAccount();
+  const { profile } = useUserProfileData();
 
   // 1. Handle DB Initialization
   useEffect(() => {
     if (isLoading) return;
-    
-    if (activeUserId && activeUserId !== dbInitializedFor) {
-        setDbLoading(true);
-        initDb(activeUserId)
-          .then(() => {
-            setDbInitializedFor(activeUserId);
-            setDbLoading(false);
-          })
-          .catch((e: unknown) => {
+
+    if (activeUserId) {
+        (async () => {
+          try {
+            // SPEC-34 CON-02/CON-04 — API-only sessions skip seeding; a
+            // pre-existing legacy cache migrates (fetch → push → purge) once.
+            // The guard key includes the plane: profile arrival may resolve it
+            // differently (e.g. server-side OFF), and seeding MUST still run.
+            const plane = await resolveActivePlane({
+              platformOs: Platform.OS,
+              isLocal,
+              profileAutoBackup: profile?.autoBackup,
+            });
+            const initKey = `${activeUserId}|${plane}`;
+            if (initKey === dbInitializedFor) return;
+            setDbLoading(true);
+            if (plane === "api-only") {
+              setDbInitializedFor(initKey);
+              if (await hasLegacyEntityKeys(activeUserId)) {
+                enterApiOnlyMode({
+                  userId: activeUserId,
+                  readLocalSnapshot: () => readReposSnapshot(repos),
+                }).catch((e: unknown) => {
+                  console.error("API-only entry migration failed:", e);
+                });
+              }
+            } else {
+              await initDb(activeUserId);
+              setDbInitializedFor(initKey);
+            }
+          } catch (e: unknown) {
             console.error("User DB Init Error", e);
+          } finally {
             setDbLoading(false);
-          });
+          }
+        })();
     } else if (!activeUserId) {
         setDbInitializedFor(null);
     }
-  }, [activeUserId, isLoading, dbInitializedFor]);
+  }, [activeUserId, isLoading, dbInitializedFor, isLocal, profile?.autoBackup, repos]);
 
   useEffect(() => {
     if (!activeUserId) return;

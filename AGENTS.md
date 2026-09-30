@@ -313,6 +313,17 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   dues/savings/category/payment modals wrapped; `keyboardShouldPersistTaps` on every ScrollView.
   New `utils/keyboardVisibility.test.js` (ACC-01..03 × android/ios/web). User-run verification pending:
   tsc, `npm test`, eslint, Expo Go (ACC-04/05) + web export (ACC-06). See `docs/savepoint.md`.
+- **2026-09-30 — Spec 34 FINAL + implemented.** `specs/34-api-only-online-mode.md` v1.0: Cloud+ON is
+  API-only (memory state, direct reads/writes, zero entity persistence); AsyncStorage persists mobile-Local
+  and mobile-OFF only. New `utils/apiOnly.ts` (mode router, normalizer, direct CRUD, ensure-exists,
+  fetch→push→purge migration, OFF-while-offline guard) + `utils/apiOnly.test.ts`
+  (ACC-01..04/09/10 × android/ios/web); all 5 data layers branched; new `components/ApiOfflineBanner.tsx`
+  (banner + gate, generic banner suppressed in API-only); register/login skip entity writes (registry kept);
+  OFF→ON = PIN → explanation → migration, ON→OFF = verified snapshot seed; merge/conflict OFF→ON path deleted;
+  export/import follow the mode; SyncStatusCard shows Live. CON-09 scopes SPEC-04/22/27/29 to the
+  local-persist plane; SPEC-33 draft absorbed. Known limitation: due-reminder scheduling reads local repos
+  (no-op in API-only). User-run verification pending: tsc, `npm test`, eslint, Expo Go + web export
+  (ACC-05..08). See `docs/savepoint.md`.
 
 ---
 
