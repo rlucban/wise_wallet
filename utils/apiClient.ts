@@ -64,7 +64,7 @@ export async function authFetch<T = unknown>(
 
     let body: Record<string, unknown>;
     try {
-      body = await response.json();
+      body = (await response.json()) as Record<string, unknown>;
     } catch {
       const text = await response.text().catch(() => '');
       return {
