@@ -341,6 +341,18 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   D-03 docs recorded; no retirements. Stale-web-session boot guard NOT included (open follow-up).
   User-run verification pending: tsc, `npm test`, eslint, Expo Go + web export (ACC-06..08).
   See `docs/savepoint.md`.
+- **2026-09-30 — Spec 36 FINAL + implemented (client-only API contract fix).**
+  `specs/36-api-only-contract-compliance.md` v1.0 fixes the "stepper wizard always
+  happens" loop + `Cloud create failed (status 400)` with **no `wallet-api` change**.
+  D-01 `utils/apiOnly.ts` only: `normalizeUserProfileResponse` descends the `{ profile }`
+  envelope; `ensureCloudProfile` is a single `PUT userProfiles/{userId}` (server has NO
+  POST route and keys PUT by user id, never row id); `toApiBody` defaults an empty
+  `paymentMethod` to `"cash"` on create only (update is `.partial()` and must not clobber a
+  saved method); `apiList`/`apiCreate` unwrap the list/single server envelopes (also fixes
+  latent envelope blindness that left all four api-only readers empty and appended phantom
+  rows on create). D-02 `utils/apiOnly.test.ts` ACC-01..05 × android/ios/web; the SPEC-34
+  "POSTs when missing" case rewritten (it encoded the defect). User-run verification
+  pending: tsc, `npm test`, eslint, Expo Go + web export. See `docs/savepoint.md`.
 
 ---
 

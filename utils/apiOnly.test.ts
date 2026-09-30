@@ -345,45 +345,176 @@ describe.each(["android", "ios", "web"] as const)(
       expect(ops).toEqual(["put:profile"]);
     });
 
-    test("ensureCloudProfile: POSTs when missing, PUTs when present", async () => {
-      // Missing → POST collection.
-      mockAuthFetch
-        .mockResolvedValueOnce(okBody([]))
-        .mockResolvedValueOnce(okBody({ id: "new" }));
-      await expect(
-        ensureCloudProfile("U", { name: "a@b.co" })
-      ).resolves.toBe(true);
-      const missingCalls = mockAuthFetch.mock.calls;
-      expect(missingCalls[0]?.[0]).toBe("userProfiles?userId=U");
-      expect(missingCalls[1]?.[0]).toBe("userProfiles");
+    test("ACC-01: normalizer descends the { profile } envelope, legacy shapes unchanged", () => {
+      // SPEC-36 CON-03 — the server wraps the row; a present row must resolve.
       expect(
-        (missingCalls[1]?.[1] as { method?: string } | undefined)?.method
-      ).toBe("POST");
-
-      // Present → PUT by row id.
-      mockAuthFetch.mockClear();
-      mockAuthFetch
-        .mockResolvedValueOnce(
-          okBody([{ id: "p1", userId: "U", name: "a@b.co" }])
+        normalizeUserProfileResponse({ profile: { userId: "U", name: "Test" } }, "U")
+      ).toEqual({ userId: "U", name: "Test" });
+      expect(
+        normalizeUserProfileResponse(
+          { status: "success", profile: { id: "p1", userId: "U", name: "n" } },
+          "U"
         )
-        .mockResolvedValueOnce(okBody({ id: "p1" }));
-      await expect(
-        ensureCloudProfile("U", { name: "a@b.co", initialBalance: 15 })
-      ).resolves.toBe(true);
-      const presentCalls = mockAuthFetch.mock.calls;
-      expect(presentCalls[1]?.[0]).toBe("userProfiles/p1");
-      expect(
-        (presentCalls[1]?.[1] as { method?: string } | undefined)?.method
-      ).toBe("PUT");
+      ).toEqual({ id: "p1", userId: "U", name: "n" });
 
-      // Failed POST → false.
+      // Array rules preserved (userId match wins, else first row).
+      expect(
+        normalizeUserProfileResponse(
+          [{ userId: "other" }, { userId: "U", name: "mine" }],
+          "U"
+        )
+      ).toEqual({ userId: "U", name: "mine" });
+      expect(
+        normalizeUserProfileResponse([{ userId: "other", name: "a" }], "U")
+      ).toEqual({ userId: "other", name: "a" });
+
+      // Bare object as-is; empty/nameless shapes stay null.
+      expect(normalizeUserProfileResponse({ userId: "U", name: "n" }, "U")).toEqual({
+        userId: "U",
+        name: "n",
+      });
+      expect(normalizeUserProfileResponse([], "U")).toBeNull();
+      expect(normalizeUserProfileResponse(null, "U")).toBeNull();
+      expect(normalizeUserProfileResponse({ profile: null }, "U")).toBeNull();
+      expect(normalizeUserProfileResponse({ profile: {} }, "U")).toBeNull();
+      expect(normalizeUserProfileResponse({ other: 1 }, "U")).toBeNull();
+    });
+
+    test("ACC-02: ensure PUTs userProfiles/:userId and never POSTs", async () => {
+      // Missing row → still PUT by user id (server has no POST route).
+      mockAuthFetch.mockResolvedValueOnce(okBody({ id: "p1" }));
+      await expect(ensureCloudProfile("U", { name: "n" })).resolves.toBe(true);
+      expect(mockAuthFetch).toHaveBeenCalledTimes(1);
+      const missingCalls = mockAuthFetch.mock.calls;
+      expect(missingCalls[0]?.[0]).toBe("userProfiles/U");
+      expect(
+        (missingCalls[0]?.[1] as { method?: string } | undefined)?.method
+      ).toBe("PUT");
+      expect(missingCalls.some((c) => String(c[0]) === "userProfiles")).toBe(false);
+      expect(
+        missingCalls.some(
+          (c) => (c[1] as { method?: string } | undefined)?.method === "POST"
+        )
+      ).toBe(false);
+
+      // Row id must never become the URL segment (server keys by user id).
       mockAuthFetch.mockClear();
-      mockAuthFetch
-        .mockResolvedValueOnce(okBody([]))
-        .mockResolvedValueOnce({ ok: false, status: 500 });
+      mockAuthFetch.mockResolvedValueOnce(okBody({}));
       await expect(
-        ensureCloudProfile("U", { name: "a@b.co" })
-      ).resolves.toBe(false);
+        ensureCloudProfile("U", { id: "p1", name: "n", initialBalance: 15 })
+      ).resolves.toBe(true);
+      expect(mockAuthFetch.mock.calls[0]?.[0]).toBe("userProfiles/U");
+
+      // Failed PUT → false (CON-06 caller surfaces it).
+      mockAuthFetch.mockClear();
+      mockAuthFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+      await expect(ensureCloudProfile("U", { name: "n" })).resolves.toBe(false);
+    });
+
+    test("ACC-03: transaction body defaults an empty paymentMethod to cash", async () => {
+      const bodyOf = (i: number) =>
+        JSON.parse((mockAuthFetch.mock.calls[i]?.[1] as { body: string }).body);
+
+      // Empty string (onboarding Opening Balance / due payment) → "cash".
+      mockAuthFetch.mockResolvedValueOnce(okBody({ transaction: { id: "t1" } }));
+      await apiCreate("transactions", { id: "t1", amount: 15, paymentMethod: "" }, "U");
+      expect(bodyOf(0).paymentMethod).toBe("cash");
+
+      // Missing field → "cash".
+      mockAuthFetch.mockClear();
+      mockAuthFetch.mockResolvedValueOnce(okBody({ transaction: { id: "t2" } }));
+      await apiCreate("transactions", { id: "t2", amount: 15 }, "U");
+      expect(bodyOf(0).paymentMethod).toBe("cash");
+
+      // A set method is preserved verbatim.
+      mockAuthFetch.mockClear();
+      mockAuthFetch.mockResolvedValueOnce(okBody({ transaction: { id: "t3" } }));
+      await apiCreate(
+        "transactions",
+        { id: "t3", amount: 15, paymentMethod: "BPI Debit" },
+        "U"
+      );
+      expect(bodyOf(0).paymentMethod).toBe("BPI Debit");
+
+      // categoryId derivation + userId injection unchanged.
+      mockAuthFetch.mockClear();
+      mockAuthFetch.mockResolvedValueOnce(okBody({ transaction: { id: "t4" } }));
+      await apiCreate("transactions", { id: "t4", amount: 15 }, "U");
+      expect(bodyOf(0).categoryId).toBeNull();
+      expect(bodyOf(0).userId).toBe("U");
+
+      mockAuthFetch.mockClear();
+      mockAuthFetch.mockResolvedValueOnce(okBody({ transaction: { id: "t5" } }));
+      await apiCreate("transactions", { id: "t5", amount: 15, category: { id: "c1" } }, "U");
+      expect(bodyOf(0).categoryId).toBe("c1");
+
+      // Update MUST NOT inject the default (would clobber a saved method).
+      mockAuthFetch.mockClear();
+      mockAuthFetch.mockResolvedValueOnce(okBody({}));
+      await apiUpdate("transactions", "t5", { amount: 20 }, "U");
+      expect(bodyOf(0)).not.toHaveProperty("paymentMethod");
+    });
+
+    test("ACC-04: apiList unwraps every documented list envelope", async () => {
+      // `okBody(x)` stands in for `authFetch`, which already strips the outer
+      // `data` (utils/apiClient.ts). So the payload the apiOnly layer sees is
+      // the INNER envelope, exactly as on the wire:
+      //   wire  { status, results, data: { transactions: [...] } }
+      //   here  { transactions: [...] }
+      const cases = [
+        { entity: "transactions" as const, key: "transactions" },
+        { entity: "categories" as const, key: "categories" },
+        { entity: "dues" as const, key: "dues" },
+        { entity: "savingsItems" as const, key: "savingsItems" },
+      ];
+      for (const c of cases) {
+        mockAuthFetch.mockReset();
+        mockAuthFetch.mockResolvedValueOnce(okBody({ [c.key]: [{ id: "x" }] }));
+        const res = await apiList(c.entity, "U");
+        expect(res.data).toEqual([{ id: "x" }]);
+      }
+
+      // Unknown shapes pass through untouched.
+      mockAuthFetch.mockReset();
+      mockAuthFetch.mockResolvedValueOnce(okBody([{ id: "raw" }]));
+      expect((await apiList("transactions", "U")).data).toEqual([{ id: "raw" }]);
+      mockAuthFetch.mockReset();
+      mockAuthFetch.mockResolvedValueOnce(okBody({ nope: 1 }));
+      expect((await apiList("transactions", "U")).data).toEqual({ nope: 1 });
+    });
+
+    test("ACC-05: apiCreate unwraps every documented single envelope", async () => {
+      // Same boundary as ACC-04: wire
+      //   { status, data: { transaction: {...} } } → here { transaction: {...} }
+      const cases = [
+        { entity: "transactions" as const, key: "transaction" },
+        { entity: "categories" as const, key: "category" },
+        { entity: "dues" as const, key: "due" },
+        { entity: "savingsItems" as const, key: "savingsItem" },
+      ];
+      for (const c of cases) {
+        mockAuthFetch.mockReset();
+        mockAuthFetch.mockResolvedValueOnce(okBody({ [c.key]: { id: "row" } }));
+        const res = await apiCreate(c.entity, { id: "row" }, "U");
+        expect(res.data).toEqual({ id: "row" });
+      }
+
+      // Unknown shapes pass through untouched.
+      mockAuthFetch.mockReset();
+      mockAuthFetch.mockResolvedValueOnce(okBody({ id: "raw" }));
+      expect((await apiCreate("categories", { id: "raw" }, "U")).data).toEqual({ id: "raw" });
+    });
+
+    test("wiring: ensureCloudProfile has no POST collection path", () => {
+      const content = fs.readFileSync(path.resolve(__dirname, "apiOnly.ts"), "utf-8");
+      const ensureBody = content.slice(
+        content.indexOf("export async function ensureCloudProfile"),
+        content.indexOf("// --- CON-04 fetch-then-push migration")
+      );
+      expect(ensureBody).toContain("`userProfiles/${userId}`");
+      expect(ensureBody).not.toContain("apiCreate");
+      expect(ensureBody).not.toContain("apiUpdate");
+      expect(ensureBody).not.toContain('"POST"');
     });
 
     test("resolveActivePlane: store wins, then profile, then Cloud-default ON", async () => {
