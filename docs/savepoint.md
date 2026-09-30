@@ -479,3 +479,14 @@ Branch `spec-28-29-delete-and-queue` (stacked on `spec-27-two-device-single-log`
 - D-05 tests: new `utils/apiOnly.test.ts` — ACC-01 matrix, ACC-02 zero-writes/zero-enqueue (+no-enqueue-import scan), ACC-03 order/abort (fetch-fail, entry-fail, profile-fail)/purge scoping, ACC-04 normalizer, ACC-09 offline switch, ACC-10 per-user flag, plus `ensureCloudProfile` POST-vs-PUT, `resolveActivePlane` store/profile/default precedence, and wiring scans (all 5 data layers branch on the plane; banner+gate mounted; ON-toggle copy present); all × android/ios/web (apiClient/syncProcessor mocked per repo pattern).
 - Known limitation: due-reminder scheduling (`AuthLoader` notification effect) reads local repos — no-op in API-only until a live-source scheduler ships (no spec yet).
 - Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-05..08).
+
+## 2026-09-30 — SPEC-35 FINAL + implemented (flag ships OFF)
+
+- `specs/35-login-database-reset-flagged.md` FINAL per user call (env-flag amendment included).
+- `.env` + `.env.example`: `EXPO_PUBLIC_ADMIN_TOGGLE=false` pinned locally (Vercel stays absent = off).
+- D-01: new `utils/featureFlags.ts` — `isAdminToggleOn()` exact-matches the env at call time (test-flippable); rebuild required to flip in builds.
+- D-02: new `utils/deviceReset.ts` — `resetDeviceData()` collects receipt refs across all device users first, then `hardResetLocalData()` + both token stores + `clearSessionCaches()`, restores `localDeviceId`, deletes receipt files best-effort; preserves epoch + user export files; zero API calls.
+- D-03: `app/login.tsx` subtle "Reset all data" text-button below the info box, rendered only when the flag is on (off = nothing); warning dialog → checkbox confirm dialog → wipe → inputs cleared → success notice on `/login`.
+- D-04 tests: new `utils/deviceReset.test.ts` — ACC-01 env matrix, ACC-02 flag gate + single wipe call-site scan, ACC-03 full wipe/preserve/fetch-zero assertions; all × android/ios/web (expo native modules mocked per repo pattern).
+- No enablement shipped — turning the flag `true` anywhere needs a separate explicit order.
+- Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-05/06 need a temporary local flag flip only).

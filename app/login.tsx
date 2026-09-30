@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Text, TextInput, Button, Card, HelperText, Dialog, Portal } from 'react-native-paper';
+import { Text, TextInput, Button, Card, HelperText, Dialog, Portal, Checkbox } from 'react-native-paper';
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuthData, useAuthActions } from '../context/AuthContext';
@@ -9,6 +9,8 @@ import { addUser, API_URL, getUsers } from '../utils/db';
 import { isLocalAccountToken } from '../utils/authMode';
 import { isEmailShapedName } from '../utils/accountDelete';
 import { isLocalAuthAllowed, WEB_LOGIN_CONNECT_MESSAGE } from '../utils/localGate';
+import { isAdminToggleOn } from '../utils/featureFlags';
+import { resetDeviceData } from '../utils/deviceReset';
 import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -38,6 +40,30 @@ export default function LoginScreen() {
     const [pinError, setPinError] = useState("");
     const [showPin, setShowPin] = useState(false);
     const [offlineNotice, setOfflineNotice] = useState(false);
+    // SPEC-35 — admin database reset (env-flagged, ships OFF).
+    const [showResetStep1, setShowResetStep1] = useState(false);
+    const [showResetStep2, setShowResetStep2] = useState(false);
+    const [resetConfirmed, setResetConfirmed] = useState(false);
+    const [resetting, setResetting] = useState(false);
+
+    const doResetDeviceData = async () => {
+        setResetting(true);
+        try {
+            await resetDeviceData();
+            setName("");
+            setPasscode("");
+            setShowResetStep2(false);
+            setResetConfirmed(false);
+            showAlert(
+                "Reset Complete",
+                "This device was reset. You can register or log in fresh."
+            );
+        } catch (err) {
+            showAlert("Reset Failed", "Could not reset this device. Error: " + (err as Error).message);
+        } finally {
+            setResetting(false);
+        }
+    };
 
     const [dialog, setDialog] = useState<{
         visible: boolean;
@@ -285,6 +311,56 @@ export default function LoginScreen() {
                     </Dialog.Actions>
                 </Dialog>
             </Portal>
+            {/* SPEC-35 D-03 — two-step reset confirm (flag-gated above). */}
+            <Portal>
+                <Dialog visible={showResetStep1} onDismiss={() => setShowResetStep1(false)}>
+                    <Dialog.Title style={{ textAlign: 'center' }}>Reset All Data?</Dialog.Title>
+                    <Dialog.Content>
+                        <Text variant="bodyMedium" style={{ textAlign: 'center', lineHeight: 22 }}>
+                            This deletes EVERYTHING on this device, including Local-only accounts (permanent, no recovery). Cloud accounts are NOT touched and can log in again when online.
+                        </Text>
+                    </Dialog.Content>
+                    <Dialog.Actions style={{ justifyContent: 'center' }}>
+                        <Button mode="text" onPress={() => setShowResetStep1(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            mode="contained"
+                            buttonColor="#b71c1c"
+                            onPress={() => { setShowResetStep1(false); setResetConfirmed(false); setShowResetStep2(true); }}
+                        >
+                            Continue
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
+            <Portal>
+                <Dialog visible={showResetStep2} onDismiss={() => setShowResetStep2(false)}>
+                    <Dialog.Title style={{ textAlign: 'center' }}>Confirm Reset</Dialog.Title>
+                    <Dialog.Content>
+                        <Checkbox.Item
+                            label="I understand all device data will be permanently deleted"
+                            status={resetConfirmed ? "checked" : "unchecked"}
+                            onPress={() => setResetConfirmed(!resetConfirmed)}
+                            labelStyle={{ fontSize: 13 }}
+                        />
+                    </Dialog.Content>
+                    <Dialog.Actions style={{ justifyContent: 'center' }}>
+                        <Button mode="text" onPress={() => setShowResetStep2(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            mode="contained"
+                            buttonColor="#b71c1c"
+                            loading={resetting}
+                            disabled={resetting || !resetConfirmed}
+                            onPress={doResetDeviceData}
+                        >
+                            Delete Everything
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
             <LinearGradient colors={["#1a237e", "#283593", "#3949ab"]} style={styles.gradient}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -388,6 +464,20 @@ export default function LoginScreen() {
                                             • Login auto-detects account type
                                         </Text>
                                     </View>
+
+                                    {/* SPEC-35 D-03 — admin reset, env-gated (ships OFF = renders nothing). */}
+                                    {isAdminToggleOn() ? (
+                                        <Button
+                                            compact
+                                            mode="text"
+                                            onPress={() => setShowResetStep1(true)}
+                                            disabled={loading || resetting}
+                                            style={{ marginTop: 4, alignSelf: "center" }}
+                                            labelStyle={{ color: "#b71c1c", fontSize: 12 }}
+                                        >
+                                            Reset all data
+                                        </Button>
+                                    ) : null}
                                 </Card.Content>
                             </Card>
                         </View>
