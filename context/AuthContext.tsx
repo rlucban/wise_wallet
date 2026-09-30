@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setAuthFailureCallback } from "../utils/apiClient";
-import { setCachedUserId } from "../utils/cache";
+import { setCachedUserId, clearSessionCaches } from "../utils/cache";
 import { setSecureItem, getSecureItem, removeSecureItem } from "../utils/secureStorage";
 
 interface AuthData {
@@ -47,6 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (activeUserId) setFailedUserId(activeUserId);
     setActiveUserId(null);
     setToken(null);
+    // SPEC-31 D-02 — session-kill reuses logout hygiene: no cached id or
+    // settings may leak into the next session.
+    clearSessionCaches();
     if (reason) setAuthFailureReason(reason);
   }, [activeUserId]);
 
@@ -67,7 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.removeItem('activeUserId');
     await removeSecureItem('authToken');
     setActiveUserId(null);
-    setCachedUserId(null);
+    // SPEC-31 CON-03 — session hygiene; stored per-user data is untouched.
+    clearSessionCaches();
     setToken(null);
   }, []);
 

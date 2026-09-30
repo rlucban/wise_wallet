@@ -30,8 +30,14 @@ export async function getSecureItem(key: string): Promise<string | null> {
 }
 
 export async function removeSecureItem(key: string): Promise<void> {
+  // SPEC-31 CON-03 — clear BOTH branches: a token written to the fallback
+  // while SecureStore was unavailable MUST NOT survive logout.
   if (await isSecureAvailable()) {
-    await SecureStore.deleteItemAsync(key);
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch {
+      // best-effort; the fallback removal below still runs
+    }
   }
   await AsyncStorage.removeItem(key);
 }

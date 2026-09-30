@@ -5,9 +5,10 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuthData, useAuthActions } from '../context/AuthContext';
 import { useUserProfileData } from '../context/UserProfileContext';
-import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
+import { addUser, saveUserProfile, API_URL, getUsers } from '../utils/db';
 import { isLocalAccountToken } from '../utils/authMode';
 import { isEmailShapedName } from '../utils/accountDelete';
+import { isLocalAuthAllowed, WEB_LOGIN_CONNECT_MESSAGE } from '../utils/localGate';
 import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -59,7 +60,26 @@ export default function LoginScreen() {
         return deviceId;
     };
 
-    const attemptLocalLogin = async () => {
+    const attemptLocalLogin = async (reason: "unreachable" | "lookup" = "lookup") => {
+        // SPEC-31 CON-01 — web never enters Local mode: no master_users
+        // consult, zero writes, zero session change.
+        if (!isLocalAuthAllowed(Platform.OS)) {
+            if (reason === "unreachable") {
+                showAlert("No Connection", WEB_LOGIN_CONNECT_MESSAGE, [
+                    { text: "Try Again", style: "cancel", onPress: () => setLoading(false) }
+                ]);
+            } else {
+                showAlert(
+                    "Login Failed",
+                    `No account found for "${name.trim()}". Don't have an account? Register to create one.`,
+                    [
+                        { text: "Register", onPress: () => router.replace("/register") },
+                        { text: "Try Again", style: "cancel", onPress: () => setLoading(false) }
+                    ]
+                );
+            }
+            return;
+        }
         const users = await getUsers();
         const localUser = users.find((u) => (u.name as string).toLowerCase() === name.trim().toLowerCase());
 
@@ -79,35 +99,15 @@ export default function LoginScreen() {
                 showAlert("Error", "Authentication failed. Error: " + (err as Error).message);
             }
         } else {
-            if (Platform.OS === "web") {
-                showAlert("Login Failed", "Invalid user name and PIN.");
-                return;
-            }
+            // SPEC-30 CON-01 — Local profiles originate at registration only.
+            // Login failure (any cause, any platform) shows the plain failure
+            // notice and routes to Register. No local creation here; local
+            // lookup for EXISTING accounts above is untouched.
             showAlert(
-                "Account Not Found",
-                `No account found for "${name.trim()}". Would you like to create an offline-only account with these credentials?`,
+                "Login Failed",
+                `No account found for "${name.trim()}". Don't have an account? Register to create one.`,
                 [
-                    {
-                        text: "Create Offline Account",
-                        onPress: async () => {
-                            const { generateUUID } = require('../utils/uuid');
-                            const offlineId = generateUUID();
-                            const usersList = await getUsers();
-                            const localDuplicate = usersList.find((u) => (u.name as string).toLowerCase() === name.trim().toLowerCase());
-
-                            if (localDuplicate) {
-                                showAlert("Username Taken", "This username is already registered on this device.");
-                                return;
-                            }
-
-                            await addUser(offlineId, name.trim(), passcode.trim());
-                            await saveUserProfile({ name: name.trim(), isFirstRun: true, initialBalance: 0 }, offlineId);
-                            await initDb(offlineId);
-                            await setSetting('autoBackup', 'false');
-                            await login(offlineId, "offline_token");
-                            setLoading(false);
-                        }
-                    },
+                    { text: "Register", onPress: () => router.replace("/register") },
                     { text: "Try Again", style: "cancel", onPress: () => setLoading(false) }
                 ]
             );
@@ -153,7 +153,7 @@ export default function LoginScreen() {
 
         if (!API_URL) {
             console.info("No API_URL configured, using local-only login");
-            await attemptLocalLogin();
+            await attemptLocalLogin("unreachable");
             setLoading(false);
             return;
         }
@@ -196,14 +196,17 @@ export default function LoginScreen() {
         } else if (lastResult.status === 401) {
             console.info("Cloud login returned 401 - checking local users...");
 
-            // SPEC-28 D-04 — a reachable server explicitly rejected these
-            // credentials. Email names are server-authoritative: never fall
-            // back to a (possibly ghost) local session, on any platform.
-            if (isEmailShapedName(name)) {
-                console.info("Email login rejected by server - hard fail, no local fallback");
+            // SPEC-28 D-04 + SPEC-31 CON-01 — a reachable server explicitly
+            // rejected these credentials. Email names are server-authoritative:
+            // never fall back to a (possibly ghost) local session, on any
+            // platform. Web hard-fails for ANY name (never local).
+            if (isEmailShapedName(name) || !isLocalAuthAllowed(Platform.OS)) {
+                console.info("Login rejected by server - hard fail, no local fallback");
                 showAlert(
                     "Login Failed",
-                    "Invalid email or PIN. This account may have been deleted."
+                    isEmailShapedName(name)
+                        ? "Invalid email or PIN. This account may have been deleted."
+                        : "Invalid user name and PIN."
                 );
                 setLoading(false);
                 return;
@@ -240,7 +243,7 @@ export default function LoginScreen() {
             console.info("Cloud login failed after retries, showing transient notice then local fallback");
             setOfflineNotice(true);
             setTimeout(() => setOfflineNotice(false), 3000);
-            await attemptLocalLogin();
+            await attemptLocalLogin("unreachable");
         }
 
         setLoading(false);

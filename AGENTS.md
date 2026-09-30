@@ -288,6 +288,25 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   once-per-visit Offline suggestion modal; Local autoBackup ON → re-registration (new Cloud identity,
   guided skippable export, old Local intact, no merge). Supersedes SPEC-04 D-06/D-07/D-09 parts + ACC-06
   on implementation day. D-01..D-06 pending — queued behind SPEC-28/29. See `docs/savepoint.md`.
+- **2026-09-30 — Spec 30 implemented.** `utils/localGate.ts` new (device-online gate, suggestion resolver,
+  reregistration guards/payload/validators/invariants + copy constants) + `utils/localGate.test.ts`
+  (ACC-01..05 × android/ios/web); `app/register.tsx` once-per-visit Offline suggestion modal + explicit
+  local-fallback confirm (no silent fallback); `app/login.tsx` Create Offline Account removed everywhere
+  (plain failure + Register route); `app/(tabs)/settings.tsx` Local promotion = honesty → skippable export →
+  email+PIN re-register → new Cloud session, old Local intact, no merge (button renamed to
+  "Register Online Account", switch enabled for Local, offline guard zero fetch/write);
+  `hooks/useCloudLink.ts` Alert → settings routing (web-safe). SPEC-04 D-06/D-07/ACC-06/D-09-mobile-note/CON-03
+  retired per CON-07; ACC-10 preserved. User-run verification pending: tsc, `npm test`, eslint, Expo Go + web export.
+  See `docs/savepoint.md`.
+- **2026-09-30 — Spec 31 FINAL + implemented.** `specs/31-web-never-local-and-logout-hygiene.md` v1.0.
+  D-01 web never local (`isLocalAuthAllowed` gate + `attemptLocalLogin` early-out: unreachable → Connect notice,
+  unknown/401 → plain failure + Register route, zero local reads/writes on web). D-02 logout hygiene
+  (`clearSessionCaches`, both token stores cleared, session-kill reuses helper; stored data preserved).
+  D-05 Settings PIN unification (shared `deviceId` on all three auth calls, explicit session-conflict notice
+  never reported as wrong PIN, fallback matches id-or-name). Retired: SPEC-04 ACC-10/DEC-04/D-09-web/D-06-web;
+  SPEC-28 CON-04/05-web-clauses/goal-row/ACC-09; SPEC-30 §1.3/DEC-02-web. `utils/localGate.test.ts` extended
+  (ACC-01..04 + ACC-07..09 × android/ios/web). User-run verification pending: tsc, `npm test`, eslint,
+  Expo Go + web export (ACC-05/06/10). See `docs/savepoint.md`.
 
 ---
 

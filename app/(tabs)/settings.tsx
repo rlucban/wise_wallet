@@ -7,7 +7,7 @@ import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
 import { setSetting, clearAllLocalData, exportData, importData, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
-import { parseVerifyLoginResponse, purgeUserDeviceData, resolveDeleteOutcome } from "../../utils/accountDelete";
+import { purgeUserDeviceData, resolveDeleteOutcome } from "../../utils/accountDelete";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
@@ -20,6 +20,25 @@ import { authFetch } from "../../utils/apiClient";
 import { useSyncStatus } from "../../hooks/useSyncStatus";
 import { useNetwork } from "../../context/NetworkContext";
 import { useIsLocalAccount } from "../../utils/authMode";
+import {
+  getDeviceOnline,
+  isReregistrationAllowed,
+  buildCloudRegisterPayload,
+  buildAuthLoginPayload,
+  classifyAuthLoginResult,
+  findAuthUserRow,
+  getOrCreateDeviceId,
+  isValidReregistrationEmail,
+  isValidReregistrationPin,
+  REREGISTER_CONNECT_MESSAGE,
+  REREGISTER_HONESTY_TITLE,
+  REREGISTER_HONESTY_MESSAGE,
+  REREGISTER_EXPORT_TITLE,
+  REREGISTER_EXPORT_MESSAGE,
+  REREGISTER_FORM_TITLE,
+  REREGISTER_SUCCESS_TITLE,
+  REREGISTER_SUCCESS_MESSAGE,
+} from "../../utils/localGate";
 import * as Crypto from 'expo-crypto';
 import { Transaction, Category, Due, SavingsItem, UserProfile } from "../../types";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -228,6 +247,13 @@ export default function SettingsScreen() {
   const [verificationError, setVerificationError] = useState("");
   const [showNewAccountDialog, setShowNewAccountDialog] = useState(false);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
+  // SPEC-30 D-03 — re-registration promotion (Local -> NEW Cloud identity).
+  const [showReregisterHonesty, setShowReregisterHonesty] = useState(false);
+  const [showReregisterExport, setShowReregisterExport] = useState(false);
+  const [showReregisterForm, setShowReregisterForm] = useState(false);
+  const [regEmail, setRegEmail] = useState("");
+  const [regPin, setRegPin] = useState("");
+  const [regError, setRegError] = useState("");
   const [pinInput, setPinInput] = useState("");
   const [showChangePasscodeDialog, setShowChangePasscodeDialog] = useState(false);
   const [currentPasscodeInput, setCurrentPasscodeInput] = useState("");
@@ -257,11 +283,97 @@ export default function SettingsScreen() {
      await setSetting('autoBackup', value.toString());
    };
 
+   // SPEC-30 D-03/CON-05 — Local promotion entry. Offline: notice only,
+   // zero fetch + zero settings writes. Online: honesty dialog.
+   const startReregisterFlow = async () => {
+     if (!isReregistrationAllowed(getDeviceOnline())) {
+       showMessage("error", "No Connection", REREGISTER_CONNECT_MESSAGE);
+       return;
+     }
+     setRegEmail("");
+     setRegPin("");
+     setRegError("");
+     setShowReregisterHonesty(true);
+   };
+
+   // SPEC-30 D-03/CON-03 — fresh cloud registration. MUST NOT merge, move,
+   // or delete the old Local rows; the old UUID stays reachable via logout.
+   const completeReregistration = async () => {
+     const email = regEmail.trim();
+     const pin = regPin.trim();
+     if (!isValidReregistrationEmail(email)) {
+       setRegError("Please enter a valid email address");
+       return;
+     }
+     if (!isValidReregistrationPin(pin)) {
+       setRegError("PIN must be exactly 4 digits");
+       return;
+     }
+     if (!API_URL) {
+       setRegError(REREGISTER_CONNECT_MESSAGE);
+       return;
+     }
+     if (!isReregistrationAllowed(getDeviceOnline())) {
+       setRegError(REREGISTER_CONNECT_MESSAGE);
+       return;
+     }
+     setIsSyncing(true);
+     setRegError("");
+     try {
+       const response = await fetch(`${API_URL}/auth/register`, {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify(buildCloudRegisterPayload(email, pin)),
+       });
+       const responseData = (await response.json().catch(() => null)) as {
+         message?: string;
+         data?: { user?: { id?: unknown }; token?: unknown };
+       } | null;
+       if (!response.ok) {
+         const msg = responseData?.message || "Email is not available.";
+         setRegError(msg);
+         return;
+       }
+       const newUserId = String(responseData?.data?.user?.id ?? "");
+       const newToken = String(responseData?.data?.token ?? "");
+       if (!newUserId || !newToken) {
+         setRegError("Registration succeeded but the server response was invalid.");
+         return;
+       }
+       // New identity only: old Local keys are never read-modified-written
+       // here, never POSTed, never deleted.
+       await addUser(newUserId, email, pin);
+       await saveUserProfile(
+         { name: email, isFirstRun: false, initialBalance: 0, autoBackup: true },
+         newUserId
+       );
+       await initDb(newUserId);
+       await login(newUserId, newToken);
+       await setAutoBackup(true);
+       await Promise.all([
+         refetchTx(),
+         refetchCats(),
+         refetchProfile()
+       ]);
+       setShowReregisterForm(false);
+       setRegEmail("");
+       setRegPin("");
+       showMessage("success", REREGISTER_SUCCESS_TITLE, REREGISTER_SUCCESS_MESSAGE);
+     } catch (e) {
+       console.error("Re-registration failed:", e);
+       setRegError("Cannot reach server. Check your connection.");
+     } finally {
+       setIsSyncing(false);
+     }
+   };
+
    const handleToggleAutoBackup = async (val: boolean) => {
-     if (isLocal && val) {
-       setVerificationError("");
-       setPinVerificationInput("");
-       setShowPinVerificationDialog(true);
+     // SPEC-30 CON-03/CON-04 — Local ON routes to the single re-registration
+     // flow ("Register Online Account"). Cloud ON keeps the PIN verify flow.
+     if (isEffectivelyLocal) {
+       if (val) {
+         await startReregisterFlow();
+       }
        return;
      }
      if (val) {
@@ -273,43 +385,55 @@ export default function SettingsScreen() {
      }
    };
 
-   const verifyPinForSync = async () => {
-     if (!pinVerificationInput.trim()) {
-       setVerificationError("PIN is required");
-       return;
-     }
-     setIsSyncing(true);
-     setVerificationError("");
-     try {
-       const response = await fetch(`${API_URL}/auth/login`, {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({
-           name: profile?.name || "",
-           passcode: pinVerificationInput.trim(),
-           force: true
-         }),
-       });
+    const verifyPinForSync = async () => {
+      if (!pinVerificationInput.trim()) {
+        setVerificationError("PIN is required");
+        return;
+      }
+      setIsSyncing(true);
+      setVerificationError("");
+      try {
+        // SPEC-31 CON-05 — same deviceId scheme as login; a session conflict
+        // is reported explicitly, never as a wrong PIN.
+        const deviceId = await getOrCreateDeviceId();
+        const response = await fetch(`${API_URL}/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildAuthLoginPayload({
+            name: profile?.name || "",
+            passcode: pinVerificationInput.trim(),
+            deviceId,
+            force: true,
+          })),
+        });
+        const outcome = classifyAuthLoginResult({
+          ok: response.ok,
+          status: response.status,
+          body: await response.json().catch(() => null),
+        });
 
-       if (response.ok) {
-         setShowPinVerificationDialog(false);
-         setPinVerificationInput("");
-         const data = (await response.json()).data;
-         await login(data.user.id, data.token);
-         await setSetting('autoBackup', 'true');
-         await proceedWithBackupEnable();
-       } else {
-         setShowPinVerificationDialog(false);
-         setPinVerificationInput("");
-         setShowNewAccountDialog(true);
-       }
-     } catch (e) {
-       console.error("PIN verification failed:", e);
-       setVerificationError("Cannot reach server. Check your connection.");
-     } finally {
-       setIsSyncing(false);
-     }
-   };
+        if (outcome.outcome === "authenticated") {
+          setShowPinVerificationDialog(false);
+          setPinVerificationInput("");
+          await login(outcome.userId, outcome.token);
+          await setSetting('autoBackup', 'true');
+          await proceedWithBackupEnable();
+        } else if (outcome.outcome === "conflict") {
+          setShowPinVerificationDialog(false);
+          setPinVerificationInput("");
+          showMessage("error", "Session Active", "This account is already logged in on another device. Log in again to move the session here, then retry.");
+        } else {
+          setShowPinVerificationDialog(false);
+          setPinVerificationInput("");
+          setShowNewAccountDialog(true);
+        }
+      } catch (e) {
+        console.error("PIN verification failed:", e);
+        setVerificationError("Cannot reach server. Check your connection.");
+      } finally {
+        setIsSyncing(false);
+      }
+    };
 
    const proceedWithBackupEnable = async () => {
      setIsSyncing(true);
@@ -665,14 +789,17 @@ export default function SettingsScreen() {
 
     let pinVerified = false;
     try {
+      // SPEC-31 CON-05 — same deviceId scheme as login.
+      const deviceId = await getOrCreateDeviceId();
       const verifyRes = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.stringify(buildAuthLoginPayload({
           name: profile?.name || "",
           passcode: pinInput.trim(),
+          deviceId,
           force: true,
-        }),
+        })),
       });
       pinVerified = verifyRes.ok;
     } catch {
@@ -682,13 +809,14 @@ export default function SettingsScreen() {
     if (!pinVerified && activeUserId) {
       try {
         const users = await getUsers();
-        const user = users.find((u) => u.id === activeUserId);
+        // SPEC-31 CON-05 — match by id or case-insensitive name.
+        const user = findAuthUserRow(users, { id: activeUserId, name: profile?.name || "" });
         if (user) {
           const inputHash = await Crypto.digestStringAsync(
             Crypto.CryptoDigestAlgorithm.SHA256,
             pinInput.trim()
           );
-          pinVerified = user.passcode === inputHash;
+          pinVerified = user.passcode === inputHash || user.passcode === pinInput.trim();
         }
       } catch {
         // local verify failed too
@@ -874,53 +1002,62 @@ export default function SettingsScreen() {
     setDeleteConfirmed(false);
   };
 
-  const verifyAccountPin = async (pin: string): Promise<boolean> => {
-    let verified = false;
+  const verifyAccountPin = async (pin: string): Promise<"verified" | "conflict" | "invalid"> => {
     if (API_URL) {
       try {
+        // SPEC-31 CON-05 — same deviceId scheme as login.
+        const deviceId = await getOrCreateDeviceId();
         const res = await fetch(`${API_URL}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          body: JSON.stringify(buildAuthLoginPayload({
             name: profile?.name || "",
             passcode: pin.trim(),
+            deviceId,
             force: true,
-          }),
+          })),
         });
-        if (res.ok) {
+        const outcome = classifyAuthLoginResult({
+          ok: res.ok,
+          status: res.status,
+          body: await res.json().catch(() => null),
+        });
+        if (outcome.outcome === "authenticated") {
           // SPEC-28 D-01 — this force login kills the current JWT server-side,
           // so store the fresh token BEFORE any authenticated call follows.
-          const parsed = parseVerifyLoginResponse(
-            await res.json().catch(() => null)
-          );
-          if (parsed) {
-            await login(parsed.userId, parsed.token);
-            return true;
-          }
-          verified = true;
+          await login(outcome.userId, outcome.token);
+          return "verified";
         }
+        if (outcome.outcome === "conflict") {
+          return "conflict";
+        }
+        // rejected/unreachable — fall through to local verification
       } catch {
         // server unreachable — fall through to local verification
       }
     }
 
-    if (!verified && activeUserId) {
+    if (activeUserId) {
       try {
         const users = await getUsers();
-        const user = users.find((u) => u.id === activeUserId);
+        // SPEC-31 CON-05 — match by id or case-insensitive name; a stale
+        // session id MUST NOT lock out the legitimate row owner.
+        const user = findAuthUserRow(users, { id: activeUserId, name: profile?.name || "" });
         if (user) {
           const inputHash = await Crypto.digestStringAsync(
             Crypto.CryptoDigestAlgorithm.SHA256,
             pin.trim()
           );
-          verified = user.passcode === inputHash || user.passcode === pin.trim();
+          if (user.passcode === inputHash || user.passcode === pin.trim()) {
+            return "verified";
+          }
         }
       } catch {
         // local verification failed too
       }
     }
 
-    return verified;
+    return "invalid";
   };
 
   const handleVerifyDeletePin = async () => {
@@ -931,9 +1068,11 @@ export default function SettingsScreen() {
     setIsSyncing(true);
     setDeletePinError("");
     try {
-      const verified = await verifyAccountPin(deletePinInput);
-      if (verified) {
+      const result = await verifyAccountPin(deletePinInput);
+      if (result === "verified") {
         setPinVerified(true);
+      } else if (result === "conflict") {
+        showMessage("error", "Session Active", "This account is already logged in on another device. Log in again to move the session here, then retry.");
       } else {
         setDeletePinError("Invalid PIN. Please try again.");
       }
@@ -1201,7 +1340,7 @@ export default function SettingsScreen() {
                 <List.Icon icon="cloud-sync" color={paperTheme.colors.onSurfaceVariant} />
                 <Text variant="bodyLarge" style={{ marginLeft: 12 }}>Auto-Backup</Text>
               </View>
-              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={isUsernameOnly || isLocal} />
+              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={isSyncing} />
             </View>
 
             <Divider style={{ marginVertical: 8 }} />
@@ -1237,8 +1376,8 @@ export default function SettingsScreen() {
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>Account</Text>
             {isEffectivelyLocal && (
-              <Button mode="contained" icon="cloud-upload-outline" onPress={() => handleToggleAutoBackup(true)} style={{ marginBottom: 8 }}>
-                Make Online
+              <Button mode="contained" icon="cloud-upload-outline" onPress={() => startReregisterFlow()} style={{ marginBottom: 8 }}>
+                Register Online Account
               </Button>
             )}
             <Button mode="outlined" icon="account-switch" onPress={handleLogout} textColor={paperTheme.colors.primary} style={{ marginBottom: 8 }}>
@@ -1395,13 +1534,10 @@ export default function SettingsScreen() {
         />
 
         <Dialog visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)}>
-          <Dialog.Title>{isLocal ? "Make Online" : "Verify Account PIN"}</Dialog.Title>
+          <Dialog.Title>Verify Account PIN</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
-              {isLocal
-                ? `This will convert your account to an online account. Auto-backup will be enabled and this action cannot be reverted back to local-only.\n\nEnter your PIN for "${profile?.name || "your account"}" to proceed.`
-                : `To enable cloud sync, please enter the PIN for "${profile?.name || "your account"}".`
-              }
+              {`To enable cloud sync, please enter the PIN for "${profile?.name || "your account"}".`}
             </Text>
             <TextInput
               label="Current PIN"
@@ -1423,13 +1559,10 @@ export default function SettingsScreen() {
         </Dialog>
 
         <Dialog visible={showNewAccountDialog} onDismiss={() => setShowNewAccountDialog(false)}>
-          <Dialog.Title>{isLocal ? "Create Cloud Account" : "PIN Doesn't Match"}</Dialog.Title>
+          <Dialog.Title>PIN Doesn&apos;t Match</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
-              {isLocal
-                ? "No cloud account found. This will create a new cloud account and migrate all your local data. This action cannot be reverted back to local-only."
-                : "The PIN you entered doesn't match the cloud account. Would you like to create a new cloud account with this PIN and migrate all your local data to it?"
-              }
+              {"The PIN you entered doesn't match the cloud account. Would you like to create a new cloud account with this PIN and migrate all your local data to it?"}
             </Text>
             <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
               Your existing cloud data won't be affected. This will create a separate account.
@@ -1449,6 +1582,100 @@ export default function SettingsScreen() {
           <Dialog.Actions>
             <Button onPress={() => setShowBackupDialog(false)}>Cancel</Button>
             <Button onPress={proceedWithBackupEnable} loading={isSyncing} disabled={isSyncing}>Proceed</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showReregisterHonesty} onDismiss={() => setShowReregisterHonesty(false)}>
+          <Dialog.Title>{REREGISTER_HONESTY_TITLE}</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ marginBottom: 16 }}>
+              {REREGISTER_HONESTY_MESSAGE}
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowReregisterHonesty(false)}>Cancel</Button>
+            <Button
+              mode="contained"
+              onPress={() => {
+                setShowReregisterHonesty(false);
+                setShowReregisterExport(true);
+              }}
+            >
+              Continue
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showReregisterExport} onDismiss={() => setShowReregisterExport(false)}>
+          <Dialog.Title>{REREGISTER_EXPORT_TITLE}</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ marginBottom: 16 }}>
+              {REREGISTER_EXPORT_MESSAGE}
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button
+              onPress={() => {
+                setShowReregisterExport(false);
+                setRegError("");
+                setShowReregisterForm(true);
+              }}
+            >
+              Skip
+            </Button>
+            <Button
+              mode="contained"
+              onPress={async () => {
+                await handleExportJSON();
+                setShowReregisterExport(false);
+                setRegError("");
+                setShowReregisterForm(true);
+              }}
+            >
+              Export JSON
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showReregisterForm} onDismiss={() => setShowReregisterForm(false)}>
+          <Dialog.Title>{REREGISTER_FORM_TITLE}</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ marginBottom: 16 }}>
+              Enter the email + PIN for your NEW Online account. Your current Local data stays on this device.
+            </Text>
+            <TextInput
+              label="Email"
+              value={regEmail}
+              onChangeText={(t) => { setRegEmail(t); setRegError(""); }}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={{ marginBottom: 12 }}
+              disabled={isSyncing}
+            />
+            <TextInput
+              label="4-digit PIN"
+              value={regPin}
+              onChangeText={(t) => { setRegPin(t.replace(/[^0-9]/g, "").slice(0, 4)); setRegError(""); }}
+              secureTextEntry
+              keyboardType="numeric"
+              maxLength={4}
+              style={{ marginBottom: 4 }}
+              disabled={isSyncing}
+            />
+            {regError ? (
+              <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>{regError}</Text>
+            ) : null}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowReregisterForm(false)} disabled={isSyncing}>Cancel</Button>
+            <Button
+              mode="contained"
+              onPress={completeReregistration}
+              loading={isSyncing}
+              disabled={isSyncing || !isValidReregistrationEmail(regEmail) || regPin.trim().length !== 4}
+            >
+              Register
+            </Button>
           </Dialog.Actions>
         </Dialog>
 
