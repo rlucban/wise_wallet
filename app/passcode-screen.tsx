@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { View, StyleSheet } from "react-native";
+import type { TextInput as RNTextInput } from "react-native";
 import { Text, TextInput, useTheme, Card, HelperText } from "react-native-paper";
 import { usePasscode } from "../context/PasscodeContext";
 
@@ -8,7 +9,7 @@ export default function PasscodeScreen() {
   const { passcode, setIsUnlocked } = usePasscode();
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
-  const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
+  const inputRef = useRef<RNTextInput>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
