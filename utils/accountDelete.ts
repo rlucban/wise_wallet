@@ -88,7 +88,6 @@ function getFileSystem(): {
 } | null {
   try {
     // Lazy so jest (node) and import-time evaluation never touch native code.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require("expo-file-system/legacy") as {
       deleteAsync: (uri: string, options?: Record<string, unknown>) => Promise<unknown>;
     };
