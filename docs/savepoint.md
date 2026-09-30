@@ -725,3 +725,189 @@ answers "is this token live?") keeps the existing conflict gate intact and P-06 
 - **D-07/D-08:** spec Status → FINAL; pending user-run verification: `npx tsc --noEmit`,
   `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go Android+iOS
   (ACC-09/10/11) + `expo export --platform web` (ACC-09/10/11).
+
+## 2026-09-30 — Spec 39 FINAL + implemented (web auto-backup is a hard rule, never written)
+
+`specs/39-web-autobackup-always-on.md` v1.0. **The user-facing question was "will it not save
+any data on web?" — the answer is the inverse, and that is why this mattered.**
+
+### What `autoBackup` actually is (and is not)
+
+It is **not a backup**. It is a **data-plane selector**:
+- **ON** → the server *is* the database. Every add/update/delete goes straight to the API;
+  nothing persisted to AsyncStorage, no queue.
+- **OFF** → this device keeps its own copy in AsyncStorage and **automatic sync pauses**
+  (`isTransactionSyncPaused`, `utils/transactionSync.ts:57-63`).
+
+So the switch really asks *"should my data live on this phone, or in the cloud right now?"*
+And when OFF, nothing is auto-uploaded — hence the manual "Backup Data to Cloud API Now" /
+"Restore" buttons. **"Auto-Backup: off" means "I am not automatically uploading anything",
+not "I have no backup."**
+
+### It is completely inert on web — verified, so the risk was false assurance
+
+Traced `addTransaction` (`context/TransactionsContext.tsx:202-238`): `resolveActivePlane`
+short-circuits to `"api-only"` on web, the function `apiCreate`s and **returns early**, and
+`getSetting('autoBackup') !== 'false'` on line 233 is **never evaluated**. Same shape in the
+update/delete paths and `CategoriesContext`. `isAutoBackupOn` (`utils/apiOnly.ts:28-35`) only
+feeds `resolveDataPlane`, which already short-circuits on web.
+
+**Consequence: no data loss and no "sync broken on web" bug.** Every write reaches the server
+immediately regardless of the flag. The real harm was the opposite — `resolveModeState` is
+**platform-blind**, so with the flag `false` (set on a phone) the web UI showed the switch
+**OFF**, the subtitle **"Cloud account — sync off"** (`settings.tsx:1223`), and `SyncStatusCard`
+**"Sync off"** (`:98`), while everything was in fact being written to the cloud. That is a
+**data-residency misstatement**, not a cosmetic bug. The two manual Backup/Restore buttons also
+appeared, where the server *is* the datastore (a restore could overwrite the live log with a
+stale snapshot).
+
+### The cross-device hazard
+
+`disableAutoBackupWithSeed`'s web branch called `updateProfile({ autoBackup: false })` →
+`ensureCloudProfile` → **PUT of the shared profile** (`UserProfileContext.tsx:133-149`). So on
+web, toggling OFF wrote `false` and flipped the **phone** to `local-persist`; toggling ON wrote
+`true` and flipped the **phone** to `api-only`, i.e. it stopped persisting entities locally —
+triggered by a browser action, with no consent on that device.
+
+### Changes shipped
+
+- **D-01 — `utils/modeState.ts`:** new pure `resolveAutoBackupControl({ token, profileName,
+  profileAutoBackup, platformOs })` → `{ effective, writable, deviceDiffers, lockedCopy }`,
+  plus `WEB_AUTOBACKUP_ALWAYS_ON` and `WEB_AUTOBACKUP_DEVICE_NOTE`. `resolveModeState`,
+  `resolveDataPlane` and `resolveToggleRoute` are **byte-identical** (SPEC-36 preserved,
+  CON-09). Local → `{ false, writable: true, … }` unchanged on every platform.
+- **D-02 — `app/(tabs)/settings.tsx` (display + gating only):** the display value now comes
+  from the new resolver, so the switch, subtitle, `SyncStatusCard`, export/import gating and
+  the manual buttons are all consistent again. Switch reads on + `disabled` on web with the
+  hard-rule copy; `handleToggleAutoBackup` early-returns when not writable; the web branch of
+  `disableAutoBackupWithSeed` is now a bare `return` with **no** profile write; both manual
+  buttons additionally require `!isApiOnlyPlane` (CON-10 defense in depth).
+- **D-03 — `utils/modeState.test.ts`:** SPEC-39 ACC-01..06 × `android`/`ios`/`web`, prefixed
+  because the file already hosts SPEC-36's ACC-01..05. Unlike the platform-blind helpers above,
+  this resolver is platform-aware **by design**, so the matrix carries real signal: `web` MUST
+  diverge for Cloud and MUST NOT for Local. ACC-06 is a seven-assertion source scan.
+- **Zero data-layer change (CON-08):** `resolveDataPlane` / `resolveActivePlane` /
+  `isAutoBackupOn` and every `resolveActivePlane` call site in `context/*` and `hooks/*` are
+  untouched. No server change, no DDL, no migration, no new dependency (CON-12).
+
+### Deferred, deliberately (two contradictions found, neither fixed)
+
+- **SPEC-27's "autoBackup per-device never synced" intent was never implemented** — the flag is
+  written to the shared cloud profile (`settings.tsx:304`). SPEC-39 keeps the synced model and
+  only stops web from writing it.
+- **Native display already diverges from behavior:** the Settings display reads only the
+  *profile* flag (token-only, SPEC-36 D-01) while `resolveActivePlane` reads the *local settings
+  store first* (`utils/apiOnly.ts:44-57`). A store `'false'` with profile `true` also displays
+  "ON" while behaving as local-persist. Pre-existing, out of scope.
+- **Naming.** "Auto-Backup" means neither backup nor local-only, and for Local accounts the
+  switch is not a backup control at all — it is the SPEC-30 "Register Online Account" entry
+  point. A relabel spec and a per-device-storage spec were requested for later; neither is in
+  this spec.
+- **D-04/D-05:** spec Status → FINAL; pending user-run verification: `npx tsc --noEmit`,
+  `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go Android+iOS
+  (ACC-08/09/10) + `expo export --platform web` (ACC-07/09).
+
+## 2026-09-30 — Spec 40 FINAL + implemented (auto-backup is per-device, and says what it is)
+
+`specs/40-autobackup-per-device-and-relabel.md` v1.0. The "Auto-Backup" control is **not a
+backup** — it is a **data-plane selector**: ON = the server *is* the database (direct API
+writes, no AsyncStorage entity persistence); OFF = this device keeps its own copy and
+**automatic sync pauses** (`isTransactionSyncPaused`, `utils/transactionSync.ts:57-63`). So the
+switch answers *"should my data live on this phone, or in the cloud right now?"*
+
+### The finding that shrank this: per-device storage already existed and already won
+
+`setAutoBackup` had always written **both** the shared profile and the per-device settings key,
+and `isAutoBackupOn` already read the **per-device store first**. So the *behavior* was already
+per-device — only the shared write was vestigial, and it was the entire source of the
+cross-device hazard. This was therefore a **deletion**, not a migration:
+**anyone who ever toggled already has a store value; anyone who never toggled seeds from the
+profile, which is today's exact code path. No data migration, no repair pass.**
+
+- **D-01 — `utils/modeState.ts`:** `AutoBackupControlInput` gained
+  `deviceSettingValue?: string | null` (the raw per-device store value) and the resolver applies
+  store-first precedence, so the display can no longer read a different source than the data
+  layers. New copy: `SYNC_ROW_LABEL` ("Cloud sync"), `SYNC_STATE_LIVE` (*"Live — every change
+  is saved to your cloud account as you make it."*), `SYNC_STATE_OFF` (*"Off — this device keeps
+  its own copy and syncing is paused."*). `resolveModeState` / `resolveDataPlane` /
+  `resolveToggleRoute` byte-identical (SPEC-36 preserved).
+- **D-02 — `app/(tabs)/settings.tsx`:** the per-device value is read synchronously from
+  `getCachedSetting('autoBackup')`; `setAutoBackup` **dropped its `updateProfile` call** and
+  writes only the per-device key; the `!activeUserId` branch is now a bare `return`; the switch
+  row is **not rendered for Local accounts** (it was a redundant second entry point — the
+  dedicated "Register Online Account" button at `settings.tsx:1371-1373` is the sole one, and
+  is unchanged); the row label, the state line, and the success messages are relabelled away
+  from "Auto-Backup". All SPEC-39 guards survive.
+- **D-03 — `utils/modeState.test.ts`:** SPEC-40 ACC-01..08 × `android`/`ios`/`web`. **ACC-05 is
+  the important one**: it imports `isAutoBackupOn` from `./apiOnly` (with `./apiClient` and
+  `./syncProcessor` mocked, mirroring `apiOnly.test.ts`) and asserts the resolver agrees with it
+  across a store × profile × platform matrix, so display-vs-behavior drift (§1.3) becomes
+  unrepresentable rather than merely documented.
+
+### A contradiction the spec itself had, caught during implementation
+
+CON-04 originally required `isAutoBackupOn` to stay byte-identical — but its precedence gave
+the store only a **negative** override (`if (storeValue === "false") return false;`). With the
+profile write removed, the profile becomes a *frozen* legacy value, and this combination
+resolved **OFF**:
+
+| Step | store | profile | old `isAutoBackupOn` |
+|---|---|---|---|
+| Phone had sync OFF (wrote `profile=false`) | `'false'` | `false` | OFF ✓ |
+| User turns it back **ON** — now writes *only* the store | `'true'` | `false` | **OFF** ✗ |
+
+**Any account that had ever turned sync off could never turn it back on.** Caught while writing
+ACC-01, reported to the user, and resolved (user, 2026-09-30) by amending CON-04 to permit
+exactly one change: **a present store value wins outright**, and the profile is consulted only
+when the store value is absent. `utils/apiOnly.ts` `isAutoBackupOn` gained
+`if (storeValue === "true") return true;` ahead of the old check, mirrored exactly in
+`modeState.ts`. `resolveDataPlane`, `resolveActivePlane` and `isTransactionSyncPaused` remain
+byte-identical, and no plane decision changes: for a device with no stored value the result is
+unchanged. **ACC-08** pins the regression this amendment exists to prevent.
+
+### Honest accounting of spec drift
+
+- The spec's D-02 list named only two of the user-visible "Auto-Backup" strings. Four more
+  existed and were also renamed to satisfy CON-05/ACC-06: the "No Connection" error, the
+  `Cloud Sync On` / `Cloud Sync Off` success messages, the "Sync off" card body, and the
+  "Turn Cloud Sync On?" dialog title. One `console.error` string was renamed too, so a
+  source scan can now assert **zero** occurrences of `auto-backup` in `settings.tsx`.
+- The spec's ACC-01 wording ("on every platform") contradicted ACC-03/CON-08, since web is
+  locked on. ACC-01 was corrected to branch on writability.
+- **ACC-01 in the spec also failed to state the `'true'` direction** (store `'true'` must beat
+  a `false` profile), which is the half that was broken. Now stated explicitly in ACC-01 and
+  pinned by ACC-08.
+
+### Signed-off semantic change (DEC-02 / CON-09)
+
+**Turning sync off on one device no longer affects any other device.** That is the point — it
+is SPEC-27's original "per-device never synced" decision finally implemented, and it removes the
+hazard where a browser action silently flipped a phone out of `local-persist`. The shared
+`profiles.autoBackup` column is now a **read-only seed** for a device with no stored value; the
+client never writes it. No DDL, no type change, no migration, no new dependency.
+
+- **D-04/D-05:** spec Status → FINAL; pending user-run verification: `npx tsc --noEmit`,
+  `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go Android+iOS
+  (ACC-09/10/11) + `expo export --platform web` (ACC-08).
+
+### Second gap found in my own implementation, after the user asked "are we sure it fixes?"
+
+The first cut sourced the per-device value from `getCachedSetting('autoBackup')`. That is an
+**in-memory `Map`** (`utils/cache.ts:2`) populated only by `setCachedSetting` — **never hydrated
+from AsyncStorage**, and wiped by `clearSessionCaches()` on login/logout. It is therefore
+`undefined` on **every cold start and immediately after login**, which would have made the
+display fall back to the profile seed — reopening exactly the divergence CON-03 claims to close,
+in the case that matters most. ACC-05 would still have passed, because it pins the resolver to
+`isAutoBackupOn` for the *inputs given*; nothing pinned the value the screen was fed.
+
+**Fix:** read the value through **`getSetting('autoBackup')`** (`utils/db.ts:135-144`) — the
+canonical reader every other path already uses, which does cache → `user_{id}_settings` → `|| null`
+from the *same* `getPrefixedKey('settings')` key as the behavioral path **and** hydrates the cache
+so `resolveActivePlane`'s fast path benefits too. Parity is structural rather than copied. Two
+guards added: the read re-runs on `activeUserId` change (`getPrefixedKey` is active-user-scoped),
+and the switch stays `disabled` until the value resolves, so **no frame can present the profile
+seed as the device's own value**.
+
+Also fixed: the ACC-07 copy-scan regex `/auto-?backup/i` matched the camelCase **identifier**
+`autoBackup` (~20 legitimate references) and would have failed. Separator is now required
+(`/auto[- ]backup/i`).

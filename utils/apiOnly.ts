@@ -23,12 +23,16 @@ export function resolveDataPlane(args: {
 }
 
 // Mirrors every context's established gating input (`getSetting` store value
-// with profile/default fallback): store 'false' forces OFF; otherwise the
-// profile flag; otherwise Cloud-default ON.
+// with profile/default fallback).
+// SPEC-40 CON-04 — a PRESENT per-device store value wins outright; the profile
+// is only a seed for a device that has no stored value (it is never written
+// now). Previously only 'false' overrode, so `store='true'` + a legacy
+// `profile=false` resolved OFF and sync could never be turned back on.
 export function isAutoBackupOn(
   storeValue: string | null,
   profileValue?: boolean
 ): boolean {
+  if (storeValue === "true") return true;
   if (storeValue === "false") return false;
   if (typeof profileValue === "boolean") return profileValue;
   return true;

@@ -6,7 +6,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
-import { setSetting, clearAllLocalData, exportData, importData, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
+import { setSetting, clearAllLocalData, exportData, importData, API_URL, addUser, saveUserProfile, initDb, getUsers, getSetting } from "../../utils/db";
 import { purgeUserDeviceData, resolveDeleteOutcome } from "../../utils/accountDelete";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
@@ -27,7 +27,14 @@ import { authFetch } from "../../utils/apiClient";
 import { useSyncStatus } from "../../hooks/useSyncStatus";
 import { useNetwork } from "../../context/NetworkContext";
 import { useIsLocalAccount } from "../../utils/authMode";
-import { resolveModeState, resolveDataPlane } from "../../utils/modeState";
+import {
+  resolveAutoBackupControl,
+  resolveDataPlane,
+  SYNC_ROW_LABEL,
+  SYNC_STATE_LIVE,
+  SYNC_STATE_OFF,
+  WEB_AUTOBACKUP_DEVICE_NOTE,
+} from "../../utils/modeState";
 import {
   getDeviceOnline,
   isReregistrationAllowed,
@@ -86,7 +93,7 @@ function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal:
     ? `ID ${truncateUserId(activeUserId)} · Stored on this device`
     : apiOnly
     ? `ID ${truncateUserId(activeUserId)} · Live`
-    : `ID ${truncateUserId(activeUserId)} · Backup ${autoBackup ? "on" : "off"} · ${pending} pending · ${failed} failed${deadLetters > 0 ? ` · ${deadLetters} unsendable` : ""}`;
+    : `ID ${truncateUserId(activeUserId)} · Sync ${autoBackup ? "on" : "off"} · ${pending} pending · ${failed} failed${deadLetters > 0 ? ` · ${deadLetters} unsendable` : ""}`;
 
   const getStatusColor = () => {
     if (isLocal) return { icon: "cellphone-off", text: "Local-only", color: paperTheme.colors.outline };
@@ -189,7 +196,10 @@ export default function SettingsScreen() {
   const router = useRouter();
   const paperTheme = usePaperTheme();
   const { isDarkMode, toggleTheme } = useAppTheme();
-  const { profile, updateProfile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
+  // SPEC-40 D-02(b)/CON-01 — `updateProfile` is no longer destructured: the only
+  // two calls to it were shared `autoBackup` writes, which are gone. The
+  // per-device key is written via setAutoBackup instead.
+  const { profile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
   const { isPasscodeEnabled, passcode, setIsPasscodeEnabled, setPasscode } = usePasscode();
   const { activeUserId, logout, login, token } = useAuth();
   const { refetch: refetchTx } = useTransactionsActions();
@@ -200,11 +210,41 @@ export default function SettingsScreen() {
   const { items: liveSavings, refetch: refetchSavings } = useSavings();
   const repos = useRepositories();
   const isLocal = useIsLocalAccount();
-  const { autoBackup } = resolveModeState({
-    token,
-    profileName: profile?.name,
-    profileAutoBackup: profile?.autoBackup,
-  });
+  // SPEC-40 D-02(a)/CON-03 — the per-device value comes from `getSetting`, the
+  // SAME reader every other path uses (cache → `user_{id}_settings` →
+  // `|| null`, and it hydrates the cache), so the display cannot observe a
+  // different value than the data layers. `getCachedSetting` alone was NOT
+  // sufficient: that Map is never hydrated from AsyncStorage and is wiped by
+  // clearSessionCaches(), so it is undefined on every cold start and right after
+  // login — which would have reopened exactly the divergence this closes.
+  const [deviceAutoBackup, setDeviceAutoBackup] = useState<string | null>(null);
+  const [deviceAutoBackupLoaded, setDeviceAutoBackupLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    if (!activeUserId) return;
+    (async () => {
+      const value = await getSetting('autoBackup');
+      if (cancelled) return;
+      setDeviceAutoBackup(value);
+      setDeviceAutoBackupLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeUserId]);
+
+  // SPEC-39 D-02 — the DISPLAY value must equal the value that actually
+  // governs behavior. Web is unconditionally live (resolveDataPlane), so the
+  // switch reads on/disabled there and web never writes the shared flag
+  // (CON-01/CON-02). Native and Local are byte-identical to before (CON-06/07).
+  const { effective: autoBackup, writable: autoBackupWritable, deviceDiffers, lockedCopy } =
+    resolveAutoBackupControl({
+      token,
+      profileName: profile?.name,
+      profileAutoBackup: profile?.autoBackup,
+      deviceSettingValue: deviceAutoBackup,
+      platformOs: Platform.OS,
+    });
 
   const handleLogout = async () => {
     await logout();
@@ -301,9 +341,13 @@ export default function SettingsScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
    const setAutoBackup = async (value: boolean) => {
-     await updateProfile({ autoBackup: value });
-     // SPEC-34: the autoBackup flag is mode config, not entity data — the
-     // settings-key write stays even in API-only mode (drives OFF reloads).
+     // SPEC-40 D-02(b)/CON-01 — the per-device settings key is the single
+     // source of truth: every behavioral path already reads it FIRST
+     // (isAutoBackupOn / isTransactionSyncPaused), so the shared profile write
+     // had no behavioral benefit while letting one device reconfigure another
+     // (CON-09). `profiles.autoBackup` is now a read-only seed (CON-02).
+     // SPEC-34: the flag is mode config, not entity data — the settings-key
+     // write stays even in API-only mode (drives OFF reloads).
      await setSetting('autoBackup', value.toString());
    };
 
@@ -392,6 +436,10 @@ export default function SettingsScreen() {
    };
 
     const handleToggleAutoBackup = async (val: boolean) => {
+      // SPEC-39 CON-01 — on web the control is locked; never write the shared
+      // flag from a browser. Unreachable via the disabled switch, guarded here
+      // so no future caller can bypass it.
+      if (!autoBackupWritable) return;
       // SPEC-30 CON-03/CON-04 — Local ON routes to the single re-registration
       // flow ("Register Online Account"). Cloud ON keeps the PIN verify flow.
       if (isLocal) {
@@ -410,15 +458,18 @@ export default function SettingsScreen() {
     };
 
     // SPEC-34 CON-06 — ON→OFF seeds the frozen offline log from a verified
-    // snapshot (mobile, online). Web has no OFF persistence: profile flag
-    // only. Fetch failure → stay ON with a notice, no state change.
+    // snapshot (mobile, online). Web has no OFF persistence and MUST NOT write
+    // the shared flag (SPEC-39 CON-01), so it returns without any profile write.
+    // Fetch failure → stay ON with a notice, no state change.
     const disableAutoBackupWithSeed = async () => {
-      if (Platform.OS === "web" || !activeUserId) {
-        await updateProfile({ autoBackup: false });
-        return;
-      }
+      if (Platform.OS === "web") return;
+      // SPEC-40 D-02(c)/CON-01 — with no active user there is no per-device store
+      // to write and no account to write it on. The shared profile write this
+      // replaces was already a no-op (updateProfile returns false when no
+      // profile is loaded), so this is behaviorally equivalent.
+      if (!activeUserId) return;
       if (!getDeviceOnline()) {
-        showMessage("error", "No Connection", "Connect to the internet to turn auto-backup OFF with your latest data.");
+        showMessage("error", "No Connection", "Connect to the internet to turn cloud sync OFF with your latest data.");
         return;
       }
       setIsSyncing(true);
@@ -440,9 +491,9 @@ export default function SettingsScreen() {
         }
         await setAutoBackup(false);
         await Promise.all([refetchTx(), refetchCats(), refetchProfile()]);
-        showMessage("success", "Auto-Backup Off", "Your latest cloud data is now stored on this device for offline use.");
+        showMessage("success", "Cloud Sync Off", "Your latest cloud data is now stored on this device for offline use.");
       } catch (e) {
-        console.error("Disable auto-backup failed:", e);
+        console.error("Disable cloud sync failed:", e);
         showMessage("error", "Couldn't Reach Server", "Staying ON — try again when online.");
       } finally {
         setIsSyncing(false);
@@ -523,7 +574,7 @@ export default function SettingsScreen() {
          refetchSavings(),
          refetchProfile()
        ]);
-       showMessage("success", "Auto-Backup On", "Your data is now live from the cloud on all your devices.");
+        showMessage("success", "Cloud Sync On", "Your data is now live from the cloud on all your devices.");
      } catch (e) {
        console.error("Sync enable failed:", e);
        showMessage("error", "Couldn't Sync", "Your data was not changed. Check your connection and try again.");
@@ -1250,7 +1301,7 @@ export default function SettingsScreen() {
                     Sync off
                   </Text>
                   <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, opacity: 0.8 }}>
-                    Auto-backup is disabled. Your data stays on this device only.
+                    Cloud sync is off. Your data stays on this device only.
                   </Text>
                 </View>
               </View>
@@ -1299,23 +1350,57 @@ export default function SettingsScreen() {
 
             <SyncStatusCard autoBackup={autoBackup} isLocal={isLocal} />
 
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 }}>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <List.Icon icon="cloud-sync" color={paperTheme.colors.onSurfaceVariant} />
-                <Text variant="bodyLarge" style={{ marginLeft: 12 }}>Auto-Backup</Text>
-              </View>
-              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={isSyncing} />
-            </View>
+            {/* SPEC-40 D-02(d)/CON-06 — the switch is NOT rendered for a Local
+                account: it was never a backup control there, just a second entry
+                point into the SPEC-30 re-registration flow, and the dedicated
+                "Register Online Account" button below is the sole one now. */}
+            {!isLocal && (
+              <>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <List.Icon
+                      icon={autoBackup ? "cloud-check-outline" : "cloud-off-outline"}
+                      color={paperTheme.colors.onSurfaceVariant}
+                    />
+                    <Text variant="bodyLarge" style={{ marginLeft: 12 }}>{SYNC_ROW_LABEL}</Text>
+                  </View>
+                  <Switch
+                    value={autoBackup}
+                    onValueChange={handleToggleAutoBackup}
+                    disabled={isSyncing || !autoBackupWritable || !deviceAutoBackupLoaded}
+                  />
+                </View>
+
+                {/* SPEC-40 D-02(d) — name the selected mode instead of implying
+                    a backup is being taken. SPEC-39 hard-rule copy + divergence
+                    note preserved underneath. */}
+                <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>
+                  {autoBackup ? SYNC_STATE_LIVE : SYNC_STATE_OFF}
+                </Text>
+
+                {lockedCopy && (
+                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>
+                    {lockedCopy}
+                  </Text>
+                )}
+
+                {deviceDiffers && (
+                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>
+                    {WEB_AUTOBACKUP_DEVICE_NOTE}
+                  </Text>
+                )}
+              </>
+            )}
 
             <Divider style={{ marginVertical: 8 }} />
 
-            {(!autoBackup && !isLocal) && (
+            {(!autoBackup && !isLocal && !isApiOnlyPlane) && (
               <Button mode="outlined" icon="backup-restore" onPress={handleManualBackup} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
                 Backup Data to Cloud API Now
               </Button>
             )}
 
-            {(!autoBackup && !isLocal) && (
+            {(!autoBackup && !isLocal && !isApiOnlyPlane) && (
               <Button mode="outlined" icon="cloud-download" onPress={handleRestoreFromCloud} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
                 Restore Data from Cloud API
               </Button>
@@ -1639,7 +1724,7 @@ export default function SettingsScreen() {
         </Dialog>
 
         <Dialog visible={showSyncExplainDialog} onDismiss={() => setShowSyncExplainDialog(false)}>
-          <Dialog.Title>Turn Auto-Backup On?</Dialog.Title>
+          <Dialog.Title>Turn Cloud Sync On?</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
               Turning ON will sync data: fetch cloud first, then push this device&apos;s entries. Your on-device data is preserved — nothing is deleted before it is uploaded.
