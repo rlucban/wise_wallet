@@ -6,8 +6,7 @@
 // Setting it "true" in any build requires an explicit user order.
 
 export function isAdminToggleOn(): boolean {
-  const raw =
-    (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } })
-      .process?.env?.EXPO_PUBLIC_ADMIN_TOGGLE;
-  return raw === "true";
+  // Direct member access (not via globalThis): Metro statically inlines
+  // process.env.EXPO_PUBLIC_* at bundle time; indirection breaks that.
+  return process.env.EXPO_PUBLIC_ADMIN_TOGGLE === "true";
 }
