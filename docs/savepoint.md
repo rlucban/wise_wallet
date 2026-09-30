@@ -498,3 +498,63 @@ Branch `spec-28-29-delete-and-queue` (stacked on `spec-27-two-device-single-log`
 - Tests extended (ACC-03b/c): token + server-ok → one DELETE, no `/auth/login`, local wiped; 401 → device still wiped, `serverDeleted` false.
 - Known sharp edge (spec-disclosed): without credentials only the stored-token account can go — a stale token belonging to someone else deletes that account. No enablement — separate order required.
 - Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-05 needs a temporary local flag flip only, including a live-session server-delete check).
+## 2026-09-30 — SPEC-36 FINAL + implemented (v1.0)
+
+- `specs/36-mode-truth-token-only.md` v1.0 FINAL per user call (v0.1 approved as-is).
+- Context: web register/login paths audited read-only — all compliant (web forced-online, local-minting web-guarded, login never mints local tokens), locked unchanged by CON-07. Reported "registers as local" symptom traced to Settings derived state, not the token.
+- Root cause: `app/(tabs)/settings.tsx:258-261` `isUsernameOnly` (profile name not email-shaped) forces `autoBackup=false` + `isEffectivelyLocal`, mislabeling Cloud-JWT username accounts as Local-only (subtitle `:1222`), forcing the local-persist plane (`SyncStatusCard` prop `:1299`, `apiOnly` `:62`, `isApiOnlyPlane` `:764-765`), misrouting toggle-ON to re-registration (`:392-400`), and hiding manual backup/restore (`:1311,:1317`). Closes SPEC-31 §1.2 root-cause-#2 gap (diagnosed, never specified); no retirements — SPEC-04/30/31/34 stand.
+- D-01: `settings.tsx` — deleted `isUsernameOnly`/`isEffectivelyLocal`/`isValidEmail`; `autoBackup` derives via new `resolveModeState` helper (token-only); all 7 call sites branch on `isLocal` (subtitle, SyncStatusCard prop, toggle routing, `isApiOnlyPlane` via `resolveDataPlane`, manual backup/restore gates, Local card gate).
+- D-02: new `utils/modeState.ts` — pure `resolveModeState`/`resolveDataPlane`/`resolveToggleRoute` helpers; new `utils/modeState.test.ts` — ACC-01..05 × android/ios/web (JWT × name shapes, plane matrix, toggle routing, string-scan for retired symbols, local-token invariants, autoBackup derivation).
+- D-03: docs recorded; no retirements.
+- Stale-web-session boot guard (web + local token → force sign-out) NOT included — open follow-up.
+- Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-06..08).
+
+## 2026-09-30 — SPEC-36 FINAL + implemented (client-only API contract fix)
+
+`specs/36-api-only-contract-compliance.md` FINAL v1.0 per user call. Root cause of
+"stepper wizard always happens" + `Cloud create failed (status 400)`. No `wallet-api`
+change (out of scope per user) — the client adapts to the routes as implemented.
+
+**Verified server contract (read-only, `ninalamo/wallet-api` master + live probe):**
+- `profileRoutes.js` exposes `GET /`, `GET /:userId`, `PUT /:userId` only — **no POST**.
+  Live `POST /api/userProfiles` → Express `Cannot POST /api/userProfiles` (404).
+- `profileController` returns `data: { profile }` (404 `Profile not found` when missing);
+  `PUT` resolves the id as `query.userId || params.userId` = **user** id; its repository
+  filters `.eq('userId', userId)` — the profile ROW id never matches.
+- `authService.register` always pre-creates the profile row (`isFirstRun: true`).
+- `createTransactionSchema` (zod): `paymentMethod: z.string().min(1)` REQUIRED;
+  unknown keys stripped, not rejected.
+- Envelopes: list GET → `data: { transactions|categories|dues|savingsItems }`;
+  create POST → `data: { transaction|category|due|savingsItem }`;
+  profile GET → `data: { profile }`. `authFetch` unwraps only the OUTER `data`.
+
+- **D-01 — `utils/apiOnly.ts` only (no consumer-file edits):**
+  - `normalizeUserProfileResponse` descends a `{ profile }` envelope before the existing
+    array/object rules (array → userId match else first; bare object as-is; empty/nameless
+    → null — all preserved for local-plane callers).
+  - `ensureCloudProfile` is now a **single `PUT userProfiles/{userId}`** — the
+    GET → POST-if-missing → PUT-by-row-id chain was wrong twice over (route doesn't exist;
+    row id ≠ user id). No probe GET: register pre-creates the row, so a missing row just
+    fails the PUT and the caller surfaces it.
+  - `toApiBody` defaults an empty/missing `paymentMethod` to `"cash"` **on create only**
+    (server requires `min(1)`; onboarding's Opening Balance and due payments sent `""`).
+    Update is `.partial()` server-side, so the default is deliberately NOT injected there
+    — that would clobber a saved payment method (ACC-03 guards this).
+  - `apiList` unwraps the four list envelopes; `apiCreate` unwraps the five single
+    envelopes. Unknown shapes pass through untouched. `apiUpdate`/`apiDelete` untouched.
+  - This also repairs the latent api-only envelope blindness that left all four readers
+    permanently empty (`Array.isArray(data)` on an envelope object) and appended a phantom
+    envelope object as a "created row" in all four create paths.
+- **D-02 — tests:** `utils/apiOnly.test.ts` ACC-01..05 × android/ios/web (normalizer
+  envelope + legacy shapes; ensure PUT-by-userId with zero POST calls; paymentMethod default
+  create-only + `categoryId`/`userId` derivation intact; all four list envelopes; all five
+  single envelopes). The SPEC-34 `"ensureCloudProfile: POSTs when missing"` case was
+  rewritten per CON-07 (it encoded the defect), plus a source-scan guard that the ensure
+  body contains no `POST`/`apiCreate`/`apiUpdate` path.
+- **D-03/D-04:** spec Status → FINAL; pending user-run verification: `npx tsc --noEmit`,
+  `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go Android+iOS
+  (ACC-06/08) + `expo export --platform web` (ACC-07).
+- **Known limitation (pre-existing, unchanged):** the server has no `title` column, so it is
+  silently stripped by zod; transaction titles only exist client-side. Out of scope here.
+- **Observed, not fixed:** `apiDelete` consumes `204 No Content` as JSON and surfaces a
+  non-JSON `error`; consumers gate on `ok` (true for 204) so deletes still apply. Future spec.
