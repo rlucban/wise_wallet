@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authFetch } from './apiClient';
 import { API_URL } from './db';
 import {
@@ -51,6 +52,21 @@ function notifyQueueChange(): void {
 async function processSingleItem(item: SyncQueueItem): Promise<SyncResult> {
   if (!API_URL) {
     return { success: true };
+  }
+
+  // SPEC-27 D-05 — never send one user's data under another user's session.
+  // Legacy items without `userId` are treated as the active user's for one drain.
+  try {
+    const activeUserId = await AsyncStorage.getItem('activeUserId');
+    const itemUserId = item.data && typeof item.data.userId === 'string'
+      ? (item.data.userId as string)
+      : null;
+    if (itemUserId && activeUserId && itemUserId !== activeUserId) {
+      console.warn(`[Sync] Skipping cross-user item ${item.id} (item user ${itemUserId} != active ${activeUserId}). Dequeuing.`);
+      return { success: true };
+    }
+  } catch {
+    // identity check failed — fall through and attempt the item rather than stall the queue
   }
 
   const endpoint = entityEndpoints[item.entity];
@@ -152,7 +168,8 @@ export function triggerSyncProcessing(debounceMs: number = 500): void {
 }
 
 export async function getCurrentQueueStats(): Promise<QueueStats> {
-  const stats = await getQueueStats();
+  const activeUserId = await AsyncStorage.getItem('activeUserId').catch(() => null);
+  const stats = await getQueueStats(activeUserId);
   return {
     total: stats.total,
     failed: stats.failed,

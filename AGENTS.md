@@ -263,6 +263,19 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   `getChangePasscodeError()`. D-02 `showPinSetup`: `onDismiss` calls `closePinSetupDialog()`;
   "Set Passcode" disabled until both fields match; `pinSetupError` displayed below Confirm field.
   See `docs/savepoint.md`.
+- **2026-09-29 — Spec 27 FINAL (spec only, not implemented).** `specs/27-two-device-single-transaction-log.md`
+  v1.0: same Cloud `user.id` + all devices ON → one shared transaction log after settle.
+  Fresh `updatedAt` on add/update, server-delete-wins, OFF = fully isolated (zero transaction calls),
+  autoBackup per-device never synced, global `sync_queue` + idempotent items, foreground/focus +
+  pull-to-refresh only, single-session stands. OFF-edge: orphans stay local, re-enable auto-drains.
+  D-01..D-08 pending implementation — awaiting explicit order. See `docs/savepoint.md`.
+- **2026-09-29 — Spec 27 implemented.** Branch `spec-27-two-device-single-log` (from `main`).
+  `utils/transactionSync.ts` new (pure merge/LWW/delete-wins/orphan helpers + last-server-id snapshot);
+  `TransactionsContext` fresh `updatedAt` + OFF early-out + merge + awaited queue drain;
+  queue drain asserts `userId`, stats scoped to active user; Dashboard pull-to-refresh (native);
+  `SyncStatusCard` diagnostics + orphan copy, re-enable toasts; `transactionSync.test.ts` new
+  (ACC-01..05/10..11 × android/ios/web) + 2 drain-guard tests in `syncProcessor.test.ts`.
+  User-run verification pending: tsc, `npm test`, eslint, Expo Go + web export. See `docs/savepoint.md`.
 
 ---
 

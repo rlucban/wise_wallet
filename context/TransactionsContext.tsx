@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from "react";
 import { Transaction } from "../types";
 import {
     getSetting,
@@ -14,6 +14,14 @@ import { useToast } from "../context/ToastContext";
 import { generateUUID } from "../utils/uuid";
 import * as FileSystem from 'expo-file-system/legacy';
 import { enqueueAndTrigger, processSyncQueue } from "../utils/syncProcessor";
+import {
+    buildTransactionSyncPayload,
+    getLastServerTxIds,
+    isTransactionSyncPaused,
+    mergeTransactionSets,
+    setLastServerTxIds,
+    withFreshTimestamp,
+} from "../utils/transactionSync";
 
 interface TransactionsData {
     transactions: Transaction[];
@@ -55,6 +63,9 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
     const { showToast } = useToast();
+    // SPEC-27 D-02 — ids deleted locally this session whose `delete` has not
+    // drained yet. In-memory only (NOT a persisted tombstone table per DEC-01).
+    const deletedIdsRef = useRef<Set<string>>(new Set());
 
     const uploadReceiptIfNeeded = useCallback(async (tx: Transaction): Promise<Transaction> => {
         if (tx.receiptUrl && tx.receiptUrl.startsWith('file://')) {
@@ -88,39 +99,37 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             const localData = (await txRepo.getAll()).map(addCategoryFallback);
             setTransactions(localData);
 
-            if (!isLocal && API_URL && activeUserId) {
+            // SPEC-27 CON-11 — Local accounts and Cloud+OFF issue zero
+            // transaction calls in either direction (frozen local log).
+            const autoBackup = await getSetting('autoBackup');
+            const syncPaused = isTransactionSyncPaused(isLocal, autoBackup);
+            if (!syncPaused && API_URL && activeUserId) {
                 const { ok, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
+                // CON-06 flaky-fetch guard: delete-wins applies ONLY on `ok`
+                // array fetches — failed/empty fetches MUST NOT delete anything.
                 if (ok && Array.isArray(remoteData)) {
-                    const mergedMap = new Map<string, Transaction>();
-                    let overwrittenCount = 0;
+                    const lastServerIds = await getLastServerTxIds(activeUserId);
+                    const { merged, overwrittenCount, toCreate, toUpdate } = mergeTransactionSets({
+                        local: localData,
+                        remote: remoteData,
+                        lastServerIds,
+                        deletedIds: deletedIdsRef.current,
+                    });
 
-                    for (const remoteTx of remoteData) {
-                        mergedMap.set(remoteTx.id, remoteTx);
+                    for (const localTx of toCreate) {
+                        const uploaded = await uploadReceiptIfNeeded(sanitizeTransaction(localTx));
+                        await enqueueAndTrigger('transactions', 'create', localTx.id,
+                            buildTransactionSyncPayload(uploaded, activeUserId));
+                    }
+                    for (const localTx of toUpdate) {
+                        await enqueueAndTrigger('transactions', 'update', localTx.id,
+                            buildTransactionSyncPayload(localTx, activeUserId));
                     }
 
-                    for (const localTx of localData) {
-                        const remoteTx = mergedMap.get(localTx.id);
-                        if (!remoteTx) {
-                            const uploaded = await uploadReceiptIfNeeded(sanitizeTransaction(localTx));
-                            mergedMap.set(localTx.id, uploaded);
-                            await enqueueAndTrigger('transactions', 'create', localTx.id, {
-                                ...uploaded,
-                                userId: activeUserId,
-                            });
-                        } else if ((localTx.updatedAt || 0) > (remoteTx.updatedAt || 0)) {
-                            mergedMap.set(localTx.id, localTx);
-                            await enqueueAndTrigger('transactions', 'update', localTx.id, {
-                                ...localTx,
-                                userId: activeUserId,
-                            });
-                        } else if ((remoteTx.updatedAt || 0) > (localTx.updatedAt || 0)) {
-                            overwrittenCount++;
-                        }
-                    }
-
-                    const merged = Array.from(mergedMap.values());
-                    await txRepo.upsertBulk(merged.map(sanitizeTransaction));
-                    setTransactions(merged);
+                    const mergedTx = merged.map(sanitizeTransaction);
+                    await txRepo.upsertBulk(mergedTx);
+                    setTransactions(mergedTx);
+                    await setLastServerTxIds(activeUserId, remoteData.map(t => String(t.id)));
 
                     if (overwrittenCount > 0) {
                         showToast(`${overwrittenCount} record(s) updated from another device.`);
@@ -128,7 +137,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 }
             }
 
-            processSyncQueue();
+            await processSyncQueue();
         } catch (error) {
             console.error("Error fetching transactions:", error);
         } finally {
@@ -159,10 +168,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
     const addTransaction = useCallback(async (transaction: Omit<Transaction, "id">) => {
         try {
-            const newTransaction: Transaction = sanitizeTransaction({
+            // SPEC-27 CON-04 — fresh `updatedAt` at creation.
+            const newTransaction: Transaction = sanitizeTransaction(withFreshTimestamp({
                 ...transaction,
-                id: generateUUID()
-            });
+                id: generateUUID(),
+                updatedAt: 0,
+            } as Transaction));
 
             await txRepo.upsert(newTransaction);
             setTransactions((prev) => [...prev, newTransaction]);
@@ -171,7 +182,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 const autoBackup = await getSetting('autoBackup');
                 if (API_URL && autoBackup !== 'false') {
                     const uploaded = await uploadReceiptIfNeeded(newTransaction);
-                    const syncData = { ...uploaded, userId: activeUserId };
+                    const syncData = buildTransactionSyncPayload(uploaded, activeUserId as string);
                     await enqueueAndTrigger('transactions', 'create', newTransaction.id, syncData);
                 }
             }
@@ -184,17 +195,23 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     const updateTransaction = useCallback(async (id: string, updates: Partial<Transaction>) => {
         try {
             const item = await txRepo.getById(id);
-            if (item) {
-                await txRepo.upsert(sanitizeTransaction({ ...item, ...updates } as Transaction));
+            // SPEC-27 CON-04 — updates MUST bump `updatedAt`, never preserve it.
+            const updated: Transaction | null = item
+                ? sanitizeTransaction(withFreshTimestamp({ ...item, ...updates } as Transaction))
+                : null;
+            if (updated) {
+                await txRepo.upsert(updated);
             }
             setTransactions((prev) => prev.map(t =>
-                t.id === id ? { ...t, ...updates } : t
+                t.id === id ? (updated ?? { ...t, ...updates }) : t
             ));
 
             if (!isLocal) {
                 const autoBackup = await getSetting('autoBackup');
                 if (API_URL && autoBackup !== 'false') {
-                    const syncData = { ...updates, userId: activeUserId };
+                    const syncData = updated
+                        ? buildTransactionSyncPayload(updated, activeUserId as string)
+                        : { ...updates, userId: activeUserId };
                     await enqueueAndTrigger('transactions', 'update', id, syncData);
                 }
             }
@@ -208,6 +225,8 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         try {
             await txRepo.deleteById(id);
             setTransactions((prev) => prev.filter(t => t.id !== id));
+            // SPEC-27 D-02 — guard the merge until the queued `delete` drains.
+            deletedIdsRef.current.add(id);
 
             if (!isLocal) {
                 const autoBackup = await getSetting('autoBackup');

@@ -1,4 +1,5 @@
 import { SyncQueueItem } from './syncQueue';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 jest.mock('./db', () => ({
   get API_URL() {
@@ -240,6 +241,50 @@ describe('syncProcessor', () => {
       expect(queue).toHaveLength(1);
       expect(queue[0].retryCount).toBe(1);
       expect(queue[0].lastError).toBe('Network request failed');
+    });
+
+    it('SPEC-27 D-05: skips cross-user item without sending (dequeues with warning)', async () => {
+      await AsyncStorage.setItem('activeUserId', 'user-B');
+      const item: SyncQueueItem = {
+        id: 'transactions:create:tx-1',
+        entity: 'transactions',
+        operation: 'create',
+        entityId: 'tx-1',
+        data: { id: 'tx-1', amount: 100, userId: 'user-A' },
+        timestamp: Date.now(),
+        retryCount: 0,
+        nextRetryAt: Date.now(),
+      };
+      queue.push(item);
+
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      await processSyncQueue();
+      consoleSpy.mockRestore();
+      await AsyncStorage.removeItem('activeUserId');
+
+      expect(queue).toHaveLength(0);
+      expect(mockAuthFetch).not.toHaveBeenCalled();
+    });
+
+    it('SPEC-27 D-05: drains legacy item without userId (active user)', async () => {
+      const item: SyncQueueItem = {
+        id: 'transactions:create:tx-1',
+        entity: 'transactions',
+        operation: 'create',
+        entityId: 'tx-1',
+        data: { id: 'tx-1', amount: 100 },
+        timestamp: Date.now(),
+        retryCount: 0,
+        nextRetryAt: Date.now(),
+      };
+      queue.push(item);
+
+      mockAuthFetch.mockResolvedValue({ ok: true, status: 200, data: {} });
+
+      await processSyncQueue();
+
+      expect(queue).toHaveLength(0);
+      expect(mockAuthFetch).toHaveBeenCalledTimes(1);
     });
 
     it('processes multiple items sequentially', async () => {
