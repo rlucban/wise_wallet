@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './db';
 import { getSecureItem, removeSecureItem } from './secureStorage';
+import { classifyAuthFailure, extractErrorMessage } from './sessionReason';
 
 let onAuthFailure: ((reason?: string) => void) | null = null;
 
@@ -54,18 +55,29 @@ export async function authFetch<T = unknown>(
       headers,
     });
 
+    // SPEC-38 D-02 — the body must be parsed BEFORE the 401 is classified, but
+    // the credential wipe must still happen even when parsing fails, so both
+    // steps are kept separate below.
+    let body: Record<string, unknown> | null = null;
+    let parseFailed = false;
+    try {
+      body = (await response.json()) as Record<string, unknown>;
+    } catch {
+      parseFailed = true;
+    }
+
     if (response.status === 401 && !suppressAuthFailure) {
       console.warn('401 Unauthorized - clearing auth credentials');
       await clearAuthStorage();
       if (onAuthFailure) {
-        onAuthFailure('session_ended');
+        // SPEC-38 CON-02/CON-03 — report the real cause instead of always
+        // claiming another device kicked the user. An unparseable body fails
+        // safe to `auth_failed`, which asserts nothing.
+        onAuthFailure(classifyAuthFailure({ status: 401, body }));
       }
     }
 
-    let body: Record<string, unknown>;
-    try {
-      body = (await response.json()) as Record<string, unknown>;
-    } catch {
+    if (parseFailed) {
       const text = await response.text().catch(() => '');
       return {
         ok: false,
@@ -80,7 +92,8 @@ export async function authFetch<T = unknown>(
       ok: response.ok,
       status: response.status,
       data: unwrapped,
-      error: !response.ok ? (body?.error ?? `HTTP ${response.status}`) as string : undefined,
+      // SPEC-38 CON-05 — this server returns `message`, not `error`.
+      error: !response.ok ? (extractErrorMessage(body) ?? `HTTP ${response.status}`) as string : undefined,
     };
   } catch (e: unknown) {
     return { ok: false, status: 0, error: e instanceof Error ? e.message : String(e) };

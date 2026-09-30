@@ -6,8 +6,8 @@ import {
   computeBalance,
   computeBalanceSums,
   isOpeningBalanceTransaction,
-  type BalanceTransaction,
 } from "./balance";
+import type { BalanceTransaction } from "./balance";
 
 let mockOS: "android" | "ios" | "web" = "android";
 

@@ -373,6 +373,29 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   Balance" still excluded (DEC-05); Reports income still counts it (DEC-04). No server,
   schema, storage-key, route, or dependency change (CON-07). User-run verification pending:
   tsc, `npm test`, eslint, Expo Go + web export (ACC-09/10/11). See `docs/savepoint.md`.
+- **2026-09-30 — Spec 38 FINAL + implemented (client half only).**
+  `specs/38-session-kick-enforcement.md` v1.1. The multi-device session kick **never worked,
+  for Cloud either** — `users.currentSessionId` was written on every login and read by nothing.
+  Server-side (`ninalamo/wallet-api` @ `cbedbc3`, read-only): `validate.js:6` does
+  `req.body = schema.parse(req.body)` and `loginSchema` omits `deviceId`/`force`, so **zod
+  strips both** and the conflict gate is unconditionally false; `generateToken` signs `{id}`
+  only; `protect.js` never compares `currentSessionId`; `POST /auth/logout` was never called by
+  the client. D-01 new pure fail-safe 401 classifier `utils/sessionReason.ts`
+  (`session_revoked|token_expired|token_invalid|auth_failed`, unknown → `auth_failed`, never
+  upgrading to a kick claim); D-02 `apiClient.ts` parses the body before classifying (wipe kept
+  separate so it still runs on an unparseable body) + reads the server's `message` key; D-03
+  `AuthContext.logout` fires best-effort `auth/logout` with `suppressAuthFailure` and an explicit
+  header, skipped entirely for local tokens (zero network for Local); D-04 alert created only for
+  `session_revoked`, expiry/invalid get honest copy via an optional `/login?reason=` param
+  (SPEC-05 copy byte-identical); D-05 `utils/sessionReason.test.ts` ACC-01..08 × 3 platforms and
+  `apiClient.test.ts` ACC-02a **rewritten** (it encoded the defect); D-06 register now sends
+  `deviceId` via new `buildAuthRegisterPayload` — closes the register-path bug where
+  `register` stored a random UUID as `currentSessionId` and would have falsely reported
+  "another device" on every account's first re-login. **Blocking prerequisite P-01..P-07 in
+  `wallet-api` is NOT implemented here (out of scope per user)** — the kick still requires it;
+  two columns needed (`currentSessionId`=owner device, new `sessionToken`=rotating sid) or
+  every login would prompt. DEC-07 sid rotates per login; DEC-08 web tabs share one session
+  (tab 2 login logs tab 1 out). See `docs/savepoint.md`.
 
 ---
 

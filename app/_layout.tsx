@@ -166,16 +166,29 @@ function MainLayout() {
     if (authLoading || profileLoading || !navigationState?.key) return;
 
     if (!activeUserId) {
-      if (authFailureReason === "session_ended" && failedUserId) {
-        addSessionAlert(failedUserId).then(() => {
+      const reason = authFailureReason;
+      if (reason) {
+        // SPEC-38 D-04 — only a genuine revocation earns the SPEC-05 "Session
+        // Ended" alert. Expiry / invalid / unknown are reported honestly on
+        // /login via an optional param instead of asserting a kick.
+        const showNotice = reason === 'token_expired' || reason === 'token_invalid';
+        const settle = () => {
           clearAuthFailureReason();
           clearFailedUserId();
-          const inAuthGroup = segments[0] === 'login' || segments[0] === 'register';
-          if (!inAuthGroup) {
-            console.info("[Nav] Session ended — redirecting to Login");
-            setTimeout(() => router.replace('/login'), 0);
-          }
-        });
+          console.info(`[Nav] Auth failure (${reason}) — redirecting to Login`);
+          setTimeout(() => {
+            if (showNotice) {
+              router.replace(`/login?reason=${reason}` as '/login');
+            } else {
+              router.replace('/login');
+            }
+          }, 0);
+        };
+        if (reason === 'session_revoked' && failedUserId) {
+          addSessionAlert(failedUserId).then(settle);
+        } else {
+          settle();
+        }
         return;
       }
 

@@ -2,13 +2,15 @@ import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Text, TextInput, Button, Card, HelperText, Dialog, Portal, Checkbox } from 'react-native-paper';
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthData, useAuthActions } from '../context/AuthContext';
 import { useUserProfileData } from '../context/UserProfileContext';
 import { addUser, API_URL, getUsers } from '../utils/db';
 import { isLocalAccountToken } from '../utils/authMode';
 import { isEmailShapedName } from '../utils/accountDelete';
 import { isLocalAuthAllowed, WEB_LOGIN_CONNECT_MESSAGE } from '../utils/localGate';
+import { getAuthFailureNotice } from '../utils/sessionReason';
+import type { AuthFailureReason } from '../utils/sessionReason';
 import { isAdminToggleOn } from '../utils/featureFlags';
 import { resetDeviceData } from '../utils/deviceReset';
 import * as Crypto from 'expo-crypto';
@@ -24,6 +26,12 @@ export default function LoginScreen() {
     const { token } = useAuthData();
     const { profile } = useUserProfileData();
     const router = useRouter();
+
+    // SPEC-38 D-04 (DEC-05) — the nav guard passes the failure cause as an
+    // OPTIONAL param, so /login with no param behaves exactly as before. An
+    // unknown value yields no notice (getAuthFailureNotice is fail-safe).
+    const params = useLocalSearchParams<{ reason?: string }>();
+    const sessionNotice = getAuthFailureNotice((params?.reason ?? '') as AuthFailureReason);
 
     useFocusEffect(
         useCallback(() => {
@@ -380,6 +388,14 @@ export default function LoginScreen() {
                             <MaterialCommunityIcons name="wallet" size={42} color="#fff" style={styles.logo} />
                             <Text style={styles.appName}>WiseWallet</Text>
                             <Text style={styles.tagline}>Welcome Back</Text>
+
+                            {/* SPEC-38 D-04 — honest cause of the previous logout. */}
+                            {sessionNotice && (
+                                <View style={styles.offlineNotice}>
+                                    <MaterialCommunityIcons name="info-outline" size={16} color="#fff" />
+                                    <Text style={styles.offlineNoticeText}>{sessionNotice}</Text>
+                                </View>
+                            )}
 
                             {offlineNotice && (
                                 <View style={styles.offlineNotice}>

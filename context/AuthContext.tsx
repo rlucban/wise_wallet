@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { setAuthFailureCallback } from "../utils/apiClient";
+import { setAuthFailureCallback, authFetch } from "../utils/apiClient";
 import { setCachedUserId, clearSessionCaches } from "../utils/cache";
 import { setSecureItem, getSecureItem, removeSecureItem } from "../utils/secureStorage";
+import { resolveModeState } from "../utils/modeState";
 
 interface AuthData {
   activeUserId: string | null;
@@ -67,12 +68,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    // SPEC-38 D-03 (CON-06) — capture the token BEFORE it is cleared so the
+    // server can be told to revoke. Local/offline tokens are skipped entirely:
+    // they are not real sessions and must make zero network calls (CON-09).
+    const token = await getSecureItem('authToken');
+    const isLocalToken = token ? resolveModeState({ token }).isLocal : false;
+
     await AsyncStorage.removeItem('activeUserId');
     await removeSecureItem('authToken');
     setActiveUserId(null);
     // SPEC-31 CON-03 — session hygiene; stored per-user data is untouched.
     clearSessionCaches();
     setToken(null);
+
+    if (!token || isLocalToken) return;
+    // Best-effort: local logout is already complete, so any failure here is
+    // swallowed. suppressAuthFailure keeps a 401 from re-entering the
+    // session-kill path, and the explicit header carries the token that
+    // secureStorage no longer has.
+    try {
+      await authFetch('auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        suppressAuthFailure: true,
+      });
+    } catch {
+      // ignored on purpose
+    }
   }, []);
 
   const clearAuthFailureReason = useCallback(() => {

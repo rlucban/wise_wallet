@@ -7,7 +7,9 @@ import { useAuthActions } from '../context/AuthContext';
 import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
 import {
     getDeviceOnline,
+    getOrCreateDeviceId,
     shouldShowOfflineSuggestion,
+    buildAuthRegisterPayload,
     OFFLINE_SUGGEST_TITLE,
     OFFLINE_SUGGEST_MESSAGE,
 } from '../utils/localGate';
@@ -97,10 +99,18 @@ export default function RegisterScreen() {
         }
 
         try {
+            // SPEC-38 D-06 — device id so the server can attribute the session
+            // from creation (additive; stripped by an unfixed server).
+            const deviceId = await getOrCreateDeviceId();
             const response = await fetch(`${API_URL}/auth/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: emailAddr.trim(), passcode: pin.trim(), initialBalance: 0 }),
+                body: JSON.stringify(buildAuthRegisterPayload({
+                    name: emailAddr,
+                    passcode: pin,
+                    initialBalance: 0,
+                    deviceId,
+                })),
             });
 
             const responseData = await response.json();
@@ -177,10 +187,17 @@ export default function RegisterScreen() {
                 setLoading(true);
                 let cloudOk = false;
                 try {
+                    // SPEC-38 D-06 — same device id as the primary register path.
+                    const deviceId = await getOrCreateDeviceId();
                     const response = await fetch(`${API_URL}/auth/register`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ name: name.trim(), passcode: passcode.trim(), initialBalance: 0 }),
+                        body: JSON.stringify(buildAuthRegisterPayload({
+                            name,
+                            passcode,
+                            initialBalance: 0,
+                            deviceId,
+                        })),
                     });
                     const responseData = await response.json();
                     if (response.ok) {

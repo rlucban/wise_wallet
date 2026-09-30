@@ -133,6 +133,32 @@ export function buildAuthLoginPayload(args: {
   };
 }
 
+// --- SPEC-38 D-06: register carries the device id (CON-10) ---
+// Without it the server cannot attribute a session at creation time, and the
+// account's first re-login is falsely reported as "another device" (spec §1.6).
+// Purely additive: an unfixed server strips the unknown key and nothing changes.
+
+export interface AuthRegisterPayload {
+  name: string;
+  passcode: string;
+  initialBalance: number;
+  deviceId: string;
+}
+
+export function buildAuthRegisterPayload(args: {
+  name: string;
+  passcode: string;
+  initialBalance: number;
+  deviceId: string;
+}): AuthRegisterPayload {
+  return {
+    name: args.name.trim(),
+    passcode: args.passcode.trim(),
+    initialBalance: args.initialBalance,
+    deviceId: args.deviceId,
+  };
+}
+
 // Same read-or-generate scheme as app/login.tsx getDeviceId (stable per
 // device; uuid loaded lazily so this module keeps zero static native imports).
 export async function getOrCreateDeviceId(): Promise<string> {

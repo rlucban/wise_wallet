@@ -622,3 +622,106 @@ is why the symptom looked intermittent (only the pre-refetch in-memory state was
   arithmetic's location moved), storage keys, AsyncStorage shapes, navigation routes,
   `wallet-api` contract, `supabase/schema.sql`, and `package.json`. No new dependency
   (CON-07).
+
+## 2026-09-30 — Spec 38 FINAL + implemented (session-kick client half; server still required)
+
+`specs/38-session-kick-enforcement.md` v1.1. **The multi-device session kick has never worked —
+not for Cloud either.** `users.currentSessionId` was written on every login and read by nothing.
+Verified read-only in `ninalamo/wallet-api` @ `cbedbc3`:
+
+1. `src/middlewares/validate.js:6` does `req.body = schema.parse(req.body)` and
+   `src/schemas/userSchema.js` declares only `{ name, passcode }` → **zod strips `deviceId` and
+   `force`** → the conflict gate `if (deviceId && …)` is *unconditionally* false →
+   `sessionConflict` is never returned and `currentSessionId` gets a random UUID.
+   The "Session Active" dialog was unreachable dead code.
+2. `generateToken` signs `{ id }` only — no session binding in the JWT.
+3. `src/middlewares/protect.js` never compares anything against `currentSessionId`.
+   → the older device's token stayed valid for the full `JWT_EXPIRES_IN = '24h'`.
+4. `POST /auth/logout` exists on the server but **no client code ever called it**.
+
+So the dialog's promise *"will log you out of the other device"* was false.
+
+### Client changes shipped here
+
+- **D-01 — new `utils/sessionReason.ts`** (pure; no I/O, React, or `Platform`): fail-safe
+  401 classifier mapping the server's actual `message` to exactly one of
+  `session_revoked | token_expired | token_invalid | auth_failed`, plus
+  `extractErrorMessage`, `shouldPersistSessionEndedAlert`, and
+  `getAuthFailureNotice` (DEC-05). **Fail-safe by design (CON-03):** an unmatched or
+  absent message is `auth_failed` — it never *upgrades* to "another device".
+- **D-02 — `utils/apiClient.ts`:** the response body is now parsed **before** the 401 is
+  classified, while the credential wipe is kept in a separate step so it still runs when the
+  body is unparseable (a parse failure classifies `auth_failed` and wipes as before).
+  `ApiResult.error` now reads the server's `message` key — the old `body?.error` read was
+  dead against this server, which is why the reason was being discarded.
+- **D-03 — `context/AuthContext.tsx`:** `logout()` now captures the token before clearing it
+  and fires a best-effort `POST auth/logout` with `suppressAuthFailure: true` and an explicit
+  `Authorization` header (secureStorage no longer has the token by then). Local/offline tokens
+  are skipped entirely via `resolveModeState`, so a **Local account still makes zero network
+  calls** (CON-09 / ACC-10). Failures are swallowed — local logout always completes first.
+- **D-04 — `app/_layout.tsx` + `app/login.tsx`:** the persistent "Session Ended" alert is now
+  created **only** for `session_revoked` (CON-04). `token_expired` / `token_invalid` redirect to
+  `/login?reason=…` and render honest copy; `auth_failed` redirects silently claiming nothing.
+  The param is **optional**, so `/login` with no param behaves exactly as today. The SPEC-05
+  alert title/message are byte-identical.
+- **D-05 — new `utils/sessionReason.test.ts`**, ACC-01..08 × `android`/`ios`/`web`, including
+  ACC-07/ACC-08 source scans. `utils/apiClient.test.ts` `ACC-02a` **encoded the defect** (it
+  asserted the blanket `session_ended`), so it was **rewritten, not deleted** (same precedent
+  as SPEC-36 CON-07), plus three new cases covering expiry/revocation/error-text.
+- **D-06 — register now sends `deviceId`** (CON-10) via a new pure
+  `buildAuthRegisterPayload` in `utils/localGate.ts`, used by **both** Cloud register call
+  sites in `app/register.tsx`. Purely additive — an unfixed server strips the unknown key and
+  the flow is byte-identical (ACC-11).
+
+### The fourth server bug this exposed
+
+`authService.register` stored `currentSessionId = crypto.randomUUID()` — a random value that is
+never any device's id — and the client **never sent `deviceId` on register** at all. So the
+moment the zod-strip bug is fixed, **every account's first re-login would have been falsely
+told "already logged in on another device" on its own device.** P-02 (register accepts and
+stores `deviceId`) plus D-06 close it. Landing the schema fix without the register fix would
+have introduced that regression.
+
+### Blocking prerequisite — the kick itself still needs `wallet-api` (P-01..P-07)
+
+Not implemented here (out of scope per user 2026-09-30). Until these ship, second devices
+still coexist and nothing is revoked — but nothing is *falsely* reported as revoked either
+(DEC-04, correct-by-default). In `ninalamo/wallet-api`:
+
+- **P-01** `loginSchema` MUST declare `deviceId` + `force` so `validate` stops stripping them.
+- **P-02** `registerSchema` MUST accept `deviceId`, and `register` MUST persist it into
+  `currentSessionId` instead of `crypto.randomUUID()` (the bug above).
+- **P-03** `register` **and** `login` MUST mint a fresh `sessionToken`, store it, and sign the
+  JWT as `{ id, sid }` (sid minted *before* signing).
+- **P-04** `protect` MUST compare `decoded.sid` against `users.sessionToken` and reject a
+  mismatch with 401 + message `Session ended on another device`.
+- **P-05** `protect` MUST reject a `sid`-less token (user decision, DEC-02). Cost: every
+  signed-in device re-logs in exactly once. Benefit: the hole closes immediately rather than
+  lingering for up to 24h.
+- **P-06** `users.sessionToken` MUST be added as a nullable `TEXT` column — purely additive
+  DDL; `currentSessionId` keeps its type and meaning.
+- **P-07** `logout` MUST null **both** `currentSessionId` and `sessionToken`.
+
+**Why two columns (DEC-09):** a single rotating value would make `currentSessionId !== deviceId`
+true on *every* login, prompting "another device" on the user's own device. Splitting
+`currentSessionId` (owner device — answers "is this me?") from `sessionToken` (rotating sid —
+answers "is this token live?") keeps the existing conflict gate intact and P-06 additive.
+
+### Accepted consequences
+
+- **DEC-07 — sid rotates on every login.** Exactly one issued token is ever live per account,
+  so a same-device re-login silently replaces its own previous token with no prompt.
+- **DEC-08 — web tabs share one session.** `localDeviceId` is plain AsyncStorage →
+  `localStorage` on web, which is per-origin and shared across tabs, so two tabs are one device.
+  Logging in on tab 2 **logs tab 1 out**. Rejected alternatives: per-tab session ids (needs the
+  server to hold a *set* of live sessions — breaking DDL) and native-only rotation (leaves
+  session identity diverging across platforms).
+- **Local/offline accounts are architecturally unreachable here (CON-09):** two Local accounts
+  on two devices are two *unrelated* accounts with separate data and no shared identity.
+  Coordinating them needs a channel that contradicts Local being device-only and offline.
+- **Not touched:** SPEC-05 alert copy/title, SPEC-31 logout hygiene, the login conflict dialog
+  and `classifyAuthLoginResult` (CON-07), `settings.tsx` force-logins (DEC-06), storage keys,
+  AsyncStorage shapes, routes, and `package.json`. No new dependency (CON-12).
+- **D-07/D-08:** spec Status → FINAL; pending user-run verification: `npx tsc --noEmit`,
+  `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go Android+iOS
+  (ACC-09/10/11) + `expo export --platform web` (ACC-09/10/11).
