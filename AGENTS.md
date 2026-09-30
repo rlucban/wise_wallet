@@ -335,6 +335,12 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   (ACC-01..04 × android/ios/web). No enablement — separate order required.
   User-run verification pending: tsc, `npm test`, eslint, Expo Go + web export
   (ACC-05/06 need a temporary local flag flip only). See `docs/savepoint.md`.
+- **2026-09-30 — Spec 36 FINAL + implemented.** `specs/36-mode-truth-token-only.md` v1.0.
+  D-01 `settings.tsx`: deleted `isUsernameOnly`/`isEffectivelyLocal`/`isValidEmail`; `autoBackup` derives via new `resolveModeState` helper (token-only); all 7 call sites branch on `isLocal` (subtitle, SyncStatusCard prop, toggle routing, `isApiOnlyPlane` via `resolveDataPlane`, manual backup/restore gates, Local card gate).
+  D-02 new `utils/modeState.ts` (pure `resolveModeState`/`resolveDataPlane`/`resolveToggleRoute`) + `utils/modeState.test.ts` (ACC-01..05 × android/ios/web).
+  D-03 docs recorded; no retirements. Stale-web-session boot guard NOT included (open follow-up).
+  User-run verification pending: tsc, `npm test`, eslint, Expo Go + web export (ACC-06..08).
+  See `docs/savepoint.md`.
 
 ---
 

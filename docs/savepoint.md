@@ -490,3 +490,14 @@ Branch `spec-28-29-delete-and-queue` (stacked on `spec-27-two-device-single-log`
 - D-04 tests: new `utils/deviceReset.test.ts` — ACC-01 env matrix, ACC-02 flag gate + single wipe call-site scan, ACC-03 full wipe/preserve/fetch-zero assertions; all × android/ios/web (expo native modules mocked per repo pattern).
 - No enablement shipped — turning the flag `true` anywhere needs a separate explicit order.
 - Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-05/06 need a temporary local flag flip only).
+
+## 2026-09-30 — SPEC-36 FINAL + implemented (v1.0)
+
+- `specs/36-mode-truth-token-only.md` v1.0 FINAL per user call (v0.1 approved as-is).
+- Context: web register/login paths audited read-only — all compliant (web forced-online, local-minting web-guarded, login never mints local tokens), locked unchanged by CON-07. Reported "registers as local" symptom traced to Settings derived state, not the token.
+- Root cause: `app/(tabs)/settings.tsx:258-261` `isUsernameOnly` (profile name not email-shaped) forces `autoBackup=false` + `isEffectivelyLocal`, mislabeling Cloud-JWT username accounts as Local-only (subtitle `:1222`), forcing the local-persist plane (`SyncStatusCard` prop `:1299`, `apiOnly` `:62`, `isApiOnlyPlane` `:764-765`), misrouting toggle-ON to re-registration (`:392-400`), and hiding manual backup/restore (`:1311,:1317`). Closes SPEC-31 §1.2 root-cause-#2 gap (diagnosed, never specified); no retirements — SPEC-04/30/31/34 stand.
+- D-01: `settings.tsx` — deleted `isUsernameOnly`/`isEffectivelyLocal`/`isValidEmail`; `autoBackup` derives via new `resolveModeState` helper (token-only); all 7 call sites branch on `isLocal` (subtitle, SyncStatusCard prop, toggle routing, `isApiOnlyPlane` via `resolveDataPlane`, manual backup/restore gates, Local card gate).
+- D-02: new `utils/modeState.ts` — pure `resolveModeState`/`resolveDataPlane`/`resolveToggleRoute` helpers; new `utils/modeState.test.ts` — ACC-01..05 × android/ios/web (JWT × name shapes, plane matrix, toggle routing, string-scan for retired symbols, local-token invariants, autoBackup derivation).
+- D-03: docs recorded; no retirements.
+- Stale-web-session boot guard (web + local token → force sign-out) NOT included — open follow-up.
+- Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-06..08).

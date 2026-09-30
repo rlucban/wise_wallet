@@ -27,6 +27,7 @@ import { authFetch } from "../../utils/apiClient";
 import { useSyncStatus } from "../../hooks/useSyncStatus";
 import { useNetwork } from "../../context/NetworkContext";
 import { useIsLocalAccount } from "../../utils/authMode";
+import { resolveModeState, resolveDataPlane } from "../../utils/modeState";
 import {
   getDeviceOnline,
   isReregistrationAllowed,
@@ -190,7 +191,7 @@ export default function SettingsScreen() {
   const { isDarkMode, toggleTheme } = useAppTheme();
   const { profile, updateProfile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
   const { isPasscodeEnabled, passcode, setIsPasscodeEnabled, setPasscode } = usePasscode();
-  const { activeUserId, logout, login } = useAuth();
+  const { activeUserId, logout, login, token } = useAuth();
   const { refetch: refetchTx } = useTransactionsActions();
   const { transactions: liveTransactions } = useTransactionsData();
   const { refetch: refetchCats } = useCategoriesActions();
@@ -199,6 +200,11 @@ export default function SettingsScreen() {
   const { items: liveSavings, refetch: refetchSavings } = useSavings();
   const repos = useRepositories();
   const isLocal = useIsLocalAccount();
+  const { autoBackup } = resolveModeState({
+    token,
+    profileName: profile?.name,
+    profileAutoBackup: profile?.autoBackup,
+  });
 
   const handleLogout = async () => {
     await logout();
@@ -255,10 +261,6 @@ export default function SettingsScreen() {
 
 
 
-   const isValidEmail = (str: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
-   const isUsernameOnly = profile?.name && !isValidEmail(profile.name);
-   const autoBackup = isUsernameOnly || isLocal ? false : profile?.autoBackup ?? true;
-   const isEffectivelyLocal = isLocal || !!isUsernameOnly;
   const [isSyncing, setIsSyncing] = useState(false);
   const [showPinPrompt, setShowPinPrompt] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -392,7 +394,7 @@ export default function SettingsScreen() {
     const handleToggleAutoBackup = async (val: boolean) => {
       // SPEC-30 CON-03/CON-04 — Local ON routes to the single re-registration
       // flow ("Register Online Account"). Cloud ON keeps the PIN verify flow.
-      if (isEffectivelyLocal) {
+      if (isLocal) {
         if (val) {
           await startReregisterFlow();
         }
@@ -761,8 +763,7 @@ export default function SettingsScreen() {
 
   // SPEC-34 CON-01/CON-07 — API-only exports the live in-memory snapshot;
   // local-persist exports from AsyncStorage via exportData().
-  const isApiOnlyPlane =
-    !isEffectivelyLocal && (Platform.OS === "web" || autoBackup);
+  const isApiOnlyPlane = resolveDataPlane(isLocal, autoBackup, Platform.OS);
 
   const buildLiveSnapshotJson = () => JSON.stringify({
     profile,
@@ -1219,7 +1220,7 @@ export default function SettingsScreen() {
                <View style={{ marginLeft: 16 }}>
                  <Text variant="titleMedium">{profile?.name || "Wise User"}</Text>
                  <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
-                   {isEffectivelyLocal ? "Local-only account — stored on this device" : autoBackup ? "Cloud Sync Enabled" : "Cloud account — sync off"}
+                    {isLocal ? "Local-only account — stored on this device" : autoBackup ? "Cloud Sync Enabled" : "Cloud account — sync off"}
                  </Text>
                </View>
             </View>
@@ -1296,7 +1297,7 @@ export default function SettingsScreen() {
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>Data Management</Text>
 
-            <SyncStatusCard autoBackup={autoBackup} isLocal={isEffectivelyLocal} />
+            <SyncStatusCard autoBackup={autoBackup} isLocal={isLocal} />
 
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 }}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -1308,13 +1309,13 @@ export default function SettingsScreen() {
 
             <Divider style={{ marginVertical: 8 }} />
 
-            {(!autoBackup && !isEffectivelyLocal) && (
+            {(!autoBackup && !isLocal) && (
               <Button mode="outlined" icon="backup-restore" onPress={handleManualBackup} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
                 Backup Data to Cloud API Now
               </Button>
             )}
 
-            {(!autoBackup && !isEffectivelyLocal) && (
+            {(!autoBackup && !isLocal) && (
               <Button mode="outlined" icon="cloud-download" onPress={handleRestoreFromCloud} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
                 Restore Data from Cloud API
               </Button>
@@ -1338,7 +1339,7 @@ export default function SettingsScreen() {
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>Account</Text>
-            {isEffectivelyLocal && (
+            {isLocal && (
               <Button mode="contained" icon="cloud-upload-outline" onPress={() => startReregisterFlow()} style={{ marginBottom: 8 }}>
                 Register Online Account
               </Button>
