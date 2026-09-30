@@ -7,6 +7,7 @@ import { useAuthData, useAuthActions } from '../context/AuthContext';
 import { useUserProfileData } from '../context/UserProfileContext';
 import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
 import { isLocalAccountToken } from '../utils/authMode';
+import { isEmailShapedName } from '../utils/accountDelete';
 import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -194,6 +195,19 @@ export default function LoginScreen() {
             }
         } else if (lastResult.status === 401) {
             console.info("Cloud login returned 401 - checking local users...");
+
+            // SPEC-28 D-04 — a reachable server explicitly rejected these
+            // credentials. Email names are server-authoritative: never fall
+            // back to a (possibly ghost) local session, on any platform.
+            if (isEmailShapedName(name)) {
+                console.info("Email login rejected by server - hard fail, no local fallback");
+                showAlert(
+                    "Login Failed",
+                    "Invalid email or PIN. This account may have been deleted."
+                );
+                setLoading(false);
+                return;
+            }
 
             const users = await getUsers();
             const localUser = users.find((u) => (u.name as string).toLowerCase() === name.trim().toLowerCase());

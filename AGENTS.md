@@ -276,6 +276,18 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   `SyncStatusCard` diagnostics + orphan copy, re-enable toasts; `transactionSync.test.ts` new
   (ACC-01..05/10..11 × android/ios/web) + 2 drain-guard tests in `syncProcessor.test.ts`.
   User-run verification pending: tsc, `npm test`, eslint, Expo Go + web export. See `docs/savepoint.md`.
+- **2026-09-29 — Spec 28 + 29 FINAL + implemented.** Branch `spec-28-29-delete-and-queue`
+  (stacked on spec-27 branch). SPEC-28: `authFetch` 401 opt-out; verify-login stores fresh JWT
+  (self-kill fix); delete branches on result with honest copy; email+401 hard-fails login;
+  full device purge (ghosts, U-only queue items, caches, receipts). SPEC-29: enqueue coalescing,
+  200 ms trigger window, dead-letter counter + diagnostics. New `utils/accountDelete.ts`,
+  `apiClient.test.ts`, `accountDelete.test.ts`, `syncQueue.test.ts`; +5 in `syncProcessor.test.ts`.
+  User-run verification pending. See `docs/savepoint.md`.
+- **2026-09-29 — Spec 30 FINAL (spec only, not implemented).** `specs/30-local-creation-gate-and-reregistration-promotion.md`
+  v1.0: Local creation at registration only (login dialog removed everywhere); offline register shows
+  once-per-visit Offline suggestion modal; Local autoBackup ON → re-registration (new Cloud identity,
+  guided skippable export, old Local intact, no merge). Supersedes SPEC-04 D-06/D-07/D-09 parts + ACC-06
+  on implementation day. D-01..D-06 pending — queued behind SPEC-28/29. See `docs/savepoint.md`.
 
 ---
 

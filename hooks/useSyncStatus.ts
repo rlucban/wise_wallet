@@ -4,6 +4,7 @@ import {
   getQueueStats,
   getLastSyncedAt,
   getSyncQueue,
+  getDeadLetterCount,
   queueItemUserId,
   SyncQueueItem,
 } from "../utils/syncQueue";
@@ -20,6 +21,7 @@ export interface SyncStatus extends QueueStats {
   hasPending: boolean;
   items: SyncQueueItem[];
   backupDisabled: boolean;
+  deadLetters: number;
 }
 
 export function useSyncStatus() {
@@ -33,6 +35,7 @@ export function useSyncStatus() {
     hasPending: false,
     items: [],
     backupDisabled: false,
+    deadLetters: 0,
   });
 
   const refresh = useCallback(async () => {
@@ -50,6 +53,7 @@ export function useSyncStatus() {
         hasPending: false,
         items: [],
         backupDisabled: false,
+        deadLetters: 0,
       });
       return;
     }
@@ -66,15 +70,17 @@ export function useSyncStatus() {
         hasPending: false,
         items: [],
         backupDisabled: true,
+        deadLetters: await getDeadLetterCount(),
       });
       return;
     }
 
     const activeUserId = await AsyncStorage.getItem('activeUserId').catch(() => null);
-    const [stats, lastSynced, items] = await Promise.all([
+    const [stats, lastSynced, items, deadLetters] = await Promise.all([
       getQueueStats(activeUserId),
       getLastSyncedAt(),
       getSyncQueue(),
+      getDeadLetterCount(),
     ]);
 
     const scopedItems = activeUserId
@@ -94,6 +100,7 @@ export function useSyncStatus() {
       hasPending: stats.pending > 0,
       items: scopedItems,
       backupDisabled: false,
+      deadLetters,
     });
   }, []);
 

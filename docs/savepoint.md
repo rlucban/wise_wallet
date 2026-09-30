@@ -382,7 +382,56 @@ Branch `spec-27-two-device-single-log` (from `main`). All 8 deliverables, lint-u
 - **D-06 — tests:** new `utils/transactionSync.test.ts` (ACC-01..05, ACC-10..11 + payload/truncate/snapshot, `describe.each` android/ios/web); `utils/syncProcessor.test.ts` +2 (cross-user skip without send, legacy drain).
 - Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go Android+iOS + `expo export --platform web` manual ACC-06..09 + ACC-12.
 
+## 2026-09-29 — SPEC-28/29 Implemented (Delete 401 + Queue Hardening)
+
+Branch `spec-28-29-delete-and-queue` (stacked on `spec-27-two-device-single-log`).
+
+**SPEC-28 (FINAL v1.0) — account deletion + purge + login fallback:**
+- `utils/apiClient.ts` D-03: `AuthFetchOptions.suppressAuthFailure` skips the
+  global 401 credential wipe + session alert; result still returned normally.
+- `utils/accountDelete.ts` new: `isEmailShapedName`, `parseVerifyLoginResponse`
+  (ACC-01), `resolveDeleteOutcome` (ACC-03), `collectReceiptFiles`,
+  `filterQueueKeepOthers`, `purgeUserDeviceData` (D-08/CON-09: deleteUser +
+  ghost-name rows, only-U queue items, `last_synced_at` reset, settings cache,
+  receipt files try/caught each; preserves `localDeviceId`, other users,
+  exports).
+- `settings.tsx` D-01/D-02: verify-login stores the fresh JWT before DELETE
+  (fixes self-killed token); `executeDelete` branches on result with honest
+  copy ("Account Deleted" vs "Deleted From This Device Only…"), suppressed 401.
+- `login.tsx` D-04: email + cloud-401 hard-fails (never local_token, any
+  platform); usernames keep local fallback. Offline path untouched.
+- Tests: `apiClient.test.ts` (ACC-02a/b), `accountDelete.test.ts` (ACC-01/03/04/05,
+  ACC-06/11 purge incl. ghost/queue/cache/file/device-id assertions).
+
+**SPEC-29 (FINAL v1.0) — durable outbox, idempotency, drain:**
+- `syncQueue.ts` D-01: `enqueueSync` coalesces per (entity, entityId, user) —
+  create+update→create(latest), any+delete→dataless delete; cross-user never
+  merges. D-03: `sync_dead_letters` counter + getters.
+- `syncProcessor.ts` D-02: `COALESCE_WINDOW_MS = 200` default (was 500);
+  404/400 increment dead letters.
+- `useSyncStatus` + `SyncStatusCard`: `deadLetters` shown as "N unsendable"
+  (neutral) when > 0.
+- Server contract note (D-04, assumption — no server code ships): client
+  retries resend stable `(userId, id)` + fresh `updatedAt`; timeout-after-success
+  is duplicate-safe IFF `wallet-api` upserts on `(userId, id)`. If the server
+  mints its own ids, duplicates are possible — flag for a future API spec.
+- Tests: `syncQueue.test.ts` (ACC-01/02/03/05, dead-letter accumulation);
+  `syncProcessor.test.ts` +3 (ACC-04 timing via fake timers, ACC-06 404
+  dead-letter, D-05 cross-user/legacy guards from SPEC-27).
+- Pending user-run verification: tsc (app+test), `npm test`, eslint, Expo Go
+  Android+iOS + web export manual ACCs.
+
 ## 2026-09-29 — Test repair: `color="#fff"` → `theme.colors.onPrimary` (5 files)
 
 - `npm test` showed 15 pre-existing `themeColors` failures in files SPEC-27 never touched: `app/add-allocation.tsx:75`, `app/dues.tsx:744`, `app/add-due.tsx:198`, `app/savings.tsx:518`, `app/category-settings.tsx:131` — all `color="#fff"` on primary-background FAB/contained buttons.
 - Fixed with the repo's own SPEC-14/17 convention (`theme.colors.onPrimary`); no copy/layout/logic change. `transactionSync`, `syncProcessor`, `speechVoice`, `notifications` suites already passed.
+
+---
+
+## 2026-09-29 — SPEC-30 FINAL (spec only, not implemented)
+
+- `specs/30-local-creation-gate-and-reregistration-promotion.md`: FINAL v1.0 per user call.
+- Local profiles creatable at registration ONLY (login-time Create Offline Account removed on all platforms); register auto-suggests Offline via once-per-visit modal when offline (device connectivity, zero API pings; suggested only).
+- Local autoBackup ON → re-registration (fresh Cloud id + JWT, NO merge): honesty dialog → guided skippable JSON export → switch session; old Local UUID + rows intact, reachable via local re-login.
+- Supersedes FINAL SPEC-04 parts on implementation day: D-06 mobile login-creation, D-07 merge upgrade + ACC-06, D-09 mobile note, CON-03 irreversibility copy (retirements recorded in CON-07).
+- D-01..D-06 pending implementation — awaiting explicit order (queued behind SPEC-28/29).

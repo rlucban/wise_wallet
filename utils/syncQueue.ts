@@ -17,6 +17,7 @@ export interface SyncQueueItem {
 
 const QUEUE_KEY = 'sync_queue';
 const LAST_SYNCED_KEY = 'last_synced_at';
+const DEAD_LETTER_KEY = 'sync_dead_letters';
 
 export async function getSyncQueue(): Promise<SyncQueueItem[]> {
   try {
@@ -56,29 +57,49 @@ export async function enqueueSync(
   data?: Record<string, unknown>
 ): Promise<void> {
   const queue = await getSyncQueue();
-  const itemId = generateQueueItemId(entity, operation, entityId);
-
-  const existingIndex = queue.findIndex(item => item.id === itemId);
   const now = Date.now();
+
+  // SPEC-29 D-01 — coalesce with same-(entity, entityId, user) items:
+  // create+update → create(latest); update+update → update(latest);
+  // anything+delete → delete with data dropped (never POST-then-DELETE).
+  const incomingOwner = data && typeof data.userId === 'string'
+    ? (data.userId as string)
+    : null;
+  const sameScope = queue.filter(item =>
+    item.entity === entity &&
+    (item.entityId || 'batch') === (entityId || 'batch') &&
+    queueItemUserId(item) === incomingOwner
+  );
+
+  let effectiveOp = operation;
+  let effectiveData = data;
+  if (sameScope.length > 0) {
+    if (operation === 'delete') {
+      effectiveData = undefined;
+    } else if (
+      operation === 'update' &&
+      sameScope.some(item => item.operation === 'create')
+    ) {
+      effectiveOp = 'create';
+    }
+  }
+  const itemId = generateQueueItemId(entity, effectiveOp, entityId);
+
+  const filtered = queue.filter(item => !sameScope.includes(item));
 
   const newItem: SyncQueueItem = {
     id: itemId,
     entity,
-    operation,
+    operation: effectiveOp,
     entityId,
-    data,
+    data: effectiveData,
     timestamp: now,
     retryCount: 0,
     nextRetryAt: now,
   };
 
-  if (existingIndex >= 0) {
-    queue[existingIndex] = newItem;
-  } else {
-    queue.push(newItem);
-  }
-
-  await saveSyncQueue(queue);
+  filtered.push(newItem);
+  await saveSyncQueue(filtered);
 }
 
 export async function dequeueSync(itemId: string): Promise<void> {
@@ -120,6 +141,36 @@ export async function updateLastSyncedAt(): Promise<void> {
     await AsyncStorage.setItem(LAST_SYNCED_KEY, Date.now().toString());
   } catch (e) {
     console.error('Error updating last synced at:', e);
+  }
+}
+
+/** SPEC-28 D-08 — reset the display-only timestamp on account purge. */
+export async function clearLastSyncedAt(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(LAST_SYNCED_KEY);
+  } catch (e) {
+    console.error('Error clearing last synced at:', e);
+  }
+}
+
+/** SPEC-29 D-03 — persisted dead-letter count (global, display-only). */
+export async function getDeadLetterCount(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(DEAD_LETTER_KEY);
+    const n = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch (e) {
+    console.error('Error reading dead letter count:', e);
+    return 0;
+  }
+}
+
+export async function incrementDeadLetters(): Promise<void> {
+  try {
+    const next = (await getDeadLetterCount()) + 1;
+    await AsyncStorage.setItem(DEAD_LETTER_KEY, next.toString());
+  } catch (e) {
+    console.error('Error incrementing dead letter count:', e);
   }
 }
 
