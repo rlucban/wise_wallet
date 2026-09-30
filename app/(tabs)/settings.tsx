@@ -903,7 +903,6 @@ export default function SettingsScreen() {
         // server unreachable — fall through to local verification
       }
     }
-    }
 
     if (!verified && activeUserId) {
       try {
