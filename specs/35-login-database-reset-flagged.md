@@ -6,9 +6,9 @@
 | Title | "Reset all data" button on login behind a disabled-by-default feature flag |
 | Status | **FINAL** (2026-09-30 per user call) |
 | Owner | User (final authority) |
-| Version | 1.0 — FINAL: v0.1 draft + env-flag amendment approved as-is; implement exactly this (flag ships OFF) |
-| Scope | One button + two-step confirm on `app/login.tsx` that wipes device-local data; flag definition (env `EXPO_PUBLIC_ADMIN_TOGGLE`, default off) |
-| Non-goals | Server-side deletion (SPEC-28 flow stands); automatic/stale-session wipes; enabling the flag (separate explicit order); assuming any session or credentials |
+| Version | 1.1 — FINAL: v1.0 + server account-delete attempt (stored token only, no DDL); implement exactly this (flag ships OFF) |
+| Scope | One button + two-step confirm on `app/login.tsx` that deletes the stored-token account server-side (if any) AND wipes device-local data; flag definition (env `EXPO_PUBLIC_ADMIN_TOGGLE`, default off) |
+| Non-goals | Server endpoint changes (reuses existing `DELETE auth/account`); automatic/stale-session wipes; enabling the flag (separate explicit order); login or credential prompts |
 | Normative source | This file, once marked FINAL. `AGENTS.md §4` is a pointer only. File+symbol cites are normative; `:line` numbers are hints only. |
 
 ## Terminology (RFC 2119)
@@ -49,25 +49,39 @@ spec only, no implementation, no enablement.
   a rebuild/restart — it MUST NOT be expected to toggle at runtime.
   Setting the flag `true` in any build is a separate explicit user order
   (not part of this spec's deliverables).
-- **CON-02 — Local-only wipe.** The reset MUST delete ONLY device-local
-  state and MUST NEVER call the API: all AsyncStorage keys (reuse
+- **CON-02 — Server account delete, then local wipe. No DDL, ever.** The
+  reset MUST first attempt `DELETE auth/account` (the existing SPEC-28
+  endpoint — row/account deletion only; no table drop exists or is added)
+  using ONLY the token already stored on the device, with 401 side-effects
+  suppressed (no session-kill UX, no credential wipe ahead of the flow, no
+  login, no credential prompts — the flag is the authorization, per user
+  2026-09-30). No stored token, unreachable server, or non-ok result MUST
+  NOT block the reset: the flow ALWAYS continues to the device wipe. Then
+  it MUST delete device-local state: all AsyncStorage keys (reuse
   `hardResetLocalData()`), the SecureStore `authToken`, in-memory
   `cachedUserId` + settings cache, and receipt image files (reuse the
   SPEC-28 collector: `file://` originals + `receipt_{txid}.jpg` copies,
   each deletion individually try/caught). MUST PRESERVE: `localDeviceId`,
   `system_reset_epoch`, and user-created export/backup files
-  (`WiseWallet_Backup_*.json`, CSVs).
+  (`WiseWallet_Backup_*.json`, CSVs). LIMIT DISCLOSED: without credentials
+  the server can only delete the account tied to the stored token — if the
+  token belongs to user A, user A's cloud account is deleted; with no token
+  nothing server-side happens. The confirm copy MUST state this.
 - **CON-03 — Two-step confirm with honest copy.** Step 1 dialog (destructive
   styling): "Reset all data on this device?" stating (a) EVERYTHING on this
   device is deleted including Local-only accounts (permanent, no recovery),
-  (b) cloud accounts are NOT touched and can log in again when online.
-  Step 2 requires an explicit checkbox ("I understand all device data will
-  be permanently deleted") before [Delete Everything] enables. Either step
-  cancellable with zero side effects.
-- **CON-04 — Clean landing.** After wipe: name/PIN inputs cleared, no
-  session started, success notice shown ("This device was reset. You can
-  register or log in fresh."), user stays on `/login`. The next login MUST
-  NOT observe any previous session (ties to SPEC-31 hygiene).
+  (b) it ALSO attempts to delete the cloud account tied to this device's
+  stored session (if any) — no login needed, no choosing which account — and
+  (c) with no usable session, or if the server call fails, cloud data
+  REMAINS and only the device is wiped. Step 2 requires an explicit checkbox
+  ("I understand all device data will be permanently deleted") before
+  [Delete Everything] enables. Either step cancellable with zero side effects.
+- **CON-04 — Clean landing with honest outcome.** After wipe: name/PIN
+  inputs cleared, no session started, user stays on `/login`. Server DELETE
+  ok → success notice ("Account and device data deleted."). Otherwise →
+  error-styled notice ("Deleted From This Device Only — cloud data may still
+  exist."). The next login MUST NOT observe any previous session (ties to
+  SPEC-31 hygiene).
 - **CON-05 — All platforms identical.** Android, iOS, Web (localStorage).
   Receipt-file deletion is best-effort guarded where files don't exist
   (web). No new native deps; Expo Go MUST NOT crash.
@@ -81,10 +95,11 @@ spec only, no implementation, no enablement.
 |---|---|
 | Login screen, flag off (default) | Pixel-identical to today; no reset affordance anywhere |
 | Login screen, flag on (future order) | Subtle "Reset all data" text-button below the info box |
-| Reset step 1 → Cancel | Zero writes/deletes, back to login |
-| Reset step 2 confirmed | AsyncStorage wiped (minus preserved keys), token gone, caches cleared, receipt files deleted best-effort; inputs cleared; success notice; stay on login |
+| Reset step 1 → Cancel | Zero writes/deletes, zero API calls, back to login |
+| Reset step 2 confirmed, stored token + server ok | Cloud account deleted AND device wiped; inputs cleared; success notice; stay on login |
+| Reset step 2 confirmed, no token / offline / rejected | Device wiped only; "Deleted From This Device Only" notice; inputs cleared; stay on login |
 | Reset with Local-only data on device | Destroyed permanently (stated in copy — no recovery path by design) |
-| Reset then login with cloud email | Fresh cloud session (server data intact, never touched) |
+| Reset then login with cloud email (server delete succeeded) | Login Failed (account gone) — proves the server delete landed |
 
 Open decisions: none proposed — DEC-01: env flag `EXPO_PUBLIC_ADMIN_TOGGLE`
 (read via helper, not remote, not code const); DEC-02: local-only, honest
@@ -104,7 +119,9 @@ Objective (machine-checkable, `jest` parameterized by `Platform.OS` =
 - **ACC-03:** wipe helper deletes all AsyncStorage keys except
   `localDeviceId`/`system_reset_epoch`, clears both token stores +
   `cachedUserId` + settings cache, attempts every collected receipt file,
-  and never calls `fetch` (fetch spy + storage snapshot diff).
+  attempts at most one `DELETE auth/account` (suppressed 401 handling, no
+  `/auth/login` call ever), and makes no other `fetch` calls (fetch spy +
+  storage snapshot diff).
 - **ACC-04:** cancelling at either step performs zero `setItem`/`removeItem`
   calls (dialog dismissal only).
 
@@ -112,9 +129,12 @@ Subjective (human-judged, observable reviewer checks; run only under a
 temporary local flag flip, reverted before merge):
 
 - **ACC-05:** reviewer on Android Expo Go with the flag temporarily on:
-  button visible below info box; step 1 states local-only + Local-destroyed
-  + cloud-untouched; checkbox gates [Delete Everything]; confirm wipes,
-  clears inputs, shows success, stays on login; re-login works; no red-box.
+  button visible below info box; step 1 states device-destroyed +
+  stored-session-account-deleted + no-token-means-device-only; checkbox gates
+  [Delete Everything]; confirm with a live session deletes the server
+  account (verified: re-login with that email fails) AND wipes the device,
+  clears inputs, stays on login; airplane-mode run wipes device only with
+  the honest notice; no red-box.
 - **ACC-06:** reviewer on web export (flag off): login pixel-identical to
   today, no gap where the button would be.
 
@@ -125,9 +145,11 @@ temporary local flag flip, reverted before merge):
   `process.env.EXPO_PUBLIC_ADMIN_TOGGLE === "true"`, with a comment that
   setting it `true` in any build requires an explicit user order and a
   rebuild.
-- **D-02 — Wipe helper.** Tested unit reusing `hardResetLocalData()` +
-  `removeSecureItem('authToken')` + `clearSessionCaches()` + SPEC-28
-  receipt collection, with the CON-02 preserve list.
+- **D-02 — Wipe helper.** Tested unit attempting one suppressed
+  `DELETE auth/account` with the stored token (skip when absent) reusing
+  `hardResetLocalData()` + `removeSecureItem('authToken')` +
+  `clearSessionCaches()` + SPEC-28 receipt collection, with the CON-02
+  preserve list and honest outcome branching.
 - **D-03 — Login UI.** Flag-gated subtle button + two-step confirm dialogs
   per CON-03/CON-04 (keyboard-safe per SPEC-32, web-safe copy).
 - **D-04 — Tests.** `jest` for ACC-01..04 parameterized over

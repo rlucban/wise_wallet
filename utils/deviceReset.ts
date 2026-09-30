@@ -4,16 +4,36 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import { hardResetLocalData, getUsers } from "./db";
-import { removeSecureItem } from "./secureStorage";
+import { getSecureItem, removeSecureItem } from "./secureStorage";
 import { clearSessionCaches } from "./cache";
-import { collectReceiptFiles } from "./accountDelete";
+import { collectReceiptFiles, resolveDeleteOutcome } from "./accountDelete";
+import { authFetch } from "./apiClient";
 import { getItem } from "./storage";
 
 export interface DeviceResetResult {
   deletedFiles: number;
+  serverDeleted: boolean;
 }
 
 export async function resetDeviceData(): Promise<DeviceResetResult> {
+  // SPEC-35 v1.1 CON-02 — one suppressed DELETE of the stored-token account
+  // first (row/account deletion only, never DDL). No login, no prompts, no
+  // session-kill UX. Absent token / offline / rejection never blocks the
+  // device wipe below.
+  let serverDeleted = false;
+  try {
+    const token = await getSecureItem("authToken").catch(() => null);
+    if (token) {
+      const delResult = await authFetch(`auth/account`, {
+        method: "DELETE",
+        suppressAuthFailure: true,
+      });
+      serverDeleted = resolveDeleteOutcome(delResult.ok) === "server";
+    }
+  } catch {
+    serverDeleted = false;
+  }
+
   // Collect receipt refs across ALL device users BEFORE the wipe (keys are
   // gone afterwards and names are unknown up front).
   const files = new Set<string>();
@@ -74,5 +94,5 @@ export async function resetDeviceData(): Promise<DeviceResetResult> {
       // best-effort per file; one missing file never aborts the reset
     }
   }
-  return { deletedFiles };
+  return { deletedFiles, serverDeleted };
 }
