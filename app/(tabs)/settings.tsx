@@ -6,7 +6,8 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
-import { setSetting, clearAllLocalData, exportData, importData, deleteUser, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
+import { setSetting, clearAllLocalData, exportData, importData, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
+import { parseVerifyLoginResponse, purgeUserDeviceData, resolveDeleteOutcome } from "../../utils/accountDelete";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
@@ -25,7 +26,7 @@ import ConfirmDialog from "../../components/ConfirmDialog";
 
 function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal: boolean }) {
   const { isOnline, checkConnectivity, isChecking } = useNetwork();
-  const { pending, failed, lastSyncedAt, refresh: retryAll } = useSyncStatus();
+  const { pending, failed, deadLetters, lastSyncedAt, refresh: retryAll } = useSyncStatus();
   const { activeUserId } = useAuth();
   const { transactions } = useTransactionsData();
   const paperTheme = usePaperTheme();
@@ -52,7 +53,7 @@ function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal:
 
   const diagnostics = isLocal
     ? `ID ${truncateUserId(activeUserId)} · Stored on this device`
-    : `ID ${truncateUserId(activeUserId)} · Backup ${autoBackup ? "on" : "off"} · ${pending} pending · ${failed} failed`;
+    : `ID ${truncateUserId(activeUserId)} · Backup ${autoBackup ? "on" : "off"} · ${pending} pending · ${failed} failed${deadLetters > 0 ? ` · ${deadLetters} unsendable` : ""}`;
 
   const getStatusColor = () => {
     if (isLocal) return { icon: "cellphone-off", text: "Local-only", color: paperTheme.colors.outline };
@@ -886,7 +887,18 @@ export default function SettingsScreen() {
             force: true,
           }),
         });
-        verified = res.ok;
+        if (res.ok) {
+          // SPEC-28 D-01 — this force login kills the current JWT server-side,
+          // so store the fresh token BEFORE any authenticated call follows.
+          const parsed = parseVerifyLoginResponse(
+            await res.json().catch(() => null)
+          );
+          if (parsed) {
+            await login(parsed.userId, parsed.token);
+            return true;
+          }
+          verified = true;
+        }
       } catch {
         // server unreachable — fall through to local verification
       }
@@ -952,19 +964,44 @@ export default function SettingsScreen() {
     if (!activeUserId) return;
     setIsSyncing(true);
     try {
-      await authFetch(`auth/account`, { method: "DELETE" });
+      // Collect receipt refs BEFORE the repo wipe (SPEC-28 D-08).
+      const localTxs = await repos.transactions.getAll();
+      // Suppressed 401 handling: a dead token here is a flow outcome, never a
+      // session kill (SPEC-28 D-03). Token is fresh per D-01 when online.
+      const delResult = await authFetch(`auth/account`, {
+        method: "DELETE",
+        suppressAuthFailure: true,
+      });
+      const outcome = resolveDeleteOutcome(delResult.ok);
       await clearAllLocalData();
-      await deleteUser(activeUserId);
+      await purgeUserDeviceData(
+        activeUserId,
+        localTxs.map((t) => ({ id: String(t.id), receiptUrl: t.receiptUrl })),
+        FileSystem.documentDirectory ?? null
+      );
       await logout();
       closeDeleteDialog();
-      showMessage("success", "Account Deleted", "Account and all associated data deleted successfully.", () => router.replace("/login"));
+      if (outcome === "server") {
+        showMessage("success", "Account Deleted", "Account and all associated data deleted successfully.", () => router.replace("/login"));
+      } else {
+        showMessage("error", "Deleted From This Device Only", "Your cloud data may still exist. Log in again when online to retry the server delete.", () => router.replace("/login"));
+      }
     } catch (e) {
       console.error("Delete account sync failed:", e);
-      await clearAllLocalData();
-      await deleteUser(activeUserId);
+      try {
+        const localTxs = await repos.transactions.getAll().catch(() => []);
+        await clearAllLocalData();
+        await purgeUserDeviceData(
+          activeUserId,
+          localTxs.map((t) => ({ id: String(t.id), receiptUrl: t.receiptUrl })),
+          FileSystem.documentDirectory ?? null
+        );
+      } catch {
+        // purge is best-effort; logout must still happen
+      }
       await logout();
       closeDeleteDialog();
-      showMessage("error", "Partial Deletion", "Failed to fully clear cloud data. Account was deleted locally.", () => router.replace("/login"));
+      showMessage("error", "Deleted From This Device Only", "Your cloud data may still exist. Log in again when online to retry the server delete.", () => router.replace("/login"));
     } finally {
       setIsSyncing(false);
     }

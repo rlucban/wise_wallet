@@ -20,20 +20,28 @@ export interface ApiResult<T = unknown> {
   error?: string;
 }
 
+export interface AuthFetchOptions extends RequestInit {
+  /** SPEC-28 D-03 — skip global 401 side-effects (credential wipe + session
+      alert); the caller handles the result locally. */
+  suppressAuthFailure?: boolean;
+}
+
 export async function authFetch<T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: AuthFetchOptions = {}
 ): Promise<ApiResult<T>> {
   const token = await getSecureItem('authToken');
 
   const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
+  const { suppressAuthFailure, ...fetchOptions } = options;
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  if (options.headers) {
-    Object.assign(headers, options.headers);
+  if (fetchOptions.headers) {
+    Object.assign(headers, fetchOptions.headers);
   }
 
   if (token) {
@@ -42,11 +50,11 @@ export async function authFetch<T = unknown>(
 
   try {
     const response = await fetch(`${API_URL}${formattedEndpoint}`, {
-      ...options,
+      ...fetchOptions,
       headers,
     });
 
-    if (response.status === 401) {
+    if (response.status === 401 && !suppressAuthFailure) {
       console.warn('401 Unauthorized - clearing auth credentials');
       await clearAuthStorage();
       if (onAuthFailure) {
@@ -56,7 +64,7 @@ export async function authFetch<T = unknown>(
 
     let body: Record<string, unknown>;
     try {
-      body = await response.json();
+      body = (await response.json()) as Record<string, unknown>;
     } catch {
       const text = await response.text().catch(() => '');
       return {

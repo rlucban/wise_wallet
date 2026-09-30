@@ -36,6 +36,7 @@ jest.mock('./syncQueue', () => ({
     return item;
   }),
   updateLastSyncedAt: jest.fn(async () => {}),
+  incrementDeadLetters: jest.fn(async () => {}),
   getQueueStats: jest.fn(async () => ({
     total: queue.length,
     failed: queue.filter((i) => i.lastError !== undefined).length,
@@ -69,7 +70,11 @@ import {
   processSyncQueue,
   enqueueAndTrigger,
   addQueueChangeListener,
+  COALESCE_WINDOW_MS,
 } from './syncProcessor';
+import { incrementDeadLetters } from './syncQueue';
+
+const mockDeadLetters = incrementDeadLetters as unknown as jest.Mock;
 
 describe('syncProcessor', () => {
   beforeEach(() => {
@@ -285,6 +290,48 @@ describe('syncProcessor', () => {
 
       expect(queue).toHaveLength(0);
       expect(mockAuthFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('SPEC-29 ACC-06: 404 dequeues + records one dead letter, never reprocessed', async () => {
+      queue.push({
+        id: 'transactions:create:tx-1',
+        entity: 'transactions',
+        operation: 'create',
+        entityId: 'tx-1',
+        data: { id: 'tx-1', amount: 100 },
+        timestamp: Date.now(),
+        retryCount: 0,
+        nextRetryAt: Date.now(),
+      });
+
+      mockAuthFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        error: 'Not Found',
+      });
+
+      await processSyncQueue();
+
+      expect(queue).toHaveLength(0);
+      expect(mockDeadLetters).toHaveBeenCalledTimes(1);
+    });
+
+    it('SPEC-29 ACC-04: enqueue while online drains within the coalesce window', async () => {
+      jest.useFakeTimers();
+      try {
+        mockAuthFetch.mockResolvedValue({ ok: true, status: 200, data: {} });
+
+        await enqueueAndTrigger('transactions', 'create', 'tx-1', {
+          amount: 100,
+        });
+
+        expect(queue).toHaveLength(1);
+        await jest.advanceTimersByTimeAsync(COALESCE_WINDOW_MS + 50);
+        expect(queue).toHaveLength(0);
+        expect(mockAuthFetch).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('processes multiple items sequentially', async () => {

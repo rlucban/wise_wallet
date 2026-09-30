@@ -12,7 +12,11 @@ import {
   getQueueStats,
   generateQueueItemId,
   enqueueSync,
+  incrementDeadLetters,
 } from './syncQueue';
+
+/** SPEC-29 D-02 — happy-path coalesce window (batches bursts, imperceptible). */
+export const COALESCE_WINDOW_MS = 200;
 
 let processingTimeout: ReturnType<typeof setTimeout> | null = null;
 let isProcessing = false;
@@ -109,9 +113,11 @@ async function processSingleItem(item: SyncQueueItem): Promise<SyncResult> {
       return { success: false, error: 'Unauthorized - session expired' };
     } else if (apiResult.status === 404) {
       console.warn(`[Sync] Endpoint ${endpoint} returned 404 — server may not support ${item.entity}. Dequeuing.`);
+      await incrementDeadLetters();
       return { success: true };
     } else if (apiResult.status === 400) {
       console.warn(`[Sync] ${item.entity} ${item.operation} rejected by server (400): ${apiResult.error}. Dequeuing.`);
+      await incrementDeadLetters();
       return { success: true };
     } else {
       return {
@@ -157,7 +163,7 @@ export async function processSyncQueue(): Promise<void> {
   }
 }
 
-export function triggerSyncProcessing(debounceMs: number = 500): void {
+export function triggerSyncProcessing(debounceMs: number = COALESCE_WINDOW_MS): void {
   if (processingTimeout) {
     clearTimeout(processingTimeout);
   }
