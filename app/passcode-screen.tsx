@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import type { TextInput as RNTextInput } from "react-native";
 import { Text, TextInput, useTheme, Card, HelperText } from "react-native-paper";
 import { usePasscode } from "../context/PasscodeContext";
@@ -36,7 +36,11 @@ export default function PasscodeScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    // SPEC-32 D-02 — PIN + error stay visible above the native keyboard.
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}>
         <Card.Content style={styles.cardContent}>
           <Text variant="headlineSmall" style={styles.title}>
@@ -90,7 +94,7 @@ export default function PasscodeScreen() {
           ) : null}
         </Card.Content>
       </Card>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

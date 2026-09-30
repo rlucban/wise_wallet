@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { View } from "react-native";
+import { KeyboardAwareDialog } from "../components/KeyboardAwareDialog";
 import { FlashList } from "@shopify/flash-list";
 import { Appbar, Text, Card, FAB, Portal, Modal, TextInput, Button, Checkbox, useTheme, Chip, IconButton, SegmentedButtons, Dialog } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -563,6 +564,8 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
             padding: 20,
           }}
         >
+          {/* SPEC-32 D-03 — inputs stay above the native keyboard. */}
+          <KeyboardAwareDialog>
           <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
             <Card.Content style={{ padding: 20 }}>
               <Text variant="titleLarge" style={{ marginBottom: 16 }}>Edit Scheduled Item</Text>
@@ -645,6 +648,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
 <Button mode="contained" onPress={handleSubmit} disabled={!title || !amount} buttonColor={theme.colors.primary} color="#fff">Save Changes</Button>
             </Card.Content>
           </Card>
+          </KeyboardAwareDialog>
         </Modal>
       </Portal>
 

@@ -10,6 +10,7 @@ import { formatNumberInput, parseAmount } from "../utils/amount";
 import { useUserProfile } from "../context/UserProfileContext";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { KeyboardAwareDialog } from "../components/KeyboardAwareDialog";
 
 export default function SavingsScreen() {
     const router = useRouter();
@@ -224,7 +225,7 @@ export default function SavingsScreen() {
                 <Appbar.Content title="Allocations" />
             </Appbar.Header>
 
-            <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
                 {items.length > 0 && (
                     <Card style={{ marginBottom: 16, padding: 16, borderRadius: 16, backgroundColor: theme.colors.primaryContainer }}>
                         <Text variant="labelMedium" style={{ color: theme.colors.onPrimaryContainer, textAlign: "center" }}>
@@ -421,6 +422,8 @@ export default function SavingsScreen() {
             <Portal>
                 {/* Edit Allocation Modal */}
                 <Modal visible={editModalVisible} onDismiss={() => setEditModalVisible(false)} contentContainerStyle={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", padding: 20 }}>
+                    {/* SPEC-32 D-03 — inputs stay above the native keyboard. */}
+                    <KeyboardAwareDialog>
                     <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                         <Card.Content style={{ padding: 20 }}>
                             <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Edit Allocation</Text>
@@ -429,10 +432,12 @@ export default function SavingsScreen() {
                             <Button mode="contained" onPress={handleEditItem} buttonColor={theme.colors.primary} color="#fff">Save Changes</Button>
                         </Card.Content>
                     </Card>
+                    </KeyboardAwareDialog>
                 </Modal>
 
                 {/* Transfer In Modal */}
                 <Modal visible={transferInModalVisible} onDismiss={() => setTransferInModalVisible(false)} contentContainerStyle={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", padding: 20 }}>
+                    <KeyboardAwareDialog>
                     <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                         <Card.Content style={{ padding: 20 }}>
                             <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Transfer Money In</Text>
@@ -463,10 +468,12 @@ export default function SavingsScreen() {
                             <Button mode="contained" onPress={handleTransferIn} disabled={!transferInValid} buttonColor={theme.colors.primary} color="#fff">Confirm</Button>
                         </Card.Content>
                     </Card>
+                    </KeyboardAwareDialog>
                 </Modal>
 
                 {/* Transfer Out Modal */}
                 <Modal visible={transferOutModalVisible} onDismiss={closeTransferOutModal} contentContainerStyle={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", padding: 20 }}>
+                    <KeyboardAwareDialog>
                     <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                         <Card.Content style={{ padding: 20 }}>
                             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -495,6 +502,7 @@ export default function SavingsScreen() {
                             <Button mode="contained" onPress={handleTransferOut} disabled={!transferOutAmountValid} buttonColor={theme.colors.primary} color="#fff">Confirm</Button>
                         </Card.Content>
                     </Card>
+                    </KeyboardAwareDialog>
                 </Modal>
 
                 <ConfirmDialog

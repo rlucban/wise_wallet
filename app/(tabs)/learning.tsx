@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { View, ScrollView, StyleSheet, Platform, useWindowDimensions } from "react-native";
+import { View, ScrollView, StyleSheet, Platform, useWindowDimensions, KeyboardAvoidingView } from "react-native";
 import { Text, Card, Appbar, IconButton, Chip, TextInput } from "react-native-paper";
 import { useRouter } from "expo-router";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
@@ -107,7 +107,12 @@ export default function LearningScreen() {
                 <Appbar.Content title="Financial Literacy" titleStyle={{ fontWeight: "700" }} />
             </Appbar.Header>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {/* SPEC-32 D-03 — search field stays above the native keyboard. */}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={{ flex: 1 }}
+            >
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <View style={styles.container}>
                     {/* Search Bar */}
                     <View style={styles.searchContainer}>
@@ -127,6 +132,7 @@ export default function LearningScreen() {
                             horizontal
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.filterChipsContainer}
+                            keyboardShouldPersistTaps="handled"
                         >
                             {UNIFIED_FILTERS.map((filter) => (
                                 <Chip
@@ -238,6 +244,7 @@ export default function LearningScreen() {
                     </View>
                 </View>
             </ScrollView>
+            </KeyboardAvoidingView>
         </View>
     );
 }
