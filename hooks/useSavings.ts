@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Platform } from "react-native";
 import { SavingsItem } from "../types";
 import { useAuthData } from "../context/AuthContext";
 import { API_URL, getSetting } from "../utils/db";
@@ -8,7 +9,15 @@ import { useRepositories } from "../context/RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
 import { useToast } from "../context/ToastContext";
+import { useUserProfileData } from "../context/UserProfileContext";
 import { nowTimestamp } from "../utils/storage";
+import {
+  resolveActivePlane,
+  apiList,
+  apiCreate,
+  apiUpdate,
+  apiDelete,
+} from "../utils/apiOnly";
 
 function migrateSavingsItem(item: SavingsItem): SavingsItem {
   const record = item as unknown as Record<string, unknown>;
@@ -44,10 +53,29 @@ export function useSavings() {
     const isLocal = useIsLocalAccount();
     const repos = useRepositories();
     const { showToast } = useToast();
+    const { profile } = useUserProfileData();
 
     const fetchItems = useCallback(async () => {
         setLoading(true);
         try {
+            // SPEC-34 CON-01/CON-02 — API-only plane reads live, zero repo I/O.
+            const plane = await resolveActivePlane({
+                platformOs: Platform.OS,
+                isLocal,
+                profileAutoBackup: profile?.autoBackup,
+            });
+            if (plane === "api-only") {
+                if (API_URL && activeUserId) {
+                    const { ok, data: remoteData } = await apiList("savingsItems", activeUserId);
+                    if (ok && Array.isArray(remoteData)) {
+                        setItems((remoteData as SavingsItem[]).map(migrateSavingsItem));
+                    }
+                } else {
+                    setItems([]);
+                }
+                return;
+            }
+
             const localData = await repos.savingsItems.getAll();
             const migrated = localData.map(migrateSavingsItem);
             const deduped = titleDeduplicate(migrated);
@@ -94,7 +122,7 @@ export function useSavings() {
         } finally {
             setLoading(false);
         }
-    }, [activeUserId, repos, isLocal, showToast]);
+    }, [activeUserId, repos, isLocal, showToast, profile?.autoBackup]);
 
     useEffect(() => {
         if (!activeUserId) return;
@@ -110,6 +138,32 @@ export function useSavings() {
             }
 
             const newItem = { ...item, id: generateUUID() } as SavingsItem;
+
+            // SPEC-34 CON-02 — API-only writes straight through.
+            const plane = await resolveActivePlane({
+                platformOs: Platform.OS,
+                isLocal,
+                profileAutoBackup: profile?.autoBackup,
+            });
+            if (plane === "api-only") {
+                if (!API_URL || !activeUserId) {
+                    throw new Error("Cloud unavailable — check your connection.");
+                }
+                const res = await apiCreate(
+                    "savingsItems",
+                    newItem as unknown as Record<string, unknown>,
+                    activeUserId
+                );
+                if (!res.ok) {
+                    showToast("Couldn't save to cloud. Check your connection and retry.");
+                    throw new Error(`Cloud create failed (status ${res.status})`);
+                }
+                const created = (res.data && typeof res.data === "object"
+                    ? res.data as SavingsItem
+                    : newItem);
+                setItems((prev) => [...prev, created]);
+                return;
+            }
 
             await repos.savingsItems.upsert(newItem);
             setItems((prev) => [...prev, newItem]);
@@ -129,6 +183,30 @@ export function useSavings() {
 
     const updateItem = async (id: string, updates: Partial<SavingsItem>) => {
         try {
+            // SPEC-34 CON-02 — API-only PUT straight through.
+            const plane = await resolveActivePlane({
+                platformOs: Platform.OS,
+                isLocal,
+                profileAutoBackup: profile?.autoBackup,
+            });
+            if (plane === "api-only") {
+                if (API_URL && activeUserId) {
+                    const res = await apiUpdate(
+                        "savingsItems",
+                        id,
+                        { ...updates, userId: activeUserId } as unknown as Record<string, unknown>,
+                        activeUserId
+                    );
+                    if (!res.ok) {
+                        showToast("Couldn't save to cloud. Check your connection and retry.");
+                    }
+                } else {
+                    showToast("Couldn't save to cloud. Check your connection and retry.");
+                }
+                setItems((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
+                return;
+            }
+
             const existing = await repos.savingsItems.getById(id);
             if (existing) {
                 await repos.savingsItems.upsert({ ...existing, ...updates } as SavingsItem);
@@ -149,6 +227,24 @@ export function useSavings() {
 
     const deleteItem = async (id: string) => {
         try {
+            // SPEC-34 CON-02 — API-only DELETE straight through.
+            const plane = await resolveActivePlane({
+                platformOs: Platform.OS,
+                isLocal,
+                profileAutoBackup: profile?.autoBackup,
+            });
+            if (plane === "api-only") {
+                if (API_URL && activeUserId) {
+                    const res = await apiDelete("savingsItems", id);
+                    if (!res.ok) {
+                        showToast("Couldn't delete from cloud. Check your connection and retry.");
+                        return;
+                    }
+                }
+                setItems((prev) => prev.filter((g) => g.id !== id));
+                return;
+            }
+
             await repos.savingsItems.deleteById(id);
             setItems((prev) => prev.filter((g) => g.id !== id));
 

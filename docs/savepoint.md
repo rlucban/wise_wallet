@@ -467,3 +467,26 @@ Branch `spec-28-29-delete-and-queue` (stacked on `spec-27-two-device-single-log`
 - D-03: 4 form screens + `learning` wrap their `ScrollView` in `KeyboardAvoidingView` (`flex: 1`, login pattern); 6 modals wrap content in `KeyboardAwareDialog`; `keyboardShouldPersistTaps="handled"` added to every `ScrollView` tag missing it (settings/savings/category/payment mains, learning outer + filter-chips scroller).
 - D-04 tests: new `utils/keyboardVisibility.test.js` — ACC-01 wrapper-per-file scan, ACC-02 every-`ScrollView`-tag persist scan, ACC-03 no-keyboard-dep scan; all × android/ios/web.
 - Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go PIN dialogs (ACC-04) + forms (ACC-05) + web export no-change (ACC-06).
+
+## 2026-09-30 — SPEC-34 FINAL + implemented (v1.0)
+
+- `specs/34-api-only-online-mode.md` FINAL per user call (v0.2 approved as-is).
+- New `utils/apiOnly.ts`: `resolveDataPlane`/`resolveActivePlane`/`isAutoBackupOn` (CON-01), `normalizeUserProfileResponse` (absorbed SPEC-33), direct `apiList/apiCreate/apiUpdate/apiDelete` (CON-02, never repos/queue), `ensureCloudProfile` (GET→POST-if-missing→PUT), `migrateToApiOnly` + `enterApiOnlyMode` (fetch→push→purge, CON-04), `fetchServerSnapshot` (CON-06), `purge/hasLegacyEntityKeys` (registry-safe), `readReposSnapshot`, `switchToOfflineMode` (zero-fetch, CON-03).
+- D-01: all 5 data layers branch on the plane — Transactions/Categories contexts, `useSavings`, `useDues`, `UserProfileContext` (fetch normalizes both shapes, `updateProfile` → boolean via ensure-exists; local-persist paths byte-identical).
+- D-02: new `components/ApiOfflineBanner.tsx` (banner + [Turn OFF]/[Retry] + gate body, `useApiOnlyOffline` hook); `_layout` renders banner + `MainStack` gate for signed-in API-only offline sessions; generic `OfflineIndicator` suppressed in API-only (its auto-sync copy would lie).
+- D-03: register/login Cloud success writes registry row only (no profile/seed/settings writes); `AuthLoader` skips seeding in API-only and migrates legacy caches once (plane-keyed guard); settings OFF→ON = PIN verify → explanation dialog → migration → live; ON→OFF = verified snapshot seed (mobile) / flag-only (web); deleted the retired merge/conflict OFF→ON path (`handleMergeLWW`, both dialogs) + unused imports; re-reg success copy notes upload semantics.
+- D-04: export builds the live memory snapshot in API-only (same JSON shape); import POSTs entries then refetches with per-entity failure report; `SyncStatusCard` shows Live/ID, hides queue counts and upload timestamp in API-only.
+- D-05 tests: new `utils/apiOnly.test.ts` — ACC-01 matrix, ACC-02 zero-writes/zero-enqueue (+no-enqueue-import scan), ACC-03 order/abort (fetch-fail, entry-fail, profile-fail)/purge scoping, ACC-04 normalizer, ACC-09 offline switch, ACC-10 per-user flag, plus `ensureCloudProfile` POST-vs-PUT, `resolveActivePlane` store/profile/default precedence, and wiring scans (all 5 data layers branch on the plane; banner+gate mounted; ON-toggle copy present); all × android/ios/web (apiClient/syncProcessor mocked per repo pattern).
+- Known limitation: due-reminder scheduling (`AuthLoader` notification effect) reads local repos — no-op in API-only until a live-source scheduler ships (no spec yet).
+- Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-05..08).
+
+## 2026-09-30 — SPEC-35 FINAL + implemented (flag ships OFF)
+
+- `specs/35-login-database-reset-flagged.md` FINAL per user call (env-flag amendment included).
+- `.env` + `.env.example`: `EXPO_PUBLIC_ADMIN_TOGGLE=false` pinned locally (Vercel stays absent = off).
+- D-01: new `utils/featureFlags.ts` — `isAdminToggleOn()` exact-matches the env at call time (test-flippable); rebuild required to flip in builds.
+- D-02: new `utils/deviceReset.ts` — `resetDeviceData()` collects receipt refs across all device users first, then `hardResetLocalData()` + both token stores + `clearSessionCaches()`, restores `localDeviceId`, deletes receipt files best-effort; preserves epoch + user export files; zero API calls.
+- D-03: `app/login.tsx` subtle "Reset all data" text-button below the info box, rendered only when the flag is on (off = nothing); warning dialog → checkbox confirm dialog → wipe → inputs cleared → success notice on `/login`.
+- D-04 tests: new `utils/deviceReset.test.ts` — ACC-01 env matrix, ACC-02 flag gate + single wipe call-site scan, ACC-03 full wipe/preserve/fetch-zero assertions; all × android/ios/web (expo native modules mocked per repo pattern).
+- No enablement shipped — turning the flag `true` anywhere needs a separate explicit order.
+- Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-05/06 need a temporary local flag flip only).

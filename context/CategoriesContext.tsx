@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
+import { Platform } from "react-native";
 import { Category } from "../types";
 import { API_URL, getSetting } from "../utils/db";
 import { authFetch } from "../utils/apiClient";
@@ -8,6 +9,13 @@ import { useRepositories } from "./RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
 import { useToast } from "./ToastContext";
+import { useUserProfileData } from "./UserProfileContext";
+import {
+  resolveActivePlane,
+  apiList,
+  apiCreate,
+  apiDelete,
+} from "../utils/apiOnly";
 
 interface CategoriesData {
   categories: Category[];
@@ -30,10 +38,29 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
+  const { profile } = useUserProfileData();
 
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     try {
+      // SPEC-34 CON-01/CON-02 — API-only plane reads live, zero repo I/O.
+      const plane = await resolveActivePlane({
+        platformOs: Platform.OS,
+        isLocal,
+        profileAutoBackup: profile?.autoBackup,
+      });
+      if (plane === "api-only") {
+        if (API_URL && activeUserId) {
+          const { ok, data } = await apiList("categories", activeUserId);
+          if (ok && Array.isArray(data)) {
+            setCategories(data as Category[]);
+          }
+        } else {
+          setCategories([]);
+        }
+        return;
+      }
+
       const localData = await catRepo.getAll();
       setCategories(localData);
 
@@ -63,7 +90,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [activeUserId, catRepo, isLocal, showToast]);
+  }, [activeUserId, catRepo, isLocal, showToast, profile?.autoBackup]);
 
   useEffect(() => {
     if (!activeUserId) return;
@@ -73,6 +100,32 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
   const addCategory = useCallback(async (category: Omit<Category, "id">) => {
     try {
       const newCategory = { ...category, id: generateUUID() };
+      // SPEC-34 CON-02 — API-only writes straight through.
+      const plane = await resolveActivePlane({
+        platformOs: Platform.OS,
+        isLocal,
+        profileAutoBackup: profile?.autoBackup,
+      });
+      if (plane === "api-only") {
+        if (!API_URL || !activeUserId) {
+          throw new Error("Cloud unavailable — check your connection.");
+        }
+        const res = await apiCreate(
+          "categories",
+          newCategory as unknown as Record<string, unknown>,
+          activeUserId
+        );
+        if (!res.ok) {
+          showToast("Couldn't save to cloud. Check your connection and retry.");
+          throw new Error(`Cloud create failed (status ${res.status})`);
+        }
+        const created = (res.data && typeof res.data === "object"
+          ? res.data as Category
+          : newCategory);
+        setCategories((prev) => [...prev, created]);
+        return;
+      }
+
       await catRepo.upsert(newCategory);
       setCategories((prev) => [...prev, newCategory]);
 
@@ -86,10 +139,28 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error adding category:", error);
     }
-  }, [catRepo, activeUserId, isLocal]);
+  }, [catRepo, activeUserId, isLocal, showToast, profile?.autoBackup]);
 
   const deleteCategory = useCallback(async (id: string) => {
     try {
+      // SPEC-34 CON-02 — API-only DELETE straight through.
+      const plane = await resolveActivePlane({
+        platformOs: Platform.OS,
+        isLocal,
+        profileAutoBackup: profile?.autoBackup,
+      });
+      if (plane === "api-only") {
+        if (API_URL && activeUserId) {
+          const res = await apiDelete("categories", id);
+          if (!res.ok) {
+            showToast("Couldn't delete from cloud. Check your connection and retry.");
+            return;
+          }
+        }
+        setCategories((prev) => prev.filter((c) => c.id !== id));
+        return;
+      }
+
       await catRepo.deleteById(id);
       setCategories((prev) => prev.filter((c) => c.id !== id));
 
@@ -102,7 +173,7 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error deleting category:", error);
     }
-  }, [catRepo, isLocal]);
+  }, [catRepo, isLocal, activeUserId, showToast, profile?.autoBackup]);
 
   const dataValue = useMemo(() => ({
     categories,

@@ -106,10 +106,10 @@ export default function RegisterScreen() {
             const responseData = await response.json();
 
             if (response.ok) {
+                // SPEC-34 CON-02 — API-only Cloud session: registry row only.
+                // No profile/seed/settings entity writes; AuthLoader migrates
+                // any legacy cache, onboarding ensures the cloud profile.
                 await addUser(responseData.data.user.id, emailAddr.trim(), pin.trim());
-                await saveUserProfile({ name: emailAddr.trim(), isFirstRun: true, initialBalance: 0 }, responseData.data.user.id);
-                await initDb(responseData.data.user.id);
-                await setSetting('autoBackup', 'true');
                 await login(responseData.data.user.id, responseData.data.token);
                 return true;
             } else {
@@ -184,10 +184,8 @@ export default function RegisterScreen() {
                     });
                     const responseData = await response.json();
                     if (response.ok) {
+                        // SPEC-34 CON-02 — registry row only (see above).
                         await addUser(responseData.data.user.id, name.trim(), passcode.trim());
-                        await saveUserProfile({ name: name.trim(), isFirstRun: true, initialBalance: 0 }, responseData.data.user.id);
-                        await initDb(responseData.data.user.id);
-                        await setSetting('autoBackup', 'true');
                         await login(responseData.data.user.id, responseData.data.token);
                         alert("Cloud account created successfully!");
                         setLoading(false);

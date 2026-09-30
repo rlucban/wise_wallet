@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Platform } from "react-native";
 import { Due } from "../types";
 import { useAuthData } from "../context/AuthContext";
 import { API_URL, getSetting } from "../utils/db";
@@ -8,7 +9,15 @@ import { useRepositories } from "../context/RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
 import { useToast } from "../context/ToastContext";
+import { useUserProfileData } from "../context/UserProfileContext";
 import { nowTimestamp } from "../utils/storage";
+import {
+  resolveActivePlane,
+  apiList,
+  apiCreate,
+  apiUpdate,
+  apiDelete,
+} from "../utils/apiOnly";
 
 function migrateDue(item: Due): Due {
   const record = item as unknown as Record<string, unknown>;
@@ -33,14 +42,33 @@ function migrateDue(item: Due): Due {
 export function useDues() {
   const [dues, setDues] = useState<Due[]>([]);
   const [loading, setLoading] = useState(false);
-  const { activeUserId } = useAuthData();
-  const isLocal = useIsLocalAccount();
-  const repos = useRepositories();
-  const { showToast } = useToast();
+    const { activeUserId } = useAuthData();
+    const isLocal = useIsLocalAccount();
+    const repos = useRepositories();
+    const { showToast } = useToast();
+    const { profile } = useUserProfileData();
 
-  const fetchDues = useCallback(async () => {
+    const fetchDues = useCallback(async () => {
     setLoading(true);
     try {
+      // SPEC-34 CON-01/CON-02 — API-only plane reads live, zero repo I/O.
+      const plane = await resolveActivePlane({
+        platformOs: Platform.OS,
+        isLocal,
+        profileAutoBackup: profile?.autoBackup,
+      });
+      if (plane === "api-only") {
+        if (API_URL && activeUserId) {
+          const { ok, data: remoteData } = await apiList("dues", activeUserId);
+          if (ok && Array.isArray(remoteData)) {
+            setDues((remoteData as Due[]).map(migrateDue));
+          }
+        } else {
+          setDues([]);
+        }
+        return;
+      }
+
       const localData = await repos.dues.getAll();
       const migrated = localData.map(migrateDue);
       setDues(migrated);
@@ -73,16 +101,42 @@ export function useDues() {
     } finally {
       setLoading(false);
     }
-  }, [activeUserId, repos, isLocal, showToast]);
+  }, [activeUserId, repos, isLocal, showToast, profile?.autoBackup]);
 
   useEffect(() => {
     if (!activeUserId) return;
     fetchDues();
   }, [activeUserId, fetchDues]);
 
-  const addDue = async (due: Omit<Due, "id">) => {
+    const addDue = async (due: Omit<Due, "id">) => {
     try {
       const newDue = { ...due, id: generateUUID() } as Due;
+      // SPEC-34 CON-02 — API-only writes straight through.
+      const plane = await resolveActivePlane({
+        platformOs: Platform.OS,
+        isLocal,
+        profileAutoBackup: profile?.autoBackup,
+      });
+      if (plane === "api-only") {
+        if (!API_URL || !activeUserId) {
+          throw new Error("Cloud unavailable — check your connection.");
+        }
+        const res = await apiCreate(
+          "dues",
+          newDue as unknown as Record<string, unknown>,
+          activeUserId
+        );
+        if (!res.ok) {
+          showToast("Couldn't save to cloud. Check your connection and retry.");
+          throw new Error(`Cloud create failed (status ${res.status})`);
+        }
+        const created = (res.data && typeof res.data === "object"
+          ? res.data as Due
+          : newDue);
+        setDues((prev) => [...prev, created]);
+        return;
+      }
+
       await repos.dues.upsert(newDue);
       setDues((prev) => [...prev, newDue]);
 
@@ -99,8 +153,32 @@ export function useDues() {
     }
   };
 
-  const updateDue = async (id: string, updates: Partial<Due>) => {
+    const updateDue = async (id: string, updates: Partial<Due>) => {
     try {
+      // SPEC-34 CON-02 — API-only PUT straight through.
+      const plane = await resolveActivePlane({
+        platformOs: Platform.OS,
+        isLocal,
+        profileAutoBackup: profile?.autoBackup,
+      });
+      if (plane === "api-only") {
+        if (API_URL && activeUserId) {
+          const res = await apiUpdate(
+            "dues",
+            id,
+            { ...updates, userId: activeUserId } as unknown as Record<string, unknown>,
+            activeUserId
+          );
+          if (!res.ok) {
+            showToast("Couldn't save to cloud. Check your connection and retry.");
+          }
+        } else {
+          showToast("Couldn't save to cloud. Check your connection and retry.");
+        }
+        setDues((prev) => prev.map((d) => (d.id === id ? { ...d, ...updates } : d)));
+        return;
+      }
+
       const existing = await repos.dues.getById(id);
       if (existing) {
         await repos.dues.upsert({ ...existing, ...updates } as Due);
@@ -119,8 +197,26 @@ export function useDues() {
     }
   };
 
-  const deleteDue = async (id: string) => {
+    const deleteDue = async (id: string) => {
     try {
+      // SPEC-34 CON-02 — API-only DELETE straight through.
+      const plane = await resolveActivePlane({
+        platformOs: Platform.OS,
+        isLocal,
+        profileAutoBackup: profile?.autoBackup,
+      });
+      if (plane === "api-only") {
+        if (API_URL && activeUserId) {
+          const res = await apiDelete("dues", id);
+          if (!res.ok) {
+            showToast("Couldn't delete from cloud. Check your connection and retry.");
+            return;
+          }
+        }
+        setDues((prev) => prev.filter((d) => d.id !== id));
+        return;
+      }
+
       await repos.dues.deleteById(id);
       setDues((prev) => prev.filter((d) => d.id !== id));
 
