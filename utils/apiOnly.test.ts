@@ -15,6 +15,7 @@ import { processSyncQueue } from "./syncProcessor";
 import * as syncQueue from "./syncQueue";
 import {
   resolveDataPlane,
+  resolveActivePlane,
   isAutoBackupOn,
   normalizeUserProfileResponse,
   apiCreate,
@@ -26,8 +27,9 @@ import {
   hasLegacyEntityKeys,
   switchToOfflineMode,
   readAutoBackupFlagFor,
+  ensureCloudProfile,
 } from "./apiOnly";
-import { setCachedUserId } from "./cache";
+import { setCachedUserId, clearSessionCaches } from "./cache";
 
 const mockAuthFetch = authFetch as jest.MockedFunction<typeof authFetch>;
 const mockDrain = processSyncQueue as jest.MockedFunction<typeof processSyncQueue>;
@@ -273,6 +275,187 @@ describe.each(["android", "ios", "web"] as const)(
       await expect(readAutoBackupFlagFor("U")).resolves.toBe(false);
       await expect(readAutoBackupFlagFor("FRESH")).resolves.toBe(true);
       setCachedUserId(null);
+    });
+
+    test("ACC-03d: entry-upload failure aborts with no purge", async () => {
+      const ops: string[] = [];
+      const result = await migrateToApiOnly({
+        readLocalSnapshot: async () => ({
+          transactions: [{ id: "t1" }],
+          categories: [],
+          dues: [],
+          savingsItems: [],
+          profile: null,
+        }),
+        drainOutbox: async () => {},
+        fetchRemote: async () => ({
+          ok: true,
+          remote: {
+            transactions: [],
+            categories: [],
+            dues: [],
+            savingsItems: [],
+            profile: null,
+          },
+        }),
+        uploadEntry: async () => {
+          ops.push("post");
+          return false;
+        },
+        uploadProfile: async () => true,
+        purgeLocal: async () => {
+          ops.push("purge");
+        },
+      });
+      expect(result).toEqual({ ok: false, reason: "upload-failed:transactions" });
+      expect(ops).toEqual(["post"]);
+    });
+
+    test("ACC-03e: profile-upload failure aborts with no purge", async () => {
+      const ops: string[] = [];
+      const result = await migrateToApiOnly({
+        readLocalSnapshot: async () => ({
+          transactions: [],
+          categories: [],
+          dues: [],
+          savingsItems: [],
+          profile: { name: "a@b.co" },
+        }),
+        drainOutbox: async () => {},
+        fetchRemote: async () => ({
+          ok: true,
+          remote: {
+            transactions: [],
+            categories: [],
+            dues: [],
+            savingsItems: [],
+            profile: null,
+          },
+        }),
+        uploadEntry: async () => true,
+        uploadProfile: async () => {
+          ops.push("put:profile");
+          return false;
+        },
+        purgeLocal: async () => {
+          ops.push("purge");
+        },
+      });
+      expect(result).toEqual({ ok: false, reason: "upload-failed:profile" });
+      expect(ops).toEqual(["put:profile"]);
+    });
+
+    test("ensureCloudProfile: POSTs when missing, PUTs when present", async () => {
+      // Missing → POST collection.
+      mockAuthFetch
+        .mockResolvedValueOnce(okBody([]))
+        .mockResolvedValueOnce(okBody({ id: "new" }));
+      await expect(
+        ensureCloudProfile("U", { name: "a@b.co" })
+      ).resolves.toBe(true);
+      const missingCalls = mockAuthFetch.mock.calls;
+      expect(missingCalls[0]?.[0]).toBe("userProfiles?userId=U");
+      expect(missingCalls[1]?.[0]).toBe("userProfiles");
+      expect(
+        (missingCalls[1]?.[1] as { method?: string } | undefined)?.method
+      ).toBe("POST");
+
+      // Present → PUT by row id.
+      mockAuthFetch.mockClear();
+      mockAuthFetch
+        .mockResolvedValueOnce(
+          okBody([{ id: "p1", userId: "U", name: "a@b.co" }])
+        )
+        .mockResolvedValueOnce(okBody({ id: "p1" }));
+      await expect(
+        ensureCloudProfile("U", { name: "a@b.co", initialBalance: 15 })
+      ).resolves.toBe(true);
+      const presentCalls = mockAuthFetch.mock.calls;
+      expect(presentCalls[1]?.[0]).toBe("userProfiles/p1");
+      expect(
+        (presentCalls[1]?.[1] as { method?: string } | undefined)?.method
+      ).toBe("PUT");
+
+      // Failed POST → false.
+      mockAuthFetch.mockClear();
+      mockAuthFetch
+        .mockResolvedValueOnce(okBody([]))
+        .mockResolvedValueOnce({ ok: false, status: 500 });
+      await expect(
+        ensureCloudProfile("U", { name: "a@b.co" })
+      ).resolves.toBe(false);
+    });
+
+    test("resolveActivePlane: store wins, then profile, then Cloud-default ON", async () => {
+      // Store 'false' beats profile true (native plane).
+      clearSessionCaches();
+      setCachedUserId("U");
+      await AsyncStorage.setItem(
+        "user_U_settings",
+        JSON.stringify({ autoBackup: "false" })
+      );
+      await expect(
+        resolveActivePlane({ platformOs: "android", isLocal: false, profileAutoBackup: true })
+      ).resolves.toBe("local-persist");
+
+      // No store key → profile fallback.
+      clearSessionCaches();
+      await expect(
+        resolveActivePlane({ platformOs: "android", isLocal: false, profileAutoBackup: false })
+      ).resolves.toBe("local-persist");
+      await expect(
+        resolveActivePlane({ platformOs: "android", isLocal: false, profileAutoBackup: true })
+      ).resolves.toBe("api-only");
+
+      // Web is api-only regardless; Local is local-persist regardless.
+      await expect(
+        resolveActivePlane({ platformOs: "web", isLocal: false, profileAutoBackup: false })
+      ).resolves.toBe("api-only");
+      await expect(
+        resolveActivePlane({ platformOs: platform, isLocal: true, profileAutoBackup: true })
+      ).resolves.toBe("local-persist");
+      clearSessionCaches();
+    });
+
+    test("wiring: all five data layers branch on the plane", () => {
+      const layers = [
+        "context/TransactionsContext.tsx",
+        "context/CategoriesContext.tsx",
+        "hooks/useSavings.ts",
+        "hooks/useDues.ts",
+        "context/UserProfileContext.tsx",
+      ];
+      const missing = layers.filter((file) => {
+        const content = fs.readFileSync(
+          path.resolve(__dirname, "..", file),
+          "utf-8"
+        );
+        const hasPlane = content.includes("resolveActivePlane");
+        const hasApiIo =
+          content.includes("apiList") ||
+          content.includes("apiCreate") ||
+          content.includes("apiUpdate") ||
+          content.includes("apiDelete") ||
+          content.includes("ensureCloudProfile");
+        return !(hasPlane && hasApiIo);
+      });
+      expect(missing).toEqual([]);
+    });
+
+    test("wiring: banner+gate mounted and ON-toggle copy present", () => {
+      const layout = fs.readFileSync(
+        path.resolve(__dirname, "..", "app/_layout.tsx"),
+        "utf-8"
+      );
+      expect(layout).toContain("ApiOfflineBanner");
+      expect(layout).toContain("MainStack");
+      expect(layout).toContain("enterApiOnlyMode");
+      const settings = fs.readFileSync(
+        path.resolve(__dirname, "..", "app/(tabs)/settings.tsx"),
+        "utf-8"
+      );
+      expect(settings).toContain("fetch cloud first, then push");
+      expect(settings).toContain("confirmSyncEnable");
     });
   }
 );
