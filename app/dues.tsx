@@ -680,7 +680,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
            icon="plus"
            label="Due"
            style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
-           color="#fff"
+           color={theme.colors.onPrimary}
            onPress={() => router.push("/add-due")}
          />
     </View>

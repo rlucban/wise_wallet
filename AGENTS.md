@@ -321,6 +321,15 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   D-01 `app/(tabs)/settings.tsx`: changed button text from "Export Data (JSON)" and
   "Import Data (JSON)" to "Export Data" and "Import Data".
   See `docs/savepoint.md`.
+- **2026-09-30 — Spec 34 FINAL + implemented.** `specs/34-replace-hardcoded-white-with-onprimary-token.md`:
+  fixed the 15 `utils/themeColors.test.js` failures (5 files x android/ios/web) caused by SPEC-17
+  reintroducing a hardcoded `#fff` into files SPEC-12..16 had already tokenized. D-01..D-05: `"#fff"` ->
+  `theme.colors.onPrimary` in `app/add-allocation.tsx` (`buttonTextColor` fallback), the FABs in
+  `app/dues.tsx` / `app/savings.tsx` / `app/category-settings.tsx`, and the "Save Scheduled Due" Button in
+  `app/add-due.tsx`. Light mode pixel-identical (`onPrimary: #FFFFFF`); dark mode contrast improves from
+  ~2.2:1 to ~8:1 against `primary: #4A90D9` (CON-03). Known issue left unfixed per ACC-10: `add-allocation`
+  sets both `disabledBg` and `disabledText` to `theme.colors.onSurface`, making the disabled label invisible.
+  See `docs/savepoint.md`.
 
 ---
 

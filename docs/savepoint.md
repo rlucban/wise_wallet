@@ -465,3 +465,16 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
   - Changed button label from `Import Data (JSON)` to `Import Data`.
   - Underlying file handlers, formats, and validators preserved without changes.
 
+
+---
+
+## 2026-09-30 - SPEC-34: Replace Hardcoded `#fff` With the `onPrimary` Semantic Token
+- `specs/34-replace-hardcoded-white-with-onprimary-token.md`: Finalized spec for fixing the 15 `utils/themeColors.test.js` failures (5 files x 3 platforms) introduced when SPEC-17 and SPEC-26 reintroduced a hardcoded `#fff` into files that SPEC-12..16 had already converted to theme tokens.
+- `app/add-allocation.tsx` (D-01): `buttonTextColor` enabled-branch fallback `"#fff"` -> `theme.colors.onPrimary`.
+- `app/dues.tsx` (D-02): FAB `color="#fff"` -> `color={theme.colors.onPrimary}` (FAB `backgroundColor: theme.colors.primary` unchanged).
+- `app/savings.tsx` (D-03): FAB `color="#fff"` -> `color={theme.colors.onPrimary}` (FAB `backgroundColor: theme.colors.primary` unchanged).
+- `app/category-settings.tsx` (D-04): FAB `color="#fff"` -> `color={theme.colors.onPrimary}` (FAB `backgroundColor: theme.colors.primary` unchanged).
+- `app/add-due.tsx` (D-05): "Save Scheduled Due" `Button` `color="#fff"` -> `color={theme.colors.onPrimary}` (`buttonColor={theme.colors.primary}` unchanged).
+- Rationale: `context/ThemeContext.tsx` defines a correct MD3 pair in both schemes (light `primary: #1B3F7A` + `onPrimary: #FFFFFF`; dark `primary: #4A90D9` + `onPrimary: #001F4D`). Light mode is therefore pixel-identical, and dark mode contrast improves from ~2.2:1 (white on pale blue, fails WCAG AA) to ~8:1 (navy on blue, passes). Matches SPEC-13 `DEC-08`.
+- Known issue NOT fixed by this spec (ACC-10): `app/add-allocation.tsx` sets both `disabledBg` and `disabledText` to `theme.colors.onSurface`, so the disabled "Create Allocation" label is invisible against its own background. Filed for a follow-up spec.
+- Verification: user to run `npm test` (expect 15/15 themeColors cases pass, 98 total) and `npm run lint` (expect clean).

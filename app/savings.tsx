@@ -536,7 +536,7 @@ export default function SavingsScreen() {
         icon="plus"
         label="New Allocation"
         style={{ position: "absolute", margin: 16, right: 0, bottom: 0, borderRadius: 20, backgroundColor: theme.colors.primary }}
-        color="#fff"
+        color={theme.colors.onPrimary}
         onPress={() => router.push("/add-allocation")}
       />
 
