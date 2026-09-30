@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Text, TextInput, Button, Card, HelperText, Dialog, Portal } from 'react-native-paper';
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuthActions } from '../context/AuthContext';
 import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
+import {
+    getDeviceOnline,
+    shouldShowOfflineSuggestion,
+    OFFLINE_SUGGEST_TITLE,
+    OFFLINE_SUGGEST_MESSAGE,
+} from '../utils/localGate';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type AccountMode = "online" | "offline";
@@ -29,6 +35,27 @@ export default function RegisterScreen() {
         message: string;
         buttons?: { text: string; onPress?: () => void; style?: "cancel" }[];
     }>({ visible: false, title: "", message: "" });
+
+    // SPEC-30 D-01 — once-per-visit offline suggestion (device connectivity,
+    // zero API pings; suggested only, never forced; native only).
+    const [showOfflineSuggest, setShowOfflineSuggest] = useState(false);
+    const suggestShownRef = useRef(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            if (isWeb) return;
+            if (
+                shouldShowOfflineSuggestion({
+                    isWeb: false,
+                    deviceOnline: getDeviceOnline(),
+                    alreadyShown: suggestShownRef.current,
+                })
+            ) {
+                suggestShownRef.current = true;
+                setShowOfflineSuggest(true);
+            }
+        }, [isWeb])
+    );
 
     const showAlert = (title: string, message: string, buttons?: { text: string; onPress?: () => void; style?: "cancel" }[]) => {
         setDialog({ visible: true, title, message, buttons });
@@ -139,8 +166,16 @@ export default function RegisterScreen() {
                 return;
             }
             if (!isEmail && Platform.OS !== "web") {
-                // Username typed in online mode on mobile — attempt cloud registration first
+                // SPEC-30 CON-01 + SPEC-27 CON-03 — username typed in online
+                // mode on mobile: attempt cloud registration first, but creating
+                // a Local account from here REQUIRES explicit confirmation
+                // stating data will NOT sync. Never silently fall back.
+                if (!passcode.trim() || passcode.length !== 4) {
+                    setPinError("Passcode must be exactly 4 digits");
+                    return;
+                }
                 setLoading(true);
+                let cloudOk = false;
                 try {
                     const response = await fetch(`${API_URL}/auth/register`, {
                         method: "POST",
@@ -158,16 +193,29 @@ export default function RegisterScreen() {
                         setLoading(false);
                         return;
                     } else {
-                        // Cloud registration failed (e.g., email not available) — fall through to local account
-                        console.info("Cloud registration failed, falling back to local account");
+                        console.info("Cloud registration failed, asking before local account");
                     }
                 } catch (e) {
-                    // Network error — fall through to local account
-                    console.info("Cloud registration network error, falling back to local account:", (e as Error).message);
+                    console.info("Cloud registration network error, asking before local account:", (e as Error).message);
                 }
-                // Fall through to createLocalAccount
-                const success = await createLocalAccount(name.trim(), passcode.trim());
-                if (!success) setLoading(false);
+                if (!cloudOk) {
+                    const pendingName = name.trim();
+                    const pendingPin = passcode.trim();
+                    showAlert(
+                        "Create Local-Only Account?",
+                        `Cloud registration did not succeed for "${pendingName}". Create a local-only account instead? It will store data on this device only and data will NOT sync across devices.`,
+                        [
+                            {
+                                text: "Create Local Account",
+                                onPress: async () => {
+                                    const success = await createLocalAccount(pendingName, pendingPin);
+                                    if (!success) setLoading(false);
+                                }
+                            },
+                            { text: "Cancel", style: "cancel", onPress: () => setLoading(false) }
+                        ]
+                    );
+                }
                 return;
             }
         }
@@ -194,6 +242,41 @@ export default function RegisterScreen() {
 
     return (
         <>
+            <Portal>
+                <Dialog
+                    visible={showOfflineSuggest}
+                    onDismiss={() => setShowOfflineSuggest(false)}
+                >
+                    <Dialog.Icon icon="wifi-off" />
+                    <Dialog.Title style={{ textAlign: 'center' }}>{OFFLINE_SUGGEST_TITLE}</Dialog.Title>
+                    <Dialog.Content>
+                        <Text variant="bodyMedium" style={{ textAlign: 'center', lineHeight: 22 }}>
+                            {OFFLINE_SUGGEST_MESSAGE}
+                        </Text>
+                    </Dialog.Content>
+                    <Dialog.Actions style={{ justifyContent: 'center' }}>
+                        <Button
+                            mode="contained"
+                            onPress={() => {
+                                setAccountMode("offline");
+                                setName("");
+                                setNameError("");
+                                setShowOfflineSuggest(false);
+                            }}
+                            style={{ marginHorizontal: 4 }}
+                        >
+                            Continue Offline
+                        </Button>
+                        <Button
+                            mode="text"
+                            onPress={() => setShowOfflineSuggest(false)}
+                            style={{ marginHorizontal: 4 }}
+                        >
+                            Use Online
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
             <Portal>
                 <Dialog visible={dialog.visible} onDismiss={() => setDialog({ ...dialog, visible: false })}>
                     <Dialog.Icon icon="alert-circle-outline" />
@@ -355,7 +438,7 @@ export default function RegisterScreen() {
                                                     • Offline mode stores data on this device only
                                                 </Text>
                                                 <Text variant="bodySmall" style={{ color: '#888', textAlign: 'center', marginTop: 2 }}>
-                                                    • You can upgrade to Online later in Settings
+                                                    • You can register an Online account later in Settings
                                                 </Text>
                                             </>
                                         )}

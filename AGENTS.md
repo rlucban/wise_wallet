@@ -288,6 +288,16 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   once-per-visit Offline suggestion modal; Local autoBackup ON → re-registration (new Cloud identity,
   guided skippable export, old Local intact, no merge). Supersedes SPEC-04 D-06/D-07/D-09 parts + ACC-06
   on implementation day. D-01..D-06 pending — queued behind SPEC-28/29. See `docs/savepoint.md`.
+- **2026-09-30 — Spec 30 implemented.** `utils/localGate.ts` new (device-online gate, suggestion resolver,
+  reregistration guards/payload/validators/invariants + copy constants) + `utils/localGate.test.ts`
+  (ACC-01..05 × android/ios/web); `app/register.tsx` once-per-visit Offline suggestion modal + explicit
+  local-fallback confirm (no silent fallback); `app/login.tsx` Create Offline Account removed everywhere
+  (plain failure + Register route); `app/(tabs)/settings.tsx` Local promotion = honesty → skippable export →
+  email+PIN re-register → new Cloud session, old Local intact, no merge (button renamed to
+  "Register Online Account", switch enabled for Local, offline guard zero fetch/write);
+  `hooks/useCloudLink.ts` Alert → settings routing (web-safe). SPEC-04 D-06/D-07/ACC-06/D-09-mobile-note/CON-03
+  retired per CON-07; ACC-10 preserved. User-run verification pending: tsc, `npm test`, eslint, Expo Go + web export.
+  See `docs/savepoint.md`.
 
 ---
 

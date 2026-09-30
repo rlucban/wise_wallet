@@ -5,7 +5,7 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuthData, useAuthActions } from '../context/AuthContext';
 import { useUserProfileData } from '../context/UserProfileContext';
-import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
+import { addUser, saveUserProfile, API_URL, getUsers } from '../utils/db';
 import { isLocalAccountToken } from '../utils/authMode';
 import { isEmailShapedName } from '../utils/accountDelete';
 import * as Crypto from 'expo-crypto';
@@ -79,35 +79,15 @@ export default function LoginScreen() {
                 showAlert("Error", "Authentication failed. Error: " + (err as Error).message);
             }
         } else {
-            if (Platform.OS === "web") {
-                showAlert("Login Failed", "Invalid user name and PIN.");
-                return;
-            }
+            // SPEC-30 CON-01 — Local profiles originate at registration only.
+            // Login failure (any cause, any platform) shows the plain failure
+            // notice and routes to Register. No local creation here; local
+            // lookup for EXISTING accounts above is untouched.
             showAlert(
-                "Account Not Found",
-                `No account found for "${name.trim()}". Would you like to create an offline-only account with these credentials?`,
+                "Login Failed",
+                `No account found for "${name.trim()}". Don't have an account? Register to create one.`,
                 [
-                    {
-                        text: "Create Offline Account",
-                        onPress: async () => {
-                            const { generateUUID } = require('../utils/uuid');
-                            const offlineId = generateUUID();
-                            const usersList = await getUsers();
-                            const localDuplicate = usersList.find((u) => (u.name as string).toLowerCase() === name.trim().toLowerCase());
-
-                            if (localDuplicate) {
-                                showAlert("Username Taken", "This username is already registered on this device.");
-                                return;
-                            }
-
-                            await addUser(offlineId, name.trim(), passcode.trim());
-                            await saveUserProfile({ name: name.trim(), isFirstRun: true, initialBalance: 0 }, offlineId);
-                            await initDb(offlineId);
-                            await setSetting('autoBackup', 'false');
-                            await login(offlineId, "offline_token");
-                            setLoading(false);
-                        }
-                    },
+                    { text: "Register", onPress: () => router.replace("/register") },
                     { text: "Try Again", style: "cancel", onPress: () => setLoading(false) }
                 ]
             );
