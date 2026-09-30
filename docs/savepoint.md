@@ -558,3 +558,67 @@ change (out of scope per user) — the client adapts to the routes as implemente
   silently stripped by zod; transaction titles only exist client-side. Out of scope here.
 - **Observed, not fixed:** `apiDelete` consumes `204 No Content` as JSON and surfaces a
   non-JSON `error`; consumers gate on `ok` (true for 204) so deletes still apply. Future spec.
+
+## 2026-09-30 — Spec 37 FINAL + implemented (opening balance no longer double-counted)
+
+`specs/37-opening-balance-double-count.md` v1.0. **Onboarding recorded the opening amount
+twice** — `profile.initialBalance = X` *and* an "Opening Balance" income transaction of X —
+so the balance formula had to exclude that row. Six call sites computed the balance; four
+excluded it and **two did not** (`app/savings.tsx`, `app/add-allocation.tsx`), which also
+corrupted three validation gates and let users commit more savings than they held.
+
+Worse: the exclusion was a **string compare on `title`**, which does not survive the server.
+`transactions` has **no `title` column** (`supabase/schema.sql:75-90`) and zod strips unknown
+keys, while `app/add-transaction.tsx` creates user rows with **no title at all**. So on the
+**api-only plane (Cloud + auto-backup ON) every server read returned `title: undefined`**,
+the exclusion failed, and **the Dashboard itself showed 2X after any refetch/reload** — which
+is why the symptom looked intermittent (only the pre-refetch in-memory state was correct).
+
+- **D-01 — new `utils/balance.ts`** (pure, no I/O / hooks / `Platform` / React):
+  `OPENING_BALANCE_TITLE`, `isOpeningBalanceTransaction`, `computeBalanceSums` (returns
+  `{ income, expense, openingIncome }`, Opening row pulled out of `income`),
+  `computeBalance({ initialBalance, transactions })`, and
+  `computeAvailableBalance({ ..., reserved? })` where `reserved` **defaults to 0**.
+  Amounts are coerced via `Number()` + `Number.isFinite` because Supabase returns
+  `NUMERIC` as a **string** and `NaN` must never leak into a balance.
+- **D-02 — all six call sites routed through the helper** (the actual fix; the two bad
+  lines were only the symptom): `components/SummaryCard.tsx`, `app/add-transaction.tsx`,
+  `app/savings.tsx`, `app/add-allocation.tsx`, `app/dues.tsx`, and the negative-balance
+  alert effect in `context/TransactionsContext.tsx`. Per-site `reserved` semantics are
+  unchanged — `add-allocation` still deliberately omits reserved (SPEC-12 formula), the
+  other four still pass it. An **expense** titled "Opening Balance" is still counted as an
+  expense, exactly as before. `components/BalanceBreakdown.tsx` was not touched (it takes
+  props from `SummaryCard`).
+- **D-03 — `app/onboarding.tsx`**: removed the `addTransaction` block, the now-unused
+  `useTransactionsActions` import, and the hardcoded category UUID
+  `b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19`. `completeSetup(name, initialBalance)` is now the
+  only write. Footer copy rewritten (it claimed "recorded as your first income
+  transaction") to *"Your initial balance sets your starting balance. Add income and
+  expenses any time."* Accepted cost: new accounts no longer get an "Opening Balance" row in
+  Recent Activity / Reports.
+- **D-04 — new `utils/balance.test.ts`**, ACC-01..08 × `android`/`ios`/`web` (repo
+  `describe.each` + `jest.mock("react-native")` pattern). ACC-02 is the regression:
+  `initialBalance 1000 + opening row 1000 === 1000`, not 2000. ACC-08 is a source scan
+  asserting none of the six files still hand-rolls a balance formula and that onboarding
+  contains no `addTransaction(` / no category UUID / no "Opening Balance" literal.
+- **D-05/D-06:** spec Status → FINAL; pending user-run verification: `npx tsc --noEmit`,
+  `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go
+  Android+iOS (ACC-09/11) + `expo export --platform web` (ACC-10).
+- **Known limitation, pinned by test ACC-05 (DEC-03/CON-06, user call 2026-09-30):**
+  accounts that were **already** on Cloud+ON carry an orphan income row that is now
+  **unidentifiable** (its title was stripped server-side, and no heuristic can tell it
+  apart from a real income) — so **those accounts stay doubled**. No auto-repair and no
+  migration were performed. **Manual remedy:** open Recent Activity and delete the single
+  stray income row that duplicates the opening amount. Affected accounts are only those
+  created on Cloud+ON *before* this change; local / Cloud+OFF accounts are correct already
+  and their stored Opening row is deliberately still excluded from the balance (CON-03).
+- **Also pinned by test ACC-06 (DEC-05, pre-existing behavior unchanged):** a *user-created*
+  income row literally titled "Opening Balance" is still excluded from the Dashboard income
+  figure. Noted, not fixed.
+- **Out of scope (DEC-04):** `app/(tabs)/reports.tsx:98` still counts the Opening row as
+  report income, so for legacy local accounts Reports income and Dashboard income disagree.
+  Reports describes transactions, not a balance, so this was left alone deliberately.
+- **Not touched:** SPEC-10 alert trigger/recovery/copy (`ACC-01..08` unaffected — only the
+  arithmetic's location moved), storage keys, AsyncStorage shapes, navigation routes,
+  `wallet-api` contract, `supabase/schema.sql`, and `package.json`. No new dependency
+  (CON-07).

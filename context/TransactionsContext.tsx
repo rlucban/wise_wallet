@@ -6,6 +6,7 @@ import {
     API_URL
 } from "../utils/db";
 import { authFetch } from "../utils/apiClient";
+import { computeBalance } from "../utils/balance";
 import { useAuth } from "./AuthContext";
 import { useUserProfile } from "./UserProfileContext";
 import { useSystemAlerts } from "./SystemAlertsContext";
@@ -181,14 +182,8 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         if (!activeUserId || loading) return;
-        const initialBalance = Number(profile?.initialBalance || 0);
-        const income = transactions
-            .filter((t) => t.type === "income" && t.title !== "Opening Balance")
-            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-        const expense = transactions
-            .filter((t) => t.type === "expense")
-            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-        const balance = initialBalance + income - expense;
+        // SPEC-37 D-02 — shared helper (CON-02); input shape unchanged (CON-05).
+        const balance = computeBalance({ initialBalance: profile?.initialBalance, transactions });
 
         checkNegativeBalance(balance);
     }, [activeUserId, profile, transactions, loading, checkNegativeBalance]);

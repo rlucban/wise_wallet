@@ -6,6 +6,7 @@ import { useCurrencyActions } from "../context/CurrencyContext";
 import { useUserProfileData } from "../context/UserProfileContext";
 import { useState } from "react";
 import { BalanceBreakdown } from "./BalanceBreakdown";
+import { computeAvailableBalance, computeBalance, computeBalanceSums } from "../utils/balance";
 import { Transaction, SavingsItem } from "../types";
 
 export function SummaryCard({ transactions = [], goals = [] }: { transactions?: Transaction[]; goals?: SavingsItem[] }) {
@@ -16,20 +17,16 @@ export function SummaryCard({ transactions = [], goals = [] }: { transactions?: 
 
   const initialBalance = Number(profile?.initialBalance || 0);
 
-  const income = transactions
-    .filter((t) => t.type === "income" && t.title !== "Opening Balance")
-    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+  // SPEC-37 D-02 — one shared balance helper (CON-02); reserved is a parameter (CON-04).
+  const { income, expense } = computeBalanceSums(transactions);
+  const balance = computeBalance({ initialBalance, transactions });
 
-  const expense = transactions
-    .filter((t) => t.type === "expense")
-    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-  const balance = initialBalance + income - expense;
-
-  const reservedSavings = goals.reduce((sum, g) => sum + Number(g.balance || 0), 0);
-
-  const totalReserved = Number(reservedSavings || 0);
-  const availableBalance = balance - totalReserved;
+  const totalReserved = goals.reduce((sum, g) => sum + Number(g.balance || 0), 0);
+  const availableBalance = computeAvailableBalance({
+    initialBalance,
+    transactions,
+    reserved: totalReserved,
+  });
 
   return (
     <View style={{ marginHorizontal: 16, marginBottom: 8 }}>

@@ -353,8 +353,26 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   saved method); `apiList`/`apiCreate` unwrap the list/single server envelopes (also fixes
   latent envelope blindness that left all four api-only readers empty and appended phantom
   rows on create). D-02 `utils/apiOnly.test.ts` ACC-01..05 × android/ios/web; the SPEC-34
-  "POSTs when missing" case rewritten (it encoded the defect). User-run verification
+  "POSTs when missing" case   rewritten (it encoded the defect). User-run verification
   pending: tsc, `npm test`, eslint, Expo Go + web export. See `docs/savepoint.md`.
+- **2026-09-30 — Spec 37 FINAL + implemented.** `specs/37-opening-balance-double-count.md`
+  v1.0: opening balance was counted twice (profile field + "Opening Balance" income row).
+  `transactions` has **no `title` column** (`supabase/schema.sql:75-90`, zod strips it), so on
+  the api-only plane the title-based exclusion failed and the **Dashboard showed 2X after any
+  refetch**. D-01 new pure `utils/balance.ts` (`OPENING_BALANCE_TITLE`,
+  `isOpeningBalanceTransaction`, `computeBalanceSums`, `computeBalance`,
+  `computeAvailableBalance` with `reserved` defaulting to 0; `Number`+`Number.isFinite`
+  coercion because Supabase returns NUMERIC as a string); D-02 all **six** balance call sites
+  routed through it (SummaryCard, add-transaction, savings, add-allocation, dues,
+  TransactionsContext negative-balance effect) with per-site `reserved` semantics unchanged;
+  D-03 onboarding no longer creates the transaction (hardcoded category UUID removed) and
+  footer copy rewritten; D-04 `utils/balance.test.ts` ACC-01..08 × android/ios/web
+  (ACC-02 regression `1000 + opening 1000 === 1000`; ACC-08 source scan). Known limitations
+  pinned by test: existing Cloud+ON accounts keep an unidentifiable orphan income row and stay
+  doubled (no auto-repair, manual delete documented — DEC-03); a user row titled "Opening
+  Balance" still excluded (DEC-05); Reports income still counts it (DEC-04). No server,
+  schema, storage-key, route, or dependency change (CON-07). User-run verification pending:
+  tsc, `npm test`, eslint, Expo Go + web export (ACC-09/10/11). See `docs/savepoint.md`.
 
 ---
 

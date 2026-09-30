@@ -4,13 +4,11 @@ import { Text, TextInput, Button, HelperText } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useUserProfileActions } from "../context/UserProfileContext";
-import { useTransactionsActions } from "../context/TransactionsContext";
 import { formatNumberInput, parseAmount } from "../utils/amount";
 
 export default function OnboardingScreen() {
     const router = useRouter();
     const { completeSetup } = useUserProfileActions();
-    const { addTransaction } = useTransactionsActions();
 
     const [name, setName] = useState("");
     const [balance, setBalance] = useState("0");
@@ -37,21 +35,11 @@ export default function OnboardingScreen() {
         try {
             const initialBalance = parseAmount(balance) || 0;
 
-            // 1. Update Profile (Sets the current balance field)
+            // SPEC-37 D-03 — `profile.initialBalance` is the only record of the
+            // opening amount (CON-01). Creating an "Opening Balance" transaction
+            // counted the same money twice and was unidentifiable on the
+            // api-only plane (the server has no transaction `title` column).
             await completeSetup(name.trim(), initialBalance);
-
-            // 2. Create the Ledger Entry (Transaction history)
-            if (initialBalance !== 0) {
-                await addTransaction({
-                    title: "Opening Balance",
-                    amount: initialBalance,
-                    type: "income",
-                    date: new Date().toISOString(),
-                    category: { id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19", name: "Others", type: "income", updatedAt: 0 },
-                    note: "Initial account setup",
-                    updatedAt: Date.now(),
-                });
-            }
 
             router.replace("/");
         } catch (e) {
@@ -131,7 +119,7 @@ export default function OnboardingScreen() {
                     </View>
 
                     <Text style={styles.footerText}>
-                        Your initial balance will be recorded as your first income transaction.
+                        Your initial balance sets your starting balance. Add income and expenses any time.
                     </Text>
                 </ScrollView>
             </KeyboardAvoidingView>

@@ -7,6 +7,7 @@ import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { useTransactions } from "../hooks/useTransactions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { computeAvailableBalance } from "../utils/balance";
 import { useUserProfile } from "../context/UserProfileContext";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -23,9 +24,8 @@ export default function SavingsScreen() {
     const totalReserved = useMemo(() => items.reduce((sum, g) => sum + g.balance, 0), [items]);
     const availableBalance = useMemo(() => {
         const initialBalance = Number(profile?.initialBalance || 0);
-        const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-        const totalExpense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-        return initialBalance + totalIncome - totalExpense - totalReserved;
+        // SPEC-37 D-02 — shared helper (CON-02); this site was the double-count.
+        return computeAvailableBalance({ initialBalance, transactions, reserved: totalReserved });
     }, [profile, transactions, totalReserved]);
 
     const activeItems = useMemo(
