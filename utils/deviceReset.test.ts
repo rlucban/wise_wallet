@@ -104,12 +104,15 @@ describe.each(["android", "ios", "web"] as const)(
         );
         const result = await resetDeviceData();
         expect(result.serverDeleted).toBe(true);
-        const deleteCalls = fetchMock.mock.calls.filter((c) =>
+        const fetchCalls = fetchMock.mock.calls as unknown as Array<
+          [string, { method?: string }?]
+        >;
+        const deleteCalls = fetchCalls.filter((c) =>
           String(c[0]).includes("auth/account")
         );
         expect(deleteCalls).toHaveLength(1);
         expect(deleteCalls[0]?.[1]?.method).toBe("DELETE");
-        const loginCalls = fetchMock.mock.calls.filter((c) =>
+        const loginCalls = fetchCalls.filter((c) =>
           String(c[0]).includes("auth/login")
         );
         expect(loginCalls).toHaveLength(0);
