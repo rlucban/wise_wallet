@@ -330,9 +330,11 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   button on login (`.env` + `.env.example` pinned to `false` locally). Two-step confirm
   (warning → checkbox) then `utils/deviceReset.ts` wipes AsyncStorage (minus
   `system_reset_epoch`), token (both stores), caches, and all users' receipt files;
-  preserves `localDeviceId`/epoch/user files; never calls the API; lands clean on
-  `/login`. New `utils/featureFlags.ts` + `utils/deviceReset.test.ts`
-  (ACC-01..04 × android/ios/web). No enablement — separate order required.
+  preserves `localDeviceId`/epoch/user files; lands clean on `/login`.
+  v1.1 adds one suppressed `DELETE auth/account` with the stored token first
+  (no credentials, never DDL) + honest outcomes. New `utils/featureFlags.ts` +
+  `utils/deviceReset.test.ts` (ACC-01..04 × android/ios/web). No enablement —
+  separate order required.
   User-run verification pending: tsc, `npm test`, eslint, Expo Go + web export
   (ACC-05/06 need a temporary local flag flip only). See `docs/savepoint.md`.
 - **2026-09-30 — Spec 36 FINAL + implemented.** `specs/36-mode-truth-token-only.md` v1.0.

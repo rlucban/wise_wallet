@@ -84,6 +84,69 @@ describe.each(["android", "ios", "web"] as const)(
       expect(calls).toHaveLength(1);
     });
 
+    test("ACC-03b: stored token + server ok deletes the account, one DELETE only", async () => {
+      const mockSecureGet = SecureStore.getItemAsync as unknown as jest.Mock;
+      mockSecureGet.mockResolvedValueOnce("jwt-xyz");
+      const g = globalThis as unknown as { fetch?: unknown };
+      const originalFetch = g.fetch;
+      const fetchMock = jest.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: { get: () => "" },
+        clone: () => ({ json: async () => ({}) }),
+        json: async () => ({ status: "success", data: {} }),
+      }));
+      g.fetch = fetchMock;
+      try {
+        await AsyncStorage.setItem(
+          "master_users",
+          JSON.stringify([{ id: "U", name: "a@b.co", passcode: "x" }])
+        );
+        const result = await resetDeviceData();
+        expect(result.serverDeleted).toBe(true);
+        const fetchCalls = fetchMock.mock.calls as unknown as Array<
+          [string, { method?: string }?]
+        >;
+        const deleteCalls = fetchCalls.filter((c) =>
+          String(c[0]).includes("auth/account")
+        );
+        expect(deleteCalls).toHaveLength(1);
+        expect(deleteCalls[0]?.[1]?.method).toBe("DELETE");
+        const loginCalls = fetchCalls.filter((c) =>
+          String(c[0]).includes("auth/login")
+        );
+        expect(loginCalls).toHaveLength(0);
+        await expect(AsyncStorage.getItem("master_users")).resolves.toBeNull();
+      } finally {
+        g.fetch = originalFetch;
+      }
+    });
+
+    test("ACC-03c: rejected server delete still wipes the device", async () => {
+      const mockSecureGet = SecureStore.getItemAsync as unknown as jest.Mock;
+      mockSecureGet.mockResolvedValueOnce("jwt-stale");
+      const g = globalThis as unknown as { fetch?: unknown };
+      const originalFetch = g.fetch;
+      g.fetch = jest.fn(async () => ({
+        ok: false,
+        status: 401,
+        headers: { get: () => "" },
+        clone: () => ({ json: async () => ({}) }),
+        json: async () => ({ error: "unauthorized" }),
+      }));
+      try {
+        await AsyncStorage.setItem(
+          "master_users",
+          JSON.stringify([{ id: "U", name: "a@b.co", passcode: "x" }])
+        );
+        const result = await resetDeviceData();
+        expect(result.serverDeleted).toBe(false);
+        await expect(AsyncStorage.getItem("master_users")).resolves.toBeNull();
+      } finally {
+        g.fetch = originalFetch;
+      }
+    });
+
     test("ACC-03: wipe clears everything except the preserve list, zero fetch", async () => {
       const g = globalThis as unknown as { fetch?: unknown };
       const originalFetch = g.fetch;

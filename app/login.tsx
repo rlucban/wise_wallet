@@ -49,15 +49,24 @@ export default function LoginScreen() {
     const doResetDeviceData = async () => {
         setResetting(true);
         try {
-            await resetDeviceData();
+            // SPEC-35 v1.1 CON-04 — honest outcome: server delete confirmed
+            // vs device-only.
+            const result = await resetDeviceData();
             setName("");
             setPasscode("");
             setShowResetStep2(false);
             setResetConfirmed(false);
-            showAlert(
-                "Reset Complete",
-                "This device was reset. You can register or log in fresh."
-            );
+            if (result.serverDeleted) {
+                showAlert(
+                    "Reset Complete",
+                    "Account and device data deleted. You can register or log in fresh."
+                );
+            } else {
+                showAlert(
+                    "Deleted From This Device Only",
+                    "Your cloud data may still exist. Log in again when online to retry the server delete."
+                );
+            }
         } catch (err) {
             showAlert("Reset Failed", "Could not reset this device. Error: " + (err as Error).message);
         } finally {
@@ -317,7 +326,7 @@ export default function LoginScreen() {
                     <Dialog.Title style={{ textAlign: 'center' }}>Reset All Data?</Dialog.Title>
                     <Dialog.Content>
                         <Text variant="bodyMedium" style={{ textAlign: 'center', lineHeight: 22 }}>
-                            This deletes EVERYTHING on this device, including Local-only accounts (permanent, no recovery). Cloud accounts are NOT touched and can log in again when online.
+                            This deletes EVERYTHING on this device, including Local-only accounts (permanent, no recovery). It also attempts to delete the cloud account tied to this device&apos;s stored session (if any) — no login needed. With no usable session, or if the server call fails, cloud data REMAINS and only the device is wiped.
                         </Text>
                     </Dialog.Content>
                     <Dialog.Actions style={{ justifyContent: 'center' }}>

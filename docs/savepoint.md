@@ -491,6 +491,13 @@ Branch `spec-28-29-delete-and-queue` (stacked on `spec-27-two-device-single-log`
 - No enablement shipped — turning the flag `true` anywhere needs a separate explicit order.
 - Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-05/06 need a temporary local flag flip only).
 
+## 2026-09-30 — SPEC-35 v1.1 FINAL + implemented (flag ships OFF)
+
+- Supersedes the v1.0 local-only rule: reset now attempts one suppressed `DELETE auth/account` with the stored token first (no login, no prompts, no session-kill UX, never DDL), then always wipes the device; honest outcomes (success vs "Deleted From This Device Only").
+- `utils/deviceReset.ts` returns `{ deletedFiles, serverDeleted }`; login branches its success copy on it; step-1 copy discloses the stored-session limit.
+- Tests extended (ACC-03b/c): token + server-ok → one DELETE, no `/auth/login`, local wiped; 401 → device still wiped, `serverDeleted` false.
+- Known sharp edge (spec-disclosed): without credentials only the stored-token account can go — a stale token belonging to someone else deletes that account. No enablement — separate order required.
+- Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-05 needs a temporary local flag flip only, including a live-session server-delete check).
 ## 2026-09-30 — SPEC-36 FINAL + implemented (v1.0)
 
 - `specs/36-mode-truth-token-only.md` v1.0 FINAL per user call (v0.1 approved as-is).
