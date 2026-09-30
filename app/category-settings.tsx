@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, ScrollView } from "react-native";
 import { Appbar, List, IconButton, FAB, Portal, Modal, TextInput, Button, SegmentedButtons, useTheme, Card, Text } from "react-native-paper";
+import { KeyboardAwareDialog } from "../components/KeyboardAwareDialog";
 import { useRouter } from "expo-router";
 import { useCategoriesData, useCategoriesActions } from "../context/CategoriesContext";
 import { TransactionType, Category } from "../types";
@@ -55,7 +56,7 @@ export default function CategorySettings() {
         />
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }} keyboardShouldPersistTaps="handled">
         {filteredCategories.map((cat) => (
           <Card key={cat.id} style={{ marginBottom: 8, backgroundColor: theme.colors.surface }}>
             <List.Item
@@ -85,6 +86,8 @@ export default function CategorySettings() {
             padding: 20,
           }}
         >
+          {/* SPEC-32 D-03 — input stays above the native keyboard. */}
+          <KeyboardAwareDialog>
           <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
             <Card.Content style={{ padding: 20 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -109,6 +112,7 @@ export default function CategorySettings() {
               </Button>
             </Card.Content>
           </Card>
+          </KeyboardAwareDialog>
         </Modal>
       </Portal>
 

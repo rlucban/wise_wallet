@@ -457,3 +457,13 @@ Branch `spec-28-29-delete-and-queue` (stacked on `spec-27-two-device-single-log`
 - D-03 tests: `utils/localGate.test.ts` extended (ACC-01 gate matrix, ACC-02 login string-scan, ACC-03 hygiene preserves stored data, ACC-04 next-login key scoping, ACC-07 payload deviceId, ACC-08 conflict classifier, ACC-09 id-or-name matcher — all × android/ios/web).
 - Retirements per CON-02: SPEC-04 ACC-10/DEC-04/D-09-web/D-06-web; SPEC-28 CON-04/05-web-clauses/goal-row/ACC-09; SPEC-30 §1.3/DEC-02-web. SPEC-05 kill path reuses hygiene.
 - Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go + web export (ACC-05/06/10).
+
+## 2026-09-30 — SPEC-32 FINAL + implemented (v1.0)
+
+- `specs/32-keyboard-visibility-for-text-inputs.md` FINAL per user call.
+- D-01 audit (all `TextInput` holders): already-wrapped `login`/`register`/`onboarding` (KAV); bare before fix — 5 Settings PIN dialogs, `passcode-screen`, 4 form screens (`add/edit-transaction`, `add-due`, `add-allocation`), 6 modals (`dues` ×1, `savings` ×3, `category-settings` ×1, `payment-methods` ×1), `learning` search; no-input screens (`help`, `transaction-details`, `calendar`, `reports`, `learning-detail`, `index`) out of scope.
+- New `components/KeyboardAwareDialog.tsx`: `KeyboardAvoidingView` (ios `padding` / android `height`) + `ScrollView` (`keyboardShouldPersistTaps="handled"`), web passthrough rendering children unchanged; built-ins only, zero new deps.
+- D-02: 5 Settings PIN dialogs wrapped (delete, PIN-verify, re-register form, clear-data PIN, change-passcode); text-only dialogs untouched; `passcode-screen` outer `View` → `KeyboardAvoidingView` (same centered style).
+- D-03: 4 form screens + `learning` wrap their `ScrollView` in `KeyboardAvoidingView` (`flex: 1`, login pattern); 6 modals wrap content in `KeyboardAwareDialog`; `keyboardShouldPersistTaps="handled"` added to every `ScrollView` tag missing it (settings/savings/category/payment mains, learning outer + filter-chips scroller).
+- D-04 tests: new `utils/keyboardVisibility.test.js` — ACC-01 wrapper-per-file scan, ACC-02 every-`ScrollView`-tag persist scan, ACC-03 no-keyboard-dep scan; all × android/ios/web.
+- Pending user-run verification: `npx tsc --noEmit`, `npx tsc -p tsconfig.test.json --noEmit`, `npm test`, `npx eslint .`, Expo Go PIN dialogs (ACC-04) + forms (ACC-05) + web export no-change (ACC-06).

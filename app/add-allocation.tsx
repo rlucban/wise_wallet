@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, ScrollView } from "react-native";
+import { View, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { TextInput, Button, Text, useTheme, Appbar, Card } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { useSavings } from "../hooks/useSavings";
@@ -81,6 +81,11 @@ export default function AddAllocation() {
                 <Appbar.Content title="New Allocation" />
             </Appbar.Header>
 
+            {/* SPEC-32 D-03 — focused field stays above the native keyboard. */}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={{ flex: 1 }}
+            >
             <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
                 <Card style={{ padding: 20, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                     <Text variant="titleMedium" style={{ marginBottom: 16, color: theme.colors.onSurface, fontWeight: "700" }}>
@@ -157,6 +162,7 @@ export default function AddAllocation() {
 
                 <View style={{ height: 40 }} />
             </ScrollView>
+            </KeyboardAvoidingView>
         </View>
     );
 }

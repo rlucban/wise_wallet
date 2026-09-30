@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, ScrollView } from "react-native";
+import { View, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { Image } from "expo-image";
 import {
   TextInput,
@@ -232,6 +232,11 @@ export default function AddTransaction() {
                 <Appbar.Content title="Add Transaction" />
             </Appbar.Header>
 
+            {/* SPEC-32 D-03 — focused field stays above the native keyboard. */}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={{ flex: 1 }}
+            >
             <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
         <SegmentedButtons
           value={type}
@@ -504,6 +509,7 @@ export default function AddTransaction() {
           </Dialog>
         </Portal>
         </ScrollView>
+            </KeyboardAvoidingView>
     </View>
   );
 }

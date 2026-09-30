@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { Appbar, FAB, Portal, Modal, TextInput, Button, Text, useTheme, Card, IconButton } from "react-native-paper";
+import { KeyboardAwareDialog } from "../components/KeyboardAwareDialog";
 import { useRouter } from "expo-router";
 import { authFetch } from "../utils/apiClient";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -91,7 +92,7 @@ export default function PaymentMethodsScreen() {
                 <Appbar.Content title="Payment Methods" titleStyle={{ fontWeight: "700" }} />
             </Appbar.Header>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                 <Text variant="bodyLarge" style={styles.sectionTitle}>Your Accounts & Wallets</Text>
                 {methods.map((method) => (
                     <Card key={method.id} style={styles.card}>
@@ -111,6 +112,8 @@ export default function PaymentMethodsScreen() {
 
             <Portal>
                 <Modal visible={visible} onDismiss={() => setVisible(false)} contentContainerStyle={styles.modal}>
+                    {/* SPEC-32 D-03 — input stays above the native keyboard. */}
+                    <KeyboardAwareDialog>
                     <Text variant="headlineSmall" style={styles.modalTitle}>Add Payment Method</Text>
                     <TextInput
                         label="Name (e.g. GCash, BPI, My Visa)"
@@ -137,6 +140,7 @@ export default function PaymentMethodsScreen() {
                         Add Method
                     </Button>
                     <Button onPress={() => setVisible(false)}>Cancel</Button>
+                    </KeyboardAwareDialog>
                 </Modal>
             </Portal>
 

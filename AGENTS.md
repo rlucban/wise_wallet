@@ -307,6 +307,12 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   SPEC-28 CON-04/05-web-clauses/goal-row/ACC-09; SPEC-30 §1.3/DEC-02-web. `utils/localGate.test.ts` extended
   (ACC-01..04 + ACC-07..09 × android/ios/web). User-run verification pending: tsc, `npm test`, eslint,
   Expo Go + web export (ACC-05/06/10). See `docs/savepoint.md`.
+- **2026-09-30 — Spec 32 FINAL + implemented.** `specs/32-keyboard-visibility-for-text-inputs.md` v1.0.
+  New `components/KeyboardAwareDialog.tsx` (KAV + ScrollView, web passthrough, built-ins only);
+  5 Settings PIN dialogs wrapped; `passcode-screen` + 4 form screens + learning get `KeyboardAvoidingView`;
+  dues/savings/category/payment modals wrapped; `keyboardShouldPersistTaps` on every ScrollView.
+  New `utils/keyboardVisibility.test.js` (ACC-01..03 × android/ios/web). User-run verification pending:
+  tsc, `npm test`, eslint, Expo Go (ACC-04/05) + web export (ACC-06). See `docs/savepoint.md`.
 
 ---
 

@@ -42,6 +42,7 @@ import {
 import * as Crypto from 'expo-crypto';
 import { Transaction, Category, Due, SavingsItem, UserProfile } from "../../types";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import { KeyboardAwareDialog } from "../../components/KeyboardAwareDialog";
 
 function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal: boolean }) {
   const { isOnline, checkConnectivity, isChecking } = useNetwork();
@@ -1243,7 +1244,7 @@ export default function SettingsScreen() {
         <Appbar.Content title="Settings" titleStyle={{ fontWeight: "700" }} />
       </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
         {/* User Profile Section */}
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
@@ -1438,6 +1439,7 @@ export default function SettingsScreen() {
 
       <Portal>
         <Dialog visible={showDeleteDialog} onDismiss={closeDeleteDialog}>
+          <KeyboardAwareDialog>
           <Dialog.Title>Delete Account</Dialog.Title>
           <Dialog.Content>
             <Text style={{ color: paperTheme.colors.error, fontWeight: "700" }}>
@@ -1504,6 +1506,7 @@ export default function SettingsScreen() {
               Delete Permanently
             </Button>
           </Dialog.Actions>
+          </KeyboardAwareDialog>
         </Dialog>
 
         <Dialog visible={messageDialog.visible} onDismiss={closeMessage}>
@@ -1534,6 +1537,7 @@ export default function SettingsScreen() {
         />
 
         <Dialog visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)}>
+          <KeyboardAwareDialog>
           <Dialog.Title>Verify Account PIN</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
@@ -1556,6 +1560,7 @@ export default function SettingsScreen() {
             <Button onPress={() => { setShowPinVerificationDialog(false); setPinVerificationInput(""); setVerificationError(""); }}>Cancel</Button>
             <Button onPress={verifyPinForSync} loading={isSyncing} disabled={isSyncing}>Verify & Sync</Button>
           </Dialog.Actions>
+          </KeyboardAwareDialog>
         </Dialog>
 
         <Dialog visible={showNewAccountDialog} onDismiss={() => setShowNewAccountDialog(false)}>
@@ -1638,6 +1643,7 @@ export default function SettingsScreen() {
         </Dialog>
 
         <Dialog visible={showReregisterForm} onDismiss={() => setShowReregisterForm(false)}>
+          <KeyboardAwareDialog>
           <Dialog.Title>{REREGISTER_FORM_TITLE}</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
@@ -1677,6 +1683,7 @@ export default function SettingsScreen() {
               Register
             </Button>
           </Dialog.Actions>
+          </KeyboardAwareDialog>
         </Dialog>
 
         <Dialog visible={showConflictDialog} onDismiss={() => setShowConflictDialog(false)}>
@@ -1699,6 +1706,7 @@ export default function SettingsScreen() {
          </Dialog>
 
         <Dialog visible={showPinPrompt} onDismiss={() => setShowPinPrompt(false)}>
+          <KeyboardAwareDialog>
           <Dialog.Title>Enter PIN to Clear Data</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>This action cannot be undone. All local data will be permanently deleted.</Text>
@@ -1715,10 +1723,12 @@ export default function SettingsScreen() {
             <Button onPress={() => setShowPinPrompt(false)}>Cancel</Button>
             <Button onPress={handleClearData} textColor={paperTheme.colors.error}>Clear Data</Button>
           </Dialog.Actions>
+          </KeyboardAwareDialog>
         </Dialog>
 
 
         <Dialog visible={showChangePasscodeDialog} onDismiss={closeChangePasscodeDialog}>
+          <KeyboardAwareDialog>
           {passcode ? (
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
               <Dialog.Title>{pinStep === 1 ? "Change Passcode" : "Enter New Passcode"}</Dialog.Title>
@@ -1864,6 +1874,7 @@ export default function SettingsScreen() {
               </Button>
             )}
           </Dialog.Actions>
+          </KeyboardAwareDialog>
         </Dialog>
       </Portal>
     </View>

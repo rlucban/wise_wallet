@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { View, ScrollView } from "react-native";
+import { View, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { TextInput, Button, Text, useTheme, Appbar, Card, Chip, SegmentedButtons, Portal, Modal, Switch, Dialog } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { Calendar } from "react-native-calendars";
@@ -90,6 +90,11 @@ export default function AddDue() {
                 <Appbar.Content title="Add Scheduled Due" />
             </Appbar.Header>
 
+            {/* SPEC-32 D-03 — focused field stays above the native keyboard. */}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                style={{ flex: 1 }}
+            >
             <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
                 <Card style={{ padding: 20, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                     <Text variant="titleMedium" style={{ marginBottom: 16, color: theme.colors.onSurface, fontWeight: "700" }}>
@@ -203,6 +208,7 @@ export default function AddDue() {
 
                 <View style={{ height: 40 }} />
             </ScrollView>
+            </KeyboardAvoidingView>
 
             <Portal>
                 <Modal
