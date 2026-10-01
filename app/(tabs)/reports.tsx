@@ -387,7 +387,7 @@ export default function ReportsScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: theme.colors.surfaceVariant, alignItems: "center" }}
-              onPress={() => exportToPDF(filteredTransactions, formatAmount)}
+              onPress={() => exportToPDF(filteredTransactions, formatAmount, currentRange.label)}
             >
               <MaterialCommunityIcons name="file-pdf-box" size={22} color={theme.colors.error} />
               <Text variant="labelSmall" style={{ fontWeight: "700", color: theme.colors.error, marginTop: 4 }}>PDF</Text>

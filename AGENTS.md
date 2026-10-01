@@ -311,6 +311,46 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   NOT locked (CON-08); `tabBarLabelPosition` not pinned, so web keeps its side-by-icon
   layout (DEC-05). No dependency, storage, API, or route change.
   See `docs/savepoint.md`.
+- **2026-10-01 — Spec 33 FINAL v1.1 + implemented.** `specs/33-report-export-fidelity.md`:
+  ten defects in the Reports PDF/CSV export. D-01 new `utils/reportFormat.ts` (pure, all string
+  generation, `import type` only) exporting `escapeHtml`, `csvCell`, `formatReportDate`
+  (arithmetic UTC+8, **not** `Intl` — §1.3), `computeReportTotals`, `buildReportFileName`,
+  `buildCsvContent`, `buildReportHtml`, and the shared 7-field `REPORT_COLUMNS`; D-02
+  `utils/exportUtils.ts` reduced to orchestration — web prints via an off-screen `aria-hidden`
+  iframe (`ExponentPrint.web.js:8-13` ignores `options.html`, so web was printing the Reports
+  screen), native does `printToFileAsync` → idempotent `deleteAsync` + `copyAsync` to
+  `WiseWallet_Report_<slug>.pdf` → `shareAsync` with mime/UTI; D-03 one line in
+  `app/(tabs)/reports.tsx:390` passes `currentRange.label`; D-04
+  `utils/reportFormat.test.ts` 58 tests, ACC-01..06 + CON-20, incl. a quote-aware CSV reader
+  and a byte-identical-output check across `Platform.OS` android/ios/web; D-05 docs. v1.1
+  added CON-20 (empty period prints one `colspan="7"` row, header-only CSV) — a non-normative
+  post-FINAL addition recorded in the spec's History. Defect 8 (₱ U+20B1) is an **accepted
+  risk**, not a fix: font stack frozen (CON-10), verified on device via ACC-08 (DEC-11). Also
+  fixed the latent `documentDirectory` null interpolation and dropped a needless
+  `as unknown as` cast. No dependency, storage, API, or route change.
+  See `docs/savepoint.md`.
+- **2026-10-02 — Spec 34 FINAL v1.1 + implemented.** `specs/34-pdf-chart-summary-format.md`:
+  the PDF's main body is now a chart summary instead of a table. **Supersedes part of Spec
+  33** — its escaping, Manila dates, file name, web iframe print, font freeze, heading color,
+  and empty-period rules all carry over, but its "range label + totals only" body and its
+  column parity are **relocated** to the appendix (the PDF and CSV still agree on all 7
+  fields). User decisions: charts + appendix (detail moved, not dropped), bar graph =
+  **monthly** income-vs-expense trend, **categorical palette**, **top 7 + Other**. D-01 new
+  `utils/reportCharts.ts` (pure geometry/aggregation, no HTML) — `rollUpCategories`,
+  `buildDonutSegments` (`stroke-dasharray`, deliberately **not** `pathLength`, which fails
+  silently when unsupported), `bucketMonths`/`formatReportMonth` (Manila, so
+  `2025-12-31T16:30Z` is Jan 2026 in the chart and `01/01/2026` in the appendix), and
+  `buildBarChart`; D-02 `utils/reportFormat.ts` adds `buildDonutSvg`, `buildBarChartSvg`,
+  `buildCategoryListHtml`, `buildTotalsHtml`, `buildAppendixHtml`; D-03
+  `utils/reportCharts.test.ts`; D-04 four new `reportFormat.test.ts` suites. **Color
+  decision (DEC-03/CON-03):** in the donut and list, hue identifies the *category* and never
+  the type — the palette excludes `#ef4444`/`#10b981` so red/green means income/expense in
+  the bar chart only, and the list carries separate labeled Expense/Income columns. Charts are
+  hand-written inline SVG because `react-native-svg` has no HTML serializer and a CDN chart
+  renders empty under print. `exportToPDF`'s signature, `exportUtils.ts`, and `reports.tsx`
+  are **untouched** — rollback is two files. v1.1 dropped a never-read `strokeWidth`
+  parameter (recorded in the spec's History). Peso risk carried forward (DEC-11, ACC-16).
+  See `docs/savepoint.md`.
 
 ---
 
