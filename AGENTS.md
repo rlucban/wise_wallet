@@ -292,6 +292,25 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   startup is never treated as a Local-only account. No jest tests added — lifecycle/storage code
   the `roots: utils` setup can't render; stated as a §1.10 gap with a manual matrix.
   See `docs/savepoint.md`.
+- **2026-10-01 — Spec 32 FINAL v1.0 + implemented.** `specs/32-tab-bar-label-visibility.md`:
+  bottom tab labels were invisible on Android/iOS (web-only). Root cause traced to
+  expo-router 57's bundled bottom-tabs fork: `shouldUseHorizontalLabels` gives web
+  `horizontal = true` (label beside icon, cannot overflow) but a portrait phone
+  `false` (label below icon), where the hardcoded 28px icon box (`TabBarIcon.js:13`;
+  `isCompact` is iPhone-landscape-only) plus a 15px label needs 43px against the 34px the
+  old `height: 60` / `paddingTop/Bottom: 8` left — and `tabBarStyle` is applied last
+  (`BottomTabBar.js:257`), so `paddingBottom: 8` also clobbered `insets.bottom`.
+  D-01 new `utils/tabBarMetrics.ts` (pure, no `react-native` import, library constants
+  cited to upstream lines; `height = 68 + insets.bottom`, `usableHeight = 54`,
+  `requiredHeight = 28 + ceil(12 * 1.2 * fontScale)`); D-02 `app/(tabs)/_layout.tsx` uses
+  `useSafeAreaInsets()` + destructures `height`/`paddingTop`/`paddingBottom` (no nested
+  `SafeAreaProvider` — expo-router's `ExpoRoot` supplies one); D-03
+  `utils/tabBarMetrics.test.ts` 49 tests, ACC-01..05 with `Platform.OS` android/ios/web
+  cases asserting literal metrics; D-04 docs. v1.0 amended v0.1 to destructure instead of
+  spread, keeping diagnostics out of `tabBarStyle`. `tabBarAllowFontScaling` deliberately
+  NOT locked (CON-08); `tabBarLabelPosition` not pinned, so web keeps its side-by-icon
+  layout (DEC-05). No dependency, storage, API, or route change.
+  See `docs/savepoint.md`.
 
 ---
 
