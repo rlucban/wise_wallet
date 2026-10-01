@@ -60,6 +60,7 @@ export interface SavingsItem extends TimestampedEntity {
   target_amount?: number;
   icon?: string;
   color?: string;
+  isArchived?: boolean;
 }
 
 export interface Budget extends TimestampedEntity {
