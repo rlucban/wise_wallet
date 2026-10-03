@@ -6,6 +6,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
+
 import { setSetting, clearAllLocalData, exportData, importData, deleteUser, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
@@ -107,6 +108,16 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     marginBottom: 16,
+  },
+  dialog: {
+    maxWidth: 480,
+    width: "90%",
+    alignSelf: "center",
+  },
+  dialogContent: {
+    alignItems: "center",
+    width: '100%',
+
   }
 });
 
@@ -199,9 +210,11 @@ export default function SettingsScreen() {
   const [pinStep, setPinStep] = useState(1);
   const [pinError, setPinError] = useState<string | null>(null);
   const [deletePinInput, setDeletePinInput] = useState("");
+
   const [deletePinError, setDeletePinError] = useState("");
   const [pinVerified, setPinVerified] = useState(false);
   const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [messageDialog, setMessageDialog] = useState<{
     visible: boolean;
     type: "success" | "error";
@@ -636,14 +649,25 @@ export default function SettingsScreen() {
       }
     }
 
-    if (!pinVerified) {
+if (!pinVerified) {
       showMessage("error", "Incorrect PIN", "Please try again.");
       setIsSyncing(false);
       return;
     }
 
+    setShowPinPrompt(false);
+    setShowDeleteConfirmation(true);
+    setIsSyncing(false);
+    return;
+  };
+
+  const executeClearData = async () => {
+    if (!activeUserId) return;
+    setIsSyncing(true);
+    setShowDeleteConfirmation(false);
+    setShowPinPrompt(false);
     try {
-      if (activeUserId) {
+      if (activeUserId && !isLocal) {
          console.info("Syncing Clear Data to cloud for user:", activeUserId);
         const [txResult, catResult, dueResult, savResult] = await Promise.all([
           authFetch(`transactions?userId=${activeUserId}`),
@@ -665,7 +689,7 @@ export default function SettingsScreen() {
         ];
 
         await Promise.all(deletePromises);
-         console.info("Cloud transactional data cleared successfully");
+         console.info("Clear data sync completed successfully");
       }
 
       await clearAllLocalData();
@@ -679,13 +703,19 @@ export default function SettingsScreen() {
         refetchProfile()
       ]);
 
-      alert("All local and cloud data has been cleared.");
-      router.replace("/");
+      showMessage("success", "Cleared Successfully", "All data has been cleared successfully.", () => router.replace("/"));
+
+
+
+      return;
+
+
+
     } catch (e) {
       console.error("Clear data sync failed:", e);
-      alert("Cleared local data, but cloud sync failed. Check your connection.");
+      showMessage("error", "Partial Clear", "Cleared local data, but cloud sync failed. Check your connection.", () => router.replace("/"));
       await clearAllLocalData();
-      router.replace("/");
+
     } finally {
       setIsSyncing(false);
     }
@@ -1124,11 +1154,11 @@ export default function SettingsScreen() {
             )}
 
             <Button mode="outlined" icon="file-export" onPress={handleExportJSON} style={{ marginVertical: 4 }}>
-              Export Data (JSON)
+              Export Data
             </Button>
 
             <Button mode="outlined" icon="file-import" onPress={handleImportJSON} style={{ marginVertical: 4 }}>
-              Import Data (JSON)
+              Import Data
             </Button>
 
             <Button mode="contained-tonal" buttonColor={paperTheme.colors.errorContainer} textColor={paperTheme.colors.onErrorContainer} icon="delete-alert" onPress={() => setShowPinPrompt(true)} style={{ marginTop: 8 }}>
@@ -1203,7 +1233,7 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <Portal>
-        <Dialog visible={showDeleteDialog} onDismiss={closeDeleteDialog}>
+        <Dialog visible={showDeleteDialog} onDismiss={closeDeleteDialog} style={styles.dialog}>
           <Dialog.Title>Delete Account</Dialog.Title>
           <Dialog.Content>
             <Text style={{ color: paperTheme.colors.error, fontWeight: "700" }}>
@@ -1260,10 +1290,12 @@ export default function SettingsScreen() {
             ) : null}
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={closeDeleteDialog}>Cancel</Button>
+            <Button mode="outlined" onPress={closeDeleteDialog}>Cancel</Button>
             <Button
               onPress={executeDelete}
-              textColor={paperTheme.colors.error}
+              mode="contained"
+              buttonColor={paperTheme.colors.error}
+              textColor="#fff"
               loading={isSyncing}
               disabled={isSyncing || !pinVerified || !deleteConfirmed}
             >
@@ -1272,7 +1304,7 @@ export default function SettingsScreen() {
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={messageDialog.visible} onDismiss={closeMessage}>
+        <Dialog visible={messageDialog.visible} onDismiss={closeMessage} style={styles.dialog}>
           <Dialog.Icon
             icon={messageDialog.type === "success" ? "check-circle-outline" : "alert-circle-outline"}
             color={messageDialog.type === "success" ? paperTheme.colors.tertiary : paperTheme.colors.error}
@@ -1299,7 +1331,7 @@ export default function SettingsScreen() {
           onCancel={() => setShowRestoreConfirm(false)}
         />
 
-        <Dialog visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)}>
+        <Dialog visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)} style={styles.dialog}>
           <Dialog.Title>{isLocal ? "Make Online" : "Verify Account PIN"}</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
@@ -1327,7 +1359,7 @@ export default function SettingsScreen() {
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={showNewAccountDialog} onDismiss={() => setShowNewAccountDialog(false)}>
+        <Dialog visible={showNewAccountDialog} onDismiss={() => setShowNewAccountDialog(false)} style={styles.dialog}>
           <Dialog.Title>{isLocal ? "Create Cloud Account" : "PIN Doesn't Match"}</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
@@ -1346,7 +1378,7 @@ export default function SettingsScreen() {
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={showBackupDialog} onDismiss={() => setShowBackupDialog(false)}>
+        <Dialog visible={showBackupDialog} onDismiss={() => setShowBackupDialog(false)} style={styles.dialog}>
           <Dialog.Title>Enable Auto-save</Dialog.Title>
           <Dialog.Content>
             <Text>Enabling Auto-save may overwrite your data during synchronization. Do you want to check for data on the server first?</Text>
@@ -1357,7 +1389,7 @@ export default function SettingsScreen() {
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={showConflictDialog} onDismiss={() => setShowConflictDialog(false)}>
+        <Dialog visible={showConflictDialog} onDismiss={() => setShowConflictDialog(false)} style={styles.dialog}>
           <Dialog.Title>Sync Conflict</Dialog.Title>
           <Dialog.Content>
             <Text>We found data for your account on the server. How would you like to resolve this?</Text>
@@ -1376,10 +1408,10 @@ export default function SettingsScreen() {
             </Dialog.Actions>
          </Dialog>
 
-        <Dialog visible={showPinPrompt} onDismiss={() => setShowPinPrompt(false)}>
-          <Dialog.Title>Enter PIN to Clear Data</Dialog.Title>
+        <Dialog visible={showPinPrompt} onDismiss={() => setShowPinPrompt(false)} style={styles.dialog}>
+          <Dialog.Title style={{ textAlign: "center" }}>Enter PIN to Clear Data</Dialog.Title>
           <Dialog.Content>
-            <Text style={{ marginBottom: 16 }}>This action cannot be undone. All local data will be permanently deleted.</Text>
+            <Text style={{ marginBottom: 16, textAlign: "center" }}>This action cannot be undone. All local data will be permanently deleted.</Text>
             <TextInput
               label="PIN"
               value={pinInput}
@@ -1389,14 +1421,35 @@ export default function SettingsScreen() {
               maxLength={4}
             />
           </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setShowPinPrompt(false)}>Cancel</Button>
-            <Button onPress={handleClearData} textColor={paperTheme.colors.error}>Clear Data</Button>
+          <Dialog.Actions style={{ justifyContent: "center", gap: 12 }}>
+            <Button mode="outlined" onPress={() => setShowPinPrompt(false)}>Cancel</Button>
+            <Button mode="contained" buttonColor={paperTheme.colors.error} textColor="#fff" onPress={handleClearData} loading={isSyncing} disabled={isSyncing}>Clear Data</Button>
           </Dialog.Actions>
         </Dialog>
 
+        <Dialog visible={showDeleteConfirmation} onDismiss={() => setShowDeleteConfirmation(false)} style={styles.dialog}>
+          <Dialog.Title style={{ textAlign: "center" }}>Are you absolutely sure?</Dialog.Title>
+          <Dialog.Content style={styles.dialogContent}>
+            <Text style={{ marginBottom: 16, textAlign: "center", alignSelf: "center", width: "100%" }}>
+              This will permanently delete all your transactions, dues, and allocations. This action cannot be undone.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions style={{ justifyContent: "center", gap: 12 }}>
+            <Button mode="outlined" onPress={() => setShowDeleteConfirmation(false)} disabled={isSyncing}>Cancel</Button>
+            <Button
+              onPress={executeClearData}
+              mode="contained"
+              buttonColor={paperTheme.colors.error}
+              textColor="#fff"
+              disabled={isSyncing}
+              loading={isSyncing}
+            >
+              CLEAR EVERYTHING
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
 
-        <Dialog visible={showChangePasscodeDialog} onDismiss={closeChangePasscodeDialog}>
+        <Dialog visible={showChangePasscodeDialog} onDismiss={closeChangePasscodeDialog} style={styles.dialog}>
           {passcode ? (
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
               <Dialog.Title>{pinStep === 1 ? "Change Passcode" : "Enter New Passcode"}</Dialog.Title>

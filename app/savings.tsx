@@ -27,13 +27,21 @@ export default function SavingsScreen() {
         return initialBalance + totalIncome - totalExpense - totalReserved;
     }, [profile, transactions, totalReserved]);
 
-    const activeItems = useMemo(
-        () => items.filter((item) => !item.target_amount || item.balance < item.target_amount),
+    const activeAllocations = useMemo(
+        () => items.filter((item) => !item.isArchived),
         [items]
     );
+    const activeItems = useMemo(
+        () => activeAllocations.filter((item) => !item.target_amount || item.balance < item.target_amount),
+        [activeAllocations]
+    );
     const completedItems = useMemo(
-        () => items.filter((item) => item.target_amount && item.balance >= item.target_amount),
-        [items]
+        () => activeAllocations.filter((item) => item.target_amount && item.balance >= item.target_amount),
+        [activeAllocations]
+    );
+    const totalActiveAllocated = useMemo(
+        () => activeAllocations.reduce((sum, g) => sum + g.balance, 0),
+        [activeAllocations]
     );
 
     const [editModalVisible, setEditModalVisible] = useState(false);
@@ -217,27 +225,38 @@ export default function SavingsScreen() {
 
         await deleteItem(id);
     };
+
+    const handleArchiveItem = async (id: string) => {
+        try {
+            await updateItem(id, { isArchived: true });
+            setToastMessage("Allocation archived");
+        } catch {
+            Alert.alert("Error", "Failed to archive allocation.");
+        }
+    };
+
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <Appbar.Header>
                 <Appbar.BackAction onPress={() => router.back()} />
                 <Appbar.Content title="Allocations" />
+                <Appbar.Action icon="archive-outline" color={theme.colors.primary} onPress={() => router.push("/archived-allocations")} />
             </Appbar.Header>
 
             <ScrollView contentContainerStyle={{ padding: 16 }}>
-                {items.length > 0 && (
+                {activeAllocations.length > 0 && (
                     <Card style={{ marginBottom: 16, padding: 16, borderRadius: 16, backgroundColor: theme.colors.primaryContainer }}>
                         <Text variant="labelMedium" style={{ color: theme.colors.onPrimaryContainer, textAlign: "center" }}>
-                            TOTAL ALLOCATED
+                            TOTAL ACTIVE ALLOCATED
                         </Text>
                         <Text variant="headlineMedium" style={{ fontWeight: "800", textAlign: "center", color: theme.colors.onPrimaryContainer }}>
-                            {formatAmount(totalReserved)}
+                            {formatAmount(totalActiveAllocated)}
                         </Text>
                     </Card>
                 )}
 
-                {items.length === 0 ? (
-                    <EmptyState icon="piggy-bank" title="No allocations yet" subtitle="Tap + to create an allocation" />
+                {activeAllocations.length === 0 ? (
+                    <EmptyState icon="piggy-bank" title="No active allocations" subtitle="Tap + to create an allocation" />
                 ) : (
                     <>
                         {/* Active Allocations */}
@@ -329,6 +348,7 @@ export default function SavingsScreen() {
                                                             setTransferAmount("");
                                                             setTransferOutModalVisible(true);
                                                         }} />
+                                                        <IconButton icon="archive-arrow-down-outline" size={18} iconColor={theme.colors.primary} onPress={() => handleArchiveItem(item.id)} />
                                                         <IconButton icon="delete-outline" size={18} iconColor={theme.colors.error} onPress={() => handleDelete(item.id)} />
                                                     </View>
                                                 </View>
@@ -405,6 +425,7 @@ export default function SavingsScreen() {
 
                                                     {/* Far Right: Only Delete */}
                                                     <View style={{ flexDirection: "row" }}>
+                                                        <IconButton icon="archive-arrow-down-outline" size={18} iconColor={theme.colors.primary} onPress={() => handleArchiveItem(item.id)} />
                                                         <IconButton icon="delete-outline" size={18} iconColor={theme.colors.error} onPress={() => handleDelete(item.id)} />
                                                     </View>
                                                 </View>

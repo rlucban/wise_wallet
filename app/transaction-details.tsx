@@ -8,6 +8,22 @@ import { useCurrencyActions } from "../context/CurrencyContext";
 import { Transaction } from "../types";
 import ConfirmDialog from "../components/ConfirmDialog";
 
+const renderCategoryIcon = (category?: string, title?: string, type?: string): string => {
+  const text = `${category || ""}`.toLowerCase() + " " + `${title || ""}`.toLowerCase();
+  const isIncome = type?.toLowerCase() === "income";
+
+  if (isIncome) return "wallet-outline";
+  if (text.includes("food") || text.includes("mcdo")) return "silverware-fork-knife";
+  if (text.includes("shop")) return "cart-outline";
+  if (text.includes("freelance") || text.includes("salary")) return "cash";
+  if (text.includes("utang") || text.includes("john")) return "account-outline";
+  if (text.includes("bill") || text.includes("utility")) return "receipt";
+  if (text.includes("transport")) return "car-outline";
+  if (text.includes("entertain")) return "movie-open";
+
+  return "cash";
+};
+
 export default function TransactionDetails() {
   const router = useRouter();
   const theme = useTheme();
@@ -26,6 +42,7 @@ export default function TransactionDetails() {
   const isIncome = transaction?.type === "income";
   const amountColor = isIncome ? theme.colors.primary : theme.colors.error;
   const amountPrefix = isIncome ? "+" : "-";
+  const isScheduled = Boolean(transaction?.dueId || transaction?.category?.id === "scheduled");
 
   const handleDelete = async () => {
     if (transaction) {
@@ -76,21 +93,23 @@ export default function TransactionDetails() {
             >
               <MaterialCommunityIcons name="pencil" size={20} color="#3b82f6" />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: "#ffffff",
-                justifyContent: "center",
-                alignItems: "center",
-                borderWidth: 1,
-                borderColor: "#e2e8f0",
-              }}
-              onPress={() => setDeleteDialogVisible(true)}
-            >
-              <MaterialCommunityIcons name="delete-outline" size={20} color="#ef4444" />
-            </TouchableOpacity>
+            {!isScheduled && (
+              <TouchableOpacity
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: "#ffffff",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: "#e2e8f0",
+                }}
+                onPress={() => setDeleteDialogVisible(true)}
+              >
+                <MaterialCommunityIcons name="delete-outline" size={20} color="#ef4444" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Appbar.Header>
@@ -101,9 +120,9 @@ export default function TransactionDetails() {
           <Card.Content style={styles.heroContent}>
             <View style={styles.amountIcon}>
               <MaterialCommunityIcons
-                name={isIncome ? "cash" : "arrow-down-circle"}
-                size={28}
-                color={isIncome ? "#ffffff" : "#ffffff"}
+                name={renderCategoryIcon(transaction.category?.name, transaction.title, transaction.type)}
+                size={32}
+                color={isIncome ? "#16A34A" : "#DC2626"}
               />
             </View>
             <View style={styles.amountText}>
