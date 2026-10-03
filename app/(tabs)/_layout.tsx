@@ -1,9 +1,13 @@
 import { Tabs } from "expo-router";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useTheme } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getTabBarMetrics } from "../../utils/tabBarMetrics";
 
 export default function TabLayout() {
     const theme = useTheme();
+    const insets = useSafeAreaInsets();
+    const { height, paddingTop, paddingBottom } = getTabBarMetrics(insets.bottom);
 
     return (
         <Tabs
@@ -15,10 +19,10 @@ export default function TabLayout() {
                     backgroundColor: theme.colors.surface,
                     borderTopWidth: 1,
                     borderTopColor: theme.colors.surfaceVariant,
-                    height: 60,
-                    paddingBottom: 8,
-                    paddingTop: 8,
                     elevation: 0,
+                    height,
+                    paddingTop,
+                    paddingBottom,
                 },
                 tabBarLabelStyle: {
                     fontSize: 12,

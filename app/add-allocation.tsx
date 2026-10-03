@@ -70,9 +70,9 @@ export default function AddAllocation() {
 
     const isButtonDisabled = loading || isFormInvalid;
     const disabledBg = theme.colors.onSurface;
-    const disabledText = theme.colors.onSurface;
+    const disabledText = theme.colors.surface;
     const buttonBg = isButtonDisabled ? disabledBg : theme.colors.primary;
-    const buttonTextColor = isButtonDisabled ? disabledText : "#fff";
+    const buttonTextColor = isButtonDisabled ? disabledText : theme.colors.onPrimary;
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

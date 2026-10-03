@@ -20,9 +20,11 @@ import { RepositoryProvider } from "../context/RepositoryContext";
 import ProviderComposer from "../components/ProviderComposer";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { hardResetLocalData } from "../utils/db";
-import { requestNotificationPermissions, scheduleDueNotifications } from "../utils/notifications";
+import { requestNotificationPermissions, scheduleDueNotifications, areLocalRemindersSupported, hasNotificationPermission } from "../utils/notifications";
 import { useRepositories } from "../context/RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
+import { getPrefixedKey, getItem } from "../utils/storage";
+import type { Due } from "../types";
 
 function OfflineIndicator() {
   const { isOnline, checkConnectivity } = useNetwork();
@@ -62,15 +64,34 @@ const styles = StyleSheet.create({
   },
 });
 
+function ColdStartSessionGuard() {
+  const { activeUserId, isLoading } = useAuthData();
+  const { logout } = useAuthActions();
+  const clearedRef = useRef(false);
+
+  useEffect(() => {
+    if (isLoading || clearedRef.current) return;
+    clearedRef.current = true;
+    if (activeUserId) {
+      console.info("[Nav] Cold start — clearing restored session");
+      logout();
+    }
+  }, [isLoading, activeUserId, logout]);
+
+  return null;
+}
+
 function SystemResetManager() {
   const router = useRouter();
   const routerRef = useRef(router);
   routerRef.current = router;
   const { logout: _logout } = useAuthActions();
+  const { activeUserId } = useAuthData();
   const isLocal = useIsLocalAccount();
 
   useEffect(() => {
     if (isLocal) return;
+    if (!activeUserId) return;
 
     const checkReset = async () => {
       try {
@@ -105,7 +126,7 @@ function SystemResetManager() {
     };
 
     checkReset();
-  }, [isLocal]);
+  }, [isLocal, activeUserId]);
 
   return null;
 }
@@ -238,6 +259,29 @@ export function AuthLoader({ children }: { children: React.ReactNode }) {
       });
   }, [activeUserId, repos]);
 
+  const preLoginReminderDoneRef = useRef(false);
+
+  useEffect(() => {
+    if (isLoading || activeUserId || preLoginReminderDoneRef.current) return;
+    preLoginReminderDoneRef.current = true;
+    if (!areLocalRemindersSupported()) return;
+
+    const setupPreLoginReminders = async () => {
+      try {
+        const hintUserId = await AsyncStorage.getItem('lastActiveUserId');
+        if (!hintUserId) return;
+        if (!(await hasNotificationPermission())) return;
+        const hintDuesKey = await getPrefixedKey('dues', hintUserId);
+        const hintDues = await getItem<Due[]>(hintDuesKey, []);
+        await scheduleDueNotifications(hintDues);
+      } catch (e) {
+        console.warn("Pre-login reminder setup failed:", e);
+      }
+    };
+
+    setupPreLoginReminders();
+  }, [isLoading, activeUserId]);
+
   // 2. Handle Navigation handled in MainLayout to avoid race-condition with Stack registration 
   
   if (isLoading || dbLoading) {
@@ -273,6 +317,7 @@ export default function RootLayout() {
       <RepositoryProvider>
         <AuthProvider>
           <UserProfileProvider>
+            <ColdStartSessionGuard />
             <SystemResetManager />
               <ProviderComposer
                 providers={[

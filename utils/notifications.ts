@@ -93,6 +93,19 @@ export function areLocalRemindersSupported(): boolean {
   return notificationsAvailable();
 }
 
+export async function hasNotificationPermission(): Promise<boolean> {
+  if (Platform.OS === "web" || isExpoGo()) return false;
+  const Notifications = loadNotifications();
+  if (!Notifications) return false;
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    return status === "granted";
+  } catch (e) {
+    console.warn("Failed to read notification permission:", e);
+    return false;
+  }
+}
+
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (Platform.OS === "web" || isExpoGo()) return false;
   const Notifications = loadNotifications();

@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (userId: string, token: string) => {
     await setSecureItem('authToken', token);
     await AsyncStorage.setItem('activeUserId', String(userId));
+    await AsyncStorage.setItem('lastActiveUserId', String(userId));
     setActiveUserId(String(userId));
     setCachedUserId(String(userId));
     setToken(token);

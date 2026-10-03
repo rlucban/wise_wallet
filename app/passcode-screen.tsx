@@ -8,7 +8,11 @@ export default function PasscodeScreen() {
   const { passcode, setIsUnlocked } = usePasscode();
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
+
+ // const inputRef = useRef<NativeTextInput>(null);
+
   const inputRef = useRef<NativeTextInput | null>(null);
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
