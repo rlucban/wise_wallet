@@ -31,7 +31,7 @@ function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal:
     if (isLocal) return { icon: "cellphone-off", text: "Local-only", color: paperTheme.colors.outline };
     if (!autoBackup) return { icon: "cloud-off-outline", text: "Sync off", color: paperTheme.colors.outline };
     if (isChecking) return { icon: "cloud-sync", text: "Checking...", color: paperTheme.colors.primary };
-    if (!isOnline) return { icon: "cloud-off", text: "Offline", color: paperTheme.colors.error };
+    if (!isOnline && Platform.OS !== "web") return { icon: "cloud-off", text: "Offline", color: paperTheme.colors.error };
     if (pending > 0) return { icon: "upload", text: `${pending} pending`, color: paperTheme.colors.tertiary };
     return { icon: "cloud-check", text: "All synced", color: paperTheme.colors.secondary };
   };
@@ -52,7 +52,7 @@ function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal:
           ? paperTheme.colors.surfaceVariant
           : !autoBackup
           ? paperTheme.colors.surfaceVariant
-          : !isOnline
+          : !isOnline && Platform.OS !== "web"
           ? paperTheme.colors.errorContainer
           : pending > 0
           ? paperTheme.colors.tertiaryContainer
@@ -85,7 +85,7 @@ function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal:
         >
           Retry
         </Button>
-      ) : !isOnline ? (
+      ) : !isOnline && Platform.OS !== "web" ? (
         <Button
           mode="text"
           compact

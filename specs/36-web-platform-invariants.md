@@ -4,9 +4,9 @@
 |---|---|
 | ID | SPEC-36 |
 | Title | Web Platform Invariants (Always-Online, Never-Local, API-Direct Persistence) |
-| Status | **FINAL v1.0** (2026-10-04 per user call — `DEC-W1` hard pin, `DEC-W2` force-migrate; implementable) |
+| Status | **FINAL v1.2** (session-identity exception per 2026-10-04 user call — implementable) |
 | Owner | User (final authority) |
-| Version | 1.0 |
+| Version | 1.2 |
 | Scope | Web-only branches: connection-status reporting (hard Online pin), account-mode availability (never Local + legacy force-migrate), API-direct persistence rule, web-row rule for credential-change callers |
 | Non-goals | Any native (Android/iOS) behavior change; `autoBackup`/sync-state semantics (a separate dimension — explicitly out of this spec); offline-capable PWA/caching; new dependencies, storage keys, routes, or API contract changes |
 | Normative source | This file. Amends SPEC-04 v1.4 on web only, with supersession lines recorded below (SPEC-34-over-33 precedent). |
@@ -17,6 +17,13 @@
 > DEC-W3/ACC-W-03 deleted, no renumbering debt left behind). Web model decided:
 > web persists API-direct always, the flag guards nothing, localStorage is not a
 > store. FINAL v1.0 per user call (`DEC-W1` A, `DEC-W2` C).
+> Widened 2026-10-04 to v1.1 per user call (Option B): D-W-03/ACC-W-03 cover reads
+> as well as writes — web never reads the on-device store either. Narrow
+> flag-gate plan discarded (it left false-positive reads intact).
+> Amended 2026-10-04 to v1.2 per user call: session-identity keys (`activeUserId`,
+> `authToken`, `lastActiveUserId`) MAY be read on web — user data still never.
+> Session MUST be verified by an authenticated call; 401 clears it (existing
+> `authFetch` path). S1/S2 slices deleted (no `secureStorage`/`AuthContext` change).
 
 ## Terminology (RFC 2119)
 
@@ -49,7 +56,7 @@ Online means connected to the API, full stop. Offline means local-only. Sync/
 
 - **CON-W-01 — Pinned Online (hard).** On `Platform.OS === 'web'`, connection status MUST read Online. The health probe MUST be skipped on web (not run-and-discarded). `OfflineIndicator`, the settings Offline status/`Check` affordance, and the login offline notice MUST be unreachable on web. Every API call's own failure handling (gated copy, zero-write fallbacks) remains the safety net for mid-session drops — nothing new is built for them.
 - **CON-W-02 — Never Local, legacy force-migrated.** Web MUST offer no Local creation or Local fallback creation (extends v1.4, which already holds). Pre-existing web Local accounts MUST force Make Online at next login: one-time local→API migration, then the account is an ordinary online account. Grandfathering (serving untrusted reads) and login-blocking (data loss) are rejected.
-- **CON-W-03 — API-direct persistence.** On web, mutations MUST be issued to the API and MUST NOT depend on localStorage/AsyncStorage as a source of truth. The `autoBackup` value MUST NOT gate, alter, or be written by web persistence paths — on web the flag is meaningless (there is no local store to back up *from*). An unreachable API MUST fail openly with zero local writes.
+- **CON-W-03 — API-direct persistence.** On web, mutations MUST be issued to the API and MUST NOT depend on localStorage/AsyncStorage as a source of truth. The `autoBackup` value MUST NOT gate, alter, or be written by web persistence paths — on web the flag is meaningless (there is no local store to back up *from*). An unreachable API MUST fail openly with zero local writes. Exception: session-identity keys (`activeUserId`, `authToken`, `lastActiveUserId`) MAY be read on web to restore the claimed session; the session MUST then be verified by an authenticated API call, and any 401 MUST clear the session and route to login via the existing `authFetch` 401 path.
 - **CON-W-04 — Native untouched + caller web row.** Android/iOS behavior MUST be byte-identical (SPEC-04 incl. v1.4). This spec supersedes SPEC-04 v1.4's "existing web locals keep login" (replaced by force-migrate). Any credential-change feature (e.g. PIN change) MUST conform to the §3.2 web row — on web it always attempts the endpoint and relies on call-failure handling, never on an offline gate.
 - **CON-W-05 — No new machinery.** No new dependencies, storage keys, routes, or API contract changes. Enforcement reuses `Platform.OS` branches and existing settings/plumbing.
 
@@ -83,7 +90,7 @@ Online means connected to the API, full stop. Offline means local-only. Sync/
 
 - **ACC-W-01 (pinned Online):** with `Platform.OS = web`, status selector returns Online with the probe module stubbed to throw — Offline UI components receive no Offline state.
 - **ACC-W-02 (never Local + force-migrate):** web register/login sources contain no reachable Local-creation call (source-text guard); a legacy web Local login routes into Make Online migration before normal use.
-- **ACC-W-03 (API-direct):** web mutations issue the API call regardless of the stored `autoBackup` value; web persistence paths perform zero localStorage writes; unreachable API yields open failure with zero local writes.
+- **ACC-W-03 (full API-direct):** web mutations issue the API call regardless of the stored `autoBackup` value with zero localStorage writes; web screens load from the API with zero AsyncStorage reads of user data on web (lists, profile, settings, flags); session-identity reads allowed but verified-or-logged-out; unreachable API yields open failure with zero local writes.
 - **ACC-W-04 (caller conformance):** credential-change callers on web issue the endpoint call (never an offline-gated copy for connectivity reasons); call-failure paths per the caller's own spec unchanged.
 - **ACC-W-05 (native regression):** full existing jest suite green with no web-branch leakage; `npm run lint` 0/0 (user-run).
 - **ACC-W-06 (subjective):** reviewer on web export + Expo Go native confirms §3.3 right column.
@@ -92,7 +99,7 @@ Online means connected to the API, full stop. Offline means local-only. Sync/
 
 - **D-W-01 (connection pin):** hard web branch per `DEC-W1` (`NetworkContext` probe skip + status selector + `OfflineIndicator`/settings/login gates).
 - **D-W-02 (mode gate + force-migrate):** web Local handling per `DEC-W2` (creation paths already absent — verify + guard with tests; legacy-login migration trigger).
-- **D-W-03 (API-direct persistence):** web mutation paths per CON-W-03 (flag-ignoring, zero-local-write, fail-open) + `ACC-W-03` coverage.
+- **D-W-03 (full API-direct, re-sliced):** web read AND mutation paths per CON-W-03 (reads from API, zero AsyncStorage reads/writes on web, flag ignored, fail-open) — file list per the re-slice scan + `ACC-W-03` coverage.
 - **D-W-04 (caller conformance):** web-row behavior of credential-change callers proven by `ACC-W-04`.
 - **D-W-05 (tests):** jest `Platform.OS`-parameterized web cases + native regression re-run; user-run web-export + Expo Go matrix.
 - **D-W-06 (docs):** `docs/savepoint.md` + `AGENTS.md §3` entries.

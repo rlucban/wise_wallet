@@ -70,7 +70,7 @@ export default function LoginScreen() {
                 );
 
                 if (localUser.passcode === hashedInput || localUser.passcode === passcode.trim()) {
-                    await login(localUser.id as string, "local_token");
+                    await handleLegacyLocalAuth(localUser.id as string);
                 } else {
                     showAlert("Error", "Invalid PIN");
                 }
@@ -111,6 +111,19 @@ export default function LoginScreen() {
                 ]
             );
         }
+    };
+
+    const handleLegacyLocalAuth = async (userId: string) => {
+        await login(userId, "local_token");
+        if (Platform.OS !== "web") {
+            return;
+        }
+        // SPEC-36 CON-W-02 (DEC-W2 force-migrate): web legacy locals migrate before normal use.
+        showAlert(
+            "Online Upgrade Required",
+            "Local-only accounts are no longer supported on web. Tap Continue, then Make Online in Settings to move your data to your online account.",
+            [{ text: "Continue", onPress: () => router.replace("/(tabs)/settings") }]
+        );
     };
 
     const tryCloudLogin = async (force: boolean): Promise<{ ok: boolean; status: number; data?: unknown }> => {
@@ -206,7 +219,7 @@ export default function LoginScreen() {
                         passcode.trim()
                     );
                     if (localUser.passcode === hashedInput || localUser.passcode === passcode.trim()) {
-                        await login(localUser.id as string, "local_token");
+                        await handleLegacyLocalAuth(localUser.id as string);
                     } else {
                         showAlert(
                             "Login Failed",
@@ -277,7 +290,7 @@ export default function LoginScreen() {
                             <Text style={styles.appName}>WiseWallet</Text>
                             <Text style={styles.tagline}>Welcome Back</Text>
 
-                            {offlineNotice && (
+                            {offlineNotice && Platform.OS !== "web" && (
                                 <View style={styles.offlineNotice}>
                                     <MaterialCommunityIcons name="wifi-off" size={16} color="#fff" />
                                     <Text style={styles.offlineNoticeText}>No connection — checking this device…</Text>
