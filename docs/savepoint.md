@@ -611,3 +611,13 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - No backend/storage/API/route/dependency change. Pre-write leak parked as follow-up.
 - Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, `npx tsc --noEmit`, matrix ACC-S01..S04 (web cloud copy, legacy local login, native Cloud-OFF buttons, Expo Go + web export).
 
+---
+
+## 2026-10-04 -- SPEC-39: Web Auto-Backup Switch Disabled
+
+- `specs/39-web-auto-backup-switch-disabled.md`: FINAL per user call. On web, `autoBackup` guards nothing (SPEC-36 API-direct), but the switch was `disabled={isLocal}` — web users could toggle a dead flag. Honesty fix: `disabled={isLocal || Platform.OS === "web"}` at `settings.tsx:1136`.
+- `app/(tabs)/settings.tsx` (D-01): one-line `disabled` prop extension. Native Cloud-OFF untouched (CON-02/CON-04).
+- `utils/settingsAccountMode.test.ts` (D-02): extended with SPEC-39 ACC-01 web-disable guard.
+- No backend/storage/API/route/dependency change. Zero behavior change on web.
+- Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, matrix ACC-S01..S03 (web switch disabled, native Cloud-OFF toggleable, Expo Go + web export).
+

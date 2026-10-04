@@ -1133,7 +1133,7 @@ if (!pinVerified) {
                 <List.Icon icon="cloud-sync" color={paperTheme.colors.onSurfaceVariant} />
                 <Text variant="bodyLarge" style={{ marginLeft: 12 }}>Auto-Backup</Text>
               </View>
-              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={isLocal} />
+              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={isLocal || Platform.OS === "web"} />
             </View>
 
             <Divider style={{ marginVertical: 8 }} />
