@@ -20,6 +20,36 @@ export interface ApiResult<T = unknown> {
   error?: string;
 }
 
+// SPEC-40 DEC-01/DEC-02/CON-05: the server nests its payload one level deeper
+// than the envelope ({status, results, data:{<wrapperKey>: payload}}). Every
+// consumer already assumes the flat payload via its type annotations, so the
+// unwrap happens once, here. Keyed on KNOWN names and never on key count:
+// `storage/upload` returns `{url}`, a legitimate single-key object, and must
+// survive untouched.
+export const RESPONSE_WRAPPER_KEYS = [
+  "transactions",
+  "categories",
+  "dues",
+  "savingsItems",
+  "profile",
+  "transaction",
+] as const;
+
+const unwrapEnvelope = <T,>(data: unknown): T => {
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    return data as T;
+  }
+  const keys = Object.keys(data as Record<string, unknown>);
+  if (keys.length !== 1) return data as T;
+  const only = keys[0];
+  if (!(RESPONSE_WRAPPER_KEYS as readonly string[]).includes(only)) {
+    // ACC-04: unknown wrapper — pass through untouched so a new endpoint fails
+    // loudly in review rather than silently reading empty in production.
+    return data as T;
+  }
+  return (data as Record<string, unknown>)[only] as T;
+};
+
 export async function authFetch<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
@@ -54,7 +84,7 @@ export async function authFetch<T = unknown>(
       }
     }
 
-    let body: Record<string, unknown>;
+    let body: unknown;
     try {
       body = await response.json();
     } catch {
@@ -66,13 +96,17 @@ export async function authFetch<T = unknown>(
       };
     }
 
-    const unwrapped: T = (body?.status === 'success' && body?.data ? body.data : body) as T;
+    // json() is typed `unknown`; narrow to the three fields actually read.
+    const env = body as { status?: string; data?: unknown; error?: string } | null;
+    const unwrapped: T = unwrapEnvelope<T>(
+      env?.status === 'success' && env?.data ? env.data : env
+    );
 
     return {
       ok: response.ok,
       status: response.status,
       data: unwrapped,
-      error: !response.ok ? (body?.error ?? `HTTP ${response.status}`) as string : undefined,
+      error: !response.ok ? (env?.error ?? `HTTP ${response.status}`) as string : undefined,
     };
   } catch (e: unknown) {
     return { ok: false, status: 0, error: e instanceof Error ? e.message : String(e) };
