@@ -409,6 +409,12 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   are **untouched** — rollback is two files. v1.1 dropped a never-read `strokeWidth`
   parameter (recorded in the spec's History). Peso risk carried forward (DEC-11, ACC-16).
   See `docs/savepoint.md`.
+- **2026-10-03 — Spec 36 DRAFT v0.1 (not yet FINAL).** `specs/36-web-platform-invariants.md`:
+  web always-Online, never-Local, always-`autoBackup=true` (open: `DEC-W1` pin
+  hardness, `DEC-W2` legacy web locals, `DEC-W3` legacy Cloud-OFF normalization).
+  Amends SPEC-04 v1.4 on web only (no SPEC-35 in this tree — caller conformance
+  is generic); native untouched. Needs user call + FINAL mark. See `docs/savepoint.md`.
+- **2026-10-04 — Spec 36 FINAL v1.0.** `specs/36-web-platform-invariants.md` rewritten to FINAL: scope corrected to Local-vs-API-connected only (`autoBackup` excised); web persists API-direct, flag ignored, fail-open; `DEC-W1` hard pin, `DEC-W2` force-migrate legacy web locals. Implementable one slice at a time. See `docs/savepoint.md`.
 
 ---
 

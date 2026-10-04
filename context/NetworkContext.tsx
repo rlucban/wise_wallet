@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from "react";
-import { AppState, AppStateStatus } from "react-native";
+import { AppState, AppStateStatus, Platform } from "react-native";
 import { API_URL } from "../utils/db";
 import { processSyncQueue, triggerSyncProcessing } from "../utils/syncProcessor";
 import { useIsLocalAccount } from "../utils/authMode";
@@ -75,6 +75,10 @@ async function fetchHealth(): Promise<HealthResult> {
 }
 
 export function checkHealth(): Promise<HealthResult> {
+  if (Platform.OS === "web") {
+    // SPEC-36 CON-W-01 (hard pin): web never probes — always Online.
+    return Promise.resolve({ online: true, data: null });
+  }
   const now = Date.now();
   if (inFlight) {
     return inFlight;
@@ -115,6 +119,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   const [lastCheckedAt, setLastCheckedAt] = useState<number | null>(null);
 
   const checkConnectivity = useCallback(async (): Promise<boolean> => {
+    if (Platform.OS === "web") {
+      // SPEC-36 CON-W-01 (hard pin): web is always Online; skip probe and state churn.
+      console.info("[Network] Web platform - pinned Online");
+      setLastCheckedAt(Date.now());
+      return true;
+    }
     setIsChecking(true);
     try {
       let online: boolean;

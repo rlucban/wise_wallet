@@ -558,3 +558,18 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
   - Changed button label from `Import Data (JSON)` to `Import Data`.
   - Underlying file handlers, formats, and validators preserved without changes.
 
+---
+
+## 2026-10-03 -- SPEC-36 DRAFT v0.1: Web Platform Invariants
+- Per user call ("web is always online, never local, always auto-backup=true"): `specs/36-web-platform-invariants.md` (DRAFT, NOT implementable until FINAL). Pins three web invariants — connection always Online (`DEC-W1` hard/soft pin open), never Local (`DEC-W2` legacy-locals fate open; creation already absent per SPEC-04 v1.4), always `autoBackup=true` (`DEC-W3` legacy-OFF normalization open).
+- Forked from the `spec-change-pin` worktree draft and adapted: this tree carries no SPEC-35, so credential-change conformance is generic (D-W-04) and the PIN dialog is an informative reference only. Amends SPEC-04 v1.4 on web only; native byte-identical by CON-W-04. No code changed in this step. Needs: user call on `DEC-W1`..`W3`, then FINAL mark.
+
+---
+
+## 2026-10-04 -- SPEC-36 FINAL v1.0: Web Platform Invariants (corrected scope)
+
+- Scope correction per user call: SPEC-36 is about offline(LOCAL) vs online(API-CONNECTED) only — `autoBackup`/sync state never belonged here (CON-W-03/D-W-03/DEC-W3/ACC-W-03 deleted). Rationale: web localStorage is clearable → false-positive reads; web must never present local-only operation as safe.
+- Web model decided: API-direct persistence always; the flag guards nothing on web (no local store to back up *from*); unreachable API fails openly, zero local writes.
+- Decisions closed: `DEC-W1` hard pin (probe skipped, Offline UI unreachable), `DEC-W2` force Make Online at next legacy-local login (one-time migration; grandfather rejected as untrusted reads, block rejected as data loss).
+- `specs/36-web-platform-invariants.md` rewritten DRAFT v0.1 → FINAL v1.0 (CON-W-01..05, ACC-W-01..06, D-W-01..06). Implementable; one file/layer at a time. No code changed in this step.
+

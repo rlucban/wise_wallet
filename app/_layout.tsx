@@ -36,6 +36,11 @@ function OfflineIndicator() {
     }
   }, [isOnline]);
 
+  if (Platform.OS === "web") {
+    // SPEC-36 CON-W-01 (hard pin): Offline UI is unreachable on web.
+    return null;
+  }
+
   if (isOnline || !showBanner) {
     return null;
   }
