@@ -573,3 +573,14 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Decisions closed: `DEC-W1` hard pin (probe skipped, Offline UI unreachable), `DEC-W2` force Make Online at next legacy-local login (one-time migration; grandfather rejected as untrusted reads, block rejected as data loss).
 - `specs/36-web-platform-invariants.md` rewritten DRAFT v0.1 → FINAL v1.0 (CON-W-01..05, ACC-W-01..06, D-W-01..06). Implementable; one file/layer at a time. No code changed in this step.
 
+---
+
+## 2026-10-04 -- SPEC-36 implemented (D-W-01..D-W-03, S3..S12a)
+
+- D-W-01 hard pin (4 files): `NetworkContext` probe skip at both levels; `OfflineIndicator` null on web; settings Offline text/card/Check web-guarded; login strip web-gated.
+- D-W-02 force-migrate: `login.tsx handleLegacyLocalAuth` routes legacy web local-logins to Settings Make Online; `register.tsx` verified closed (forced online + hard block, zero diff).
+- D-W-03 full API-direct (v1.1→v1.2, session exception): Transactions, Categories, Savings, Dues, UserProfile load from API and write directly (open-failure copy, no repo/flag/queue); `useSyncStatus` idle on web; alerts session-memory (`webAlertStore`); no local seeding in register/login/startup; reset epoch in session memory.
+- S12a `utils/webPin.test.ts`: 16 source-text guards (ACC-W-01..04). Suite 314 → 330 when run.
+- Fixed 2 tsc TS2367 (web early-return narrowing): removed dead reload branch in `_layout`, reused `isWeb` in register. Rule logged: never re-compare after an early return in the same flow.
+- Open (user-run): `npm test`, `npm run lint`, web-export + Expo Go matrix (ACC-W-05/06); backend curl matrix still skipped (accepted risk).
+
