@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Platform } from "react-native";
 import {
   getQueueStats,
   getLastSyncedAt,
@@ -34,6 +35,21 @@ export function useSyncStatus() {
   });
 
   const refresh = useCallback(async () => {
+    if (Platform.OS === "web") {
+      // SPEC-36 CON-W-03 (v1.2): no queue on web — idle status, zero storage reads.
+      setStatus({
+        total: 0,
+        failed: 0,
+        pending: 0,
+        lastSyncedAt: null,
+        isSyncing: false,
+        hasFailed: false,
+        hasPending: false,
+        items: [],
+        backupDisabled: false,
+      });
+      return;
+    }
     const autoBackup = await getSetting('autoBackup');
     const isAutoBackupEnabled = autoBackup !== 'false';
 

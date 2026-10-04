@@ -209,12 +209,30 @@ export async function cancelAllNotifications(): Promise<void> {
   }
 }
 
+// SPEC-36 CON-W-03 (v1.2): session-memory alert store on web — never persisted.
+const webAlertStore = new Map<string, SystemAlert[]>();
+
+function webAlertKey(userId?: string): string {
+  return userId ?? "default";
+}
+
+export function clearWebAlertStoreForTests(): void {
+  webAlertStore.clear();
+}
+
 export async function getSystemAlerts(userId?: string): Promise<SystemAlert[]> {
+  if (Platform.OS === "web") {
+    return [...(webAlertStore.get(webAlertKey(userId)) ?? [])];
+  }
   const key = await getPrefixedKey("system_alerts", userId);
   return getItem<SystemAlert[]>(key, []);
 }
 
 export async function saveSystemAlerts(alerts: SystemAlert[], userId?: string): Promise<void> {
+  if (Platform.OS === "web") {
+    webAlertStore.set(webAlertKey(userId), alerts);
+    return;
+  }
   const key = await getPrefixedKey("system_alerts", userId);
   await setItem(key, alerts);
 }
@@ -234,6 +252,10 @@ export async function markAllAlertsAsRead(userId?: string): Promise<SystemAlert[
 }
 
 export async function clearAllAlerts(userId?: string): Promise<void> {
+  if (Platform.OS === "web") {
+    webAlertStore.delete(webAlertKey(userId));
+    return;
+  }
   const key = await getPrefixedKey("system_alerts", userId);
   await setItem(key, []);
 }

@@ -201,8 +201,11 @@ export default function LoginScreen() {
             }
 
             if (inner?.user && inner?.token) {
-                await addUser(inner.user.id, name.trim(), passcode.trim());
-                await saveUserProfile({ name: name.trim(), isFirstRun: false, initialBalance: 0 }, inner.user.id);
+                if (Platform.OS !== "web") {
+                    // SPEC-36 CON-W-03 (v1.2): no local seeding on web — server owns the account.
+                    await addUser(inner.user.id, name.trim(), passcode.trim());
+                    await saveUserProfile({ name: name.trim(), isFirstRun: false, initialBalance: 0 }, inner.user.id);
+                }
                 await login(inner.user.id, inner.token);
             }
         } else if (lastResult.status === 401) {

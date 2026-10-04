@@ -86,6 +86,9 @@ function ColdStartSessionGuard() {
   return null;
 }
 
+// SPEC-36 CON-W-03 (v1.2): session-memory reset epoch on web — never persisted.
+let webResetEpoch: number | null = null;
+
 function SystemResetManager() {
   const router = useRouter();
   const routerRef = useRef(router);
@@ -106,6 +109,18 @@ function SystemResetManager() {
         const resetEpoch = data?.reset_epoch;
         if (typeof resetEpoch !== "number") return;
 
+        if (Platform.OS === "web") {
+          // SPEC-36 CON-W-03 (v1.2): session-memory epoch on web — no storage reads.
+          if (webResetEpoch === null) {
+            webResetEpoch = resetEpoch;
+          } else if (resetEpoch > webResetEpoch) {
+            console.warn("SYSTEM RESET TRIGGERED BY SERVER");
+            webResetEpoch = resetEpoch;
+            window.location.reload();
+          }
+          return;
+        }
+
         const localEpochStr = await AsyncStorage.getItem("system_reset_epoch");
         const localEpoch = localEpochStr ? parseInt(localEpochStr) : null;
 
@@ -117,13 +132,8 @@ function SystemResetManager() {
           console.warn("SYSTEM RESET TRIGGERED BY SERVER");
           await hardResetLocalData();
           await AsyncStorage.setItem("system_reset_epoch", resetEpoch.toString());
-          
-          if (Platform.OS === 'web') {
-            window.location.reload();
-          } else {
-            setTimeout(() => routerRef.current.replace("/login"), 0);
-            alert("A system reset was requested. You have been logged out.");
-          }
+          setTimeout(() => routerRef.current.replace("/login"), 0);
+          alert("A system reset was requested. You have been logged out.");
         }
       } catch (e) {
         console.error("Health check failed", e);
@@ -234,6 +244,11 @@ export function AuthLoader({ children }: { children: React.ReactNode }) {
     if (isLoading) return;
     
     if (activeUserId && activeUserId !== dbInitializedFor) {
+        if (Platform.OS === "web") {
+            // SPEC-36 CON-W-03 (v1.2): no local seeding on web — categories load from API.
+            setDbInitializedFor(activeUserId);
+            return;
+        }
         setDbLoading(true);
         initDb(activeUserId)
           .then(() => {
@@ -304,6 +319,11 @@ export default function RootLayout() {
   const [dbReady, setDbReady] = useState(false);
 
   useEffect(() => {
+    if (Platform.OS === "web") {
+      // SPEC-36 CON-W-03 (v1.2): no local seeding on web.
+      setDbReady(true);
+      return;
+    }
     initMasterDb()
       .then(() => setDbReady(true))
       .catch((e: unknown) => console.error("DB init Error", e));

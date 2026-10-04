@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Platform } from "react-native";
 import { Due } from "../types";
 import { useAuthData } from "../context/AuthContext";
 import { API_URL, getSetting } from "../utils/db";
@@ -41,6 +42,16 @@ export function useDues() {
   const fetchDues = useCallback(async () => {
     setLoading(true);
     try {
+      if (Platform.OS === "web") {
+        // SPEC-36 CON-W-03 (v1.2): web loads API-direct — no local reads, no merge, no queue.
+        if (API_URL && activeUserId) {
+          const { ok, data: remoteData } = await authFetch(`dues`);
+          if (ok && Array.isArray(remoteData)) {
+            setDues(remoteData);
+          }
+        }
+        return;
+      }
       const localData = await repos.dues.getAll();
       const migrated = localData.map(migrateDue);
       setDues(migrated);
@@ -82,6 +93,19 @@ export function useDues() {
 
   const addDue = async (due: Omit<Due, "id">) => {
     try {
+      if (Platform.OS === "web") {
+        // SPEC-36 CON-W-03 (v1.2): web writes API-direct — no local repo, no flag gate, no queue.
+        const newDue = { ...due, id: generateUUID() } as Due;
+        const { ok } = await authFetch("dues", {
+          method: "POST",
+          body: JSON.stringify({ ...newDue, userId: activeUserId }),
+        });
+        if (!ok) {
+          throw new Error("Failed to save due. Please check your connection.");
+        }
+        setDues((prev) => [...prev, newDue]);
+        return;
+      }
       const newDue = { ...due, id: generateUUID() } as Due;
       await repos.dues.upsert(newDue);
       setDues((prev) => [...prev, newDue]);
@@ -101,6 +125,18 @@ export function useDues() {
 
   const updateDue = async (id: string, updates: Partial<Due>) => {
     try {
+      if (Platform.OS === "web") {
+        // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
+        const { ok } = await authFetch(`dues/${id}`, {
+          method: "PUT",
+          body: JSON.stringify({ ...updates, userId: activeUserId }),
+        });
+        if (!ok) {
+          throw new Error("Failed to save changes. Please check your connection.");
+        }
+        setDues((prev) => prev.map((d) => (d.id === id ? { ...d, ...updates } : d)));
+        return;
+      }
       const existing = await repos.dues.getById(id);
       if (existing) {
         await repos.dues.upsert({ ...existing, ...updates } as Due);
@@ -121,6 +157,15 @@ export function useDues() {
 
   const deleteDue = async (id: string) => {
     try {
+      if (Platform.OS === "web") {
+        // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
+        const { ok } = await authFetch(`dues/${id}`, { method: "DELETE" });
+        if (!ok) {
+          throw new Error("Failed to delete due. Please check your connection.");
+        }
+        setDues((prev) => prev.filter((d) => d.id !== id));
+        return;
+      }
       await repos.dues.deleteById(id);
       setDues((prev) => prev.filter((d) => d.id !== id));
 
