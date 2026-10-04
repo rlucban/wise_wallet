@@ -60,6 +60,26 @@
     checks in Expo Go and `expo export --platform web` for native/UI paths
     that jest cannot prove. No platform-only behavior without a `CON-*` +
     `ACC-*` + `D-*`. This extends `SPEC-04 CON-07`.
+11. **Bare-minimum diffs.** Implement the smallest change that satisfies the
+    FINAL spec's `ACC-*` — nothing more. No refactoring, no drive-by cleanups,
+    no new files, helpers, or abstractions unless a `D-*` item names them. If
+    the minimal fix exposes adjacent rot, note it in `docs/savepoint.md` and
+    stop; that second fix needs its own spec.
+12. **No new dependencies unless instructed.** Do not add npm packages, native
+    modules, fonts, or any third-party code unless the user explicitly instructs
+    it or the FINAL spec requires it by name (install command goes to the user
+    to run, per §1.3). Prefer existing imports and stdlib.
+13. **Plan-fix validation gate.** `/implement-fix` reads ONLY a plan file with
+    `status: ready-for-implement-fix` containing decision, in-scope/out-of-scope
+    paths, and calibration. Before the first slice, validate: every slice maps
+    to a `D-*` in the FINAL spec; no out-of-scope path is touched; no overlap
+    with another FINAL spec's scope (if two specs cover the same behavior, stop
+    and ask which governs — never implement both readings); no dependency beyond
+    rule 12. Any failure → stop and ask. Never re-plan inside `/implement-fix`.
+14. **One home per spec and slice.** Never duplicate a spec, slice, or test
+    across worktrees or files — cross-reference instead. If the same behavior is
+    specified twice, treat it as an overlap: stop, ask which is canonical, and
+    reconcile before writing code.
 
 ---
 
@@ -414,8 +434,14 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   hardness, `DEC-W2` legacy web locals, `DEC-W3` legacy Cloud-OFF normalization).
   Amends SPEC-04 v1.4 on web only (no SPEC-35 in this tree — caller conformance
   is generic); native untouched. Needs user call + FINAL mark. See `docs/savepoint.md`.
+- **2026-10-03 — Standing rules §1.11–§1.14 (mirrored per user call).** Same
+  four rules as the PIN worktree: bare-minimum diffs; no new dependencies
+  unless instructed or FINAL-spec-named; plan-fix validation gate; one home
+  per spec/slice (the SPEC-36 copy in `spec-change-pin` is the known §1.14
+  overlap — canonical home undecided). See `docs/savepoint.md`.
 - **2026-10-04 — Spec 36 FINAL v1.0.** `specs/36-web-platform-invariants.md` rewritten to FINAL: scope corrected to Local-vs-API-connected only (`autoBackup` excised); web persists API-direct, flag ignored, fail-open; `DEC-W1` hard pin, `DEC-W2` force-migrate legacy web locals. Implementable one slice at a time. See `docs/savepoint.md`.
 - **2026-10-04 — Spec 36 implemented (D-W-01..D-W-03, S3..S12a).** Hard pin, force-migrate routing, and full API-direct web paths across 12 files; session-memory alerts; `utils/webPin.test.ts` (16 guards, ACC-W-01..04). Fixed 2 TS2367 via narrowing rule. Open: user-run jest/lint + web-export/Expo Go matrix. See `docs/savepoint.md`.
+- **2026-10-04 — Spec 37 FINAL + implemented.** `specs/37-onboarding-opening-balance-payment-method.md`: onboarding Opening Balance omitted `paymentMethod` → sanitize `""` → server zod 400, masked as "connection" error with console-only catch (stuck screen). D-01 new `utils/onboardingPayload.ts` (`"cash"`, null for 0); D-02 `app/onboarding.tsx` routes through builder + rendered re-triable error; D-03 `utils/onboardingPayload.test.ts` (ACC-01..04, android/ios/web). No backend/storage/API/route/dep change. Open: user-run jest/lint/tsc + web Get Started matrix. See `docs/savepoint.md`.
 
 ---
 

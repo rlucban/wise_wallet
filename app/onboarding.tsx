@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { useUserProfileActions } from "../context/UserProfileContext";
 import { useTransactionsActions } from "../context/TransactionsContext";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { buildOpeningBalancePayload } from "../utils/onboardingPayload";
 
 export default function OnboardingScreen() {
     const router = useRouter();
@@ -16,6 +17,7 @@ export default function OnboardingScreen() {
     const [balance, setBalance] = useState("0");
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<{ name?: string; balance?: string }>({});
+    const [setupError, setSetupError] = useState<string | null>(null);
 
     const validate = () => {
         const newErrors: { name?: string; balance?: string } = {};
@@ -34,6 +36,7 @@ export default function OnboardingScreen() {
     const handleGetStarted = async () => {
         if (!validate()) return;
         setLoading(true);
+        setSetupError(null);
         try {
             const initialBalance = parseAmount(balance) || 0;
 
@@ -41,21 +44,15 @@ export default function OnboardingScreen() {
             await completeSetup(name.trim(), initialBalance);
 
             // 2. Create the Ledger Entry (Transaction history)
-            if (initialBalance !== 0) {
-                await addTransaction({
-                    title: "Opening Balance",
-                    amount: initialBalance,
-                    type: "income",
-                    date: new Date().toISOString(),
-                    category: { id: "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19", name: "Others", type: "income", updatedAt: 0 },
-                    note: "Initial account setup",
-                    updatedAt: Date.now(),
-                });
+            const openingPayload = buildOpeningBalancePayload(initialBalance);
+            if (openingPayload) {
+                await addTransaction(openingPayload);
             }
 
             router.replace("/");
         } catch (e) {
             console.error("Setup failed:", e);
+            setSetupError("Couldn't save your opening balance. Please check your connection and try again.");
         } finally {
             setLoading(false);
         }
@@ -128,6 +125,11 @@ export default function OnboardingScreen() {
                         >
                             Get Started
                         </Button>
+                        {setupError ? (
+                            <HelperText type="error" visible={true}>
+                                {setupError}
+                            </HelperText>
+                        ) : null}
                     </View>
 
                     <Text style={styles.footerText}>

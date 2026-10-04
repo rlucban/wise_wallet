@@ -566,6 +566,11 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
+## 2026-10-03 -- Standing rules §1.11–§1.14 (mirrored)
+- Per user call: `AGENTS.md` §1 gains the same four rules as the PIN worktree (§1.11 bare-minimum diffs; §1.12 no new dependencies unless instructed; §1.13 plan-fix validation gate; §1.14 one home per spec/slice). Known §1.14 overlap recorded: SPEC-36 exists in both trees — canonical home undecided, needs user call; no code changed.
+
+---
+
 ## 2026-10-04 -- SPEC-36 FINAL v1.0: Web Platform Invariants (corrected scope)
 
 - Scope correction per user call: SPEC-36 is about offline(LOCAL) vs online(API-CONNECTED) only — `autoBackup`/sync state never belonged here (CON-W-03/D-W-03/DEC-W3/ACC-W-03 deleted). Rationale: web localStorage is clearable → false-positive reads; web must never present local-only operation as safe.
@@ -583,4 +588,15 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - S12a `utils/webPin.test.ts`: 16 source-text guards (ACC-W-01..04). Suite 314 → 330 when run.
 - Fixed 2 tsc TS2367 (web early-return narrowing): removed dead reload branch in `_layout`, reused `isWeb` in register. Rule logged: never re-compare after an early return in the same flow.
 - Open (user-run): `npm test`, `npm run lint`, web-export + Expo Go matrix (ACC-W-05/06); backend curl matrix still skipped (accepted risk).
+
+---
+
+## 2026-10-04 -- SPEC-37: Onboarding Opening Balance paymentMethod
+
+- `specs/37-onboarding-opening-balance-payment-method.md`: FINAL per user call. Root cause: onboarding posted the Opening Balance with no `paymentMethod` → `sanitizeTransaction` filled `""` → server zod `min(1)` (`wallet_API/src/schemas/transactionSchema.js:9`) → 400 → app threw "check your connection" (`context/TransactionsContext.tsx:186`); the catch (`app/onboarding.tsx:57`) logged only → stuck screen.
+- `utils/onboardingPayload.ts` (D-01, new, pure): `buildOpeningBalancePayload(balance)` returns null for 0 (no transaction, CON-05), else the full payload with `paymentMethod: "cash"` (mirrors the add-transaction default, DEC-02).
+- `app/onboarding.tsx` (D-02): ledger entry routes through the builder; catch sets a rendered `setupError` HelperText (ternary, re-triable) instead of console-only.
+- `utils/onboardingPayload.test.ts` (D-03, new): ACC-01/ACC-02 + category shape across `Platform.OS` android/ios/web; source-text guards for ACC-03/ACC-04.
+- No backend, storage, API-contract, route, or dependency change. Native queue path untouched (CON-02).
+- Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, `npx tsc --noEmit`, web Get Started matrix (ACC-S01..S03), Expo Go add-transaction regression, `expo export --platform web`.
 
