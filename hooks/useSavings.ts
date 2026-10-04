@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Platform } from "react-native";
 import { SavingsItem } from "../types";
 import { useAuthData } from "../context/AuthContext";
 import { API_URL, getSetting } from "../utils/db";
@@ -48,6 +49,16 @@ export function useSavings() {
     const fetchItems = useCallback(async () => {
         setLoading(true);
         try {
+            if (Platform.OS === "web") {
+                // SPEC-36 CON-W-03 (v1.2): web loads API-direct — no local reads, no merge, no queue.
+                if (API_URL && activeUserId) {
+                    const { ok, data: remoteData } = await authFetch<SavingsItem[]>(`savingsItems?userId=${activeUserId}`);
+                    if (ok && Array.isArray(remoteData)) {
+                        setItems(remoteData);
+                    }
+                }
+                return;
+            }
             const localData = await repos.savingsItems.getAll();
             const migrated = localData.map(migrateSavingsItem);
             const deduped = titleDeduplicate(migrated);
@@ -109,6 +120,19 @@ export function useSavings() {
                 return;
             }
 
+            if (Platform.OS === "web") {
+                // SPEC-36 CON-W-03 (v1.2): web writes API-direct — no local repo, no flag gate, no queue.
+                const newItem = { ...item, id: generateUUID() } as SavingsItem;
+                const { ok } = await authFetch("savingsItems", {
+                    method: "POST",
+                    body: JSON.stringify({ ...newItem, userId: activeUserId }),
+                });
+                if (!ok) {
+                    throw new Error("Failed to save allocation. Please check your connection.");
+                }
+                setItems((prev) => [...prev, newItem]);
+                return;
+            }
             const newItem = { ...item, id: generateUUID() } as SavingsItem;
 
             await repos.savingsItems.upsert(newItem);
@@ -129,6 +153,18 @@ export function useSavings() {
 
     const updateItem = async (id: string, updates: Partial<SavingsItem>) => {
         try {
+            if (Platform.OS === "web") {
+                // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
+                const { ok } = await authFetch(`savingsItems/${id}`, {
+                    method: "PUT",
+                    body: JSON.stringify({ ...updates, userId: activeUserId }),
+                });
+                if (!ok) {
+                    throw new Error("Failed to save changes. Please check your connection.");
+                }
+                setItems((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
+                return;
+            }
             const existing = await repos.savingsItems.getById(id);
             if (existing) {
                 await repos.savingsItems.upsert({ ...existing, ...updates } as SavingsItem);
@@ -149,6 +185,15 @@ export function useSavings() {
 
     const deleteItem = async (id: string) => {
         try {
+            if (Platform.OS === "web") {
+                // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
+                const { ok } = await authFetch(`savingsItems/${id}`, { method: "DELETE" });
+                if (!ok) {
+                    throw new Error("Failed to delete allocation. Please check your connection.");
+                }
+                setItems((prev) => prev.filter((g) => g.id !== id));
+                return;
+            }
             await repos.savingsItems.deleteById(id);
             setItems((prev) => prev.filter((g) => g.id !== id));
 

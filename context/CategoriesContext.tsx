@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
+import { Platform } from "react-native";
 import { Category } from "../types";
 import { API_URL, getSetting } from "../utils/db";
 import { authFetch } from "../utils/apiClient";
@@ -34,6 +35,16 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     try {
+      if (Platform.OS === "web") {
+        // SPEC-36 CON-W-03 (v1.2): web loads API-direct — no local reads, no merge, no queue.
+        if (API_URL && activeUserId) {
+          const { ok, data } = await authFetch("categories");
+          if (ok && Array.isArray(data)) {
+            setCategories(data);
+          }
+        }
+        return;
+      }
       const localData = await catRepo.getAll();
       setCategories(localData);
 
@@ -72,6 +83,19 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
 
   const addCategory = useCallback(async (category: Omit<Category, "id">) => {
     try {
+      if (Platform.OS === "web") {
+        // SPEC-36 CON-W-03 (v1.2): web writes API-direct — no local repo, no flag gate, no queue.
+        const newCategory = { ...category, id: generateUUID() };
+        const { ok } = await authFetch("categories", {
+          method: "POST",
+          body: JSON.stringify({ ...newCategory, userId: activeUserId }),
+        });
+        if (!ok) {
+          throw new Error("Failed to save category. Please check your connection.");
+        }
+        setCategories((prev) => [...prev, newCategory]);
+        return;
+      }
       const newCategory = { ...category, id: generateUUID() };
       await catRepo.upsert(newCategory);
       setCategories((prev) => [...prev, newCategory]);
@@ -90,6 +114,15 @@ export function CategoriesProvider({ children }: { children: ReactNode }) {
 
   const deleteCategory = useCallback(async (id: string) => {
     try {
+      if (Platform.OS === "web") {
+        // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
+        const { ok } = await authFetch(`categories/${id}`, { method: "DELETE" });
+        if (!ok) {
+          throw new Error("Failed to delete category. Please check your connection.");
+        }
+        setCategories((prev) => prev.filter((c) => c.id !== id));
+        return;
+      }
       await catRepo.deleteById(id);
       setCategories((prev) => prev.filter((c) => c.id !== id));
 

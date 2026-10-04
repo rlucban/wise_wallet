@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from "react";
+import { Platform } from "react-native";
 import { API_URL, setSetting } from "../utils/db";
 import { authFetch } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
@@ -56,6 +57,18 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     const fetchProfile = useCallback(async () => {
         setIsLoading(true);
         try {
+            if (Platform.OS === "web") {
+                // SPEC-36 CON-W-03 (v1.2): web loads API-direct — no local reads, no mirror.
+                if (API_URL && activeUserId) {
+                    const { ok, data: cloudProfile } = await authFetch(`userProfiles?userId=${activeUserId}`);
+                    if (ok && cloudProfile && (cloudProfile as Record<string, unknown>).name) {
+                        setProfile({ ...DEFAULT_PROFILE, ...cloudProfile } as UserProfile);
+                        return;
+                    }
+                }
+                setProfile(DEFAULT_PROFILE);
+                return;
+            }
             const local = await profileRepo.getById('default');
 
               if (!isLocal && API_URL && activeUserId) {
@@ -97,6 +110,18 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
         if (!currentProfile) return;
         const newProfile = { ...currentProfile, ...updates };
 
+        if (Platform.OS === "web") {
+            // SPEC-36 CON-W-03 (v1.2): web writes API-direct — no local repo.
+            setProfile(newProfile);
+            const { ok } = await authFetch(`userProfiles/${activeUserId}`, {
+                method: "PUT",
+                body: JSON.stringify(newProfile)
+            });
+            if (!ok) {
+                throw new Error("Failed to save profile. Please check your connection.");
+            }
+            return;
+        }
         await profileRepo.upsert(newProfile as UserProfile);
         setProfile(newProfile);
 

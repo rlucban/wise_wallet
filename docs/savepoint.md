@@ -558,3 +558,92 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
   - Changed button label from `Import Data (JSON)` to `Import Data`.
   - Underlying file handlers, formats, and validators preserved without changes.
 
+---
+
+## 2026-10-03 -- SPEC-36 DRAFT v0.1: Web Platform Invariants
+- Per user call ("web is always online, never local, always auto-backup=true"): `specs/36-web-platform-invariants.md` (DRAFT, NOT implementable until FINAL). Pins three web invariants — connection always Online (`DEC-W1` hard/soft pin open), never Local (`DEC-W2` legacy-locals fate open; creation already absent per SPEC-04 v1.4), always `autoBackup=true` (`DEC-W3` legacy-OFF normalization open).
+- Forked from the `spec-change-pin` worktree draft and adapted: this tree carries no SPEC-35, so credential-change conformance is generic (D-W-04) and the PIN dialog is an informative reference only. Amends SPEC-04 v1.4 on web only; native byte-identical by CON-W-04. No code changed in this step. Needs: user call on `DEC-W1`..`W3`, then FINAL mark.
+
+---
+
+## 2026-10-03 -- Standing rules §1.11–§1.14 (mirrored)
+- Per user call: `AGENTS.md` §1 gains the same four rules as the PIN worktree (§1.11 bare-minimum diffs; §1.12 no new dependencies unless instructed; §1.13 plan-fix validation gate; §1.14 one home per spec/slice). Known §1.14 overlap recorded: SPEC-36 exists in both trees — canonical home undecided, needs user call; no code changed.
+
+---
+
+## 2026-10-04 -- SPEC-36 FINAL v1.0: Web Platform Invariants (corrected scope)
+
+- Scope correction per user call: SPEC-36 is about offline(LOCAL) vs online(API-CONNECTED) only — `autoBackup`/sync state never belonged here (CON-W-03/D-W-03/DEC-W3/ACC-W-03 deleted). Rationale: web localStorage is clearable → false-positive reads; web must never present local-only operation as safe.
+- Web model decided: API-direct persistence always; the flag guards nothing on web (no local store to back up *from*); unreachable API fails openly, zero local writes.
+- Decisions closed: `DEC-W1` hard pin (probe skipped, Offline UI unreachable), `DEC-W2` force Make Online at next legacy-local login (one-time migration; grandfather rejected as untrusted reads, block rejected as data loss).
+- `specs/36-web-platform-invariants.md` rewritten DRAFT v0.1 → FINAL v1.0 (CON-W-01..05, ACC-W-01..06, D-W-01..06). Implementable; one file/layer at a time. No code changed in this step.
+
+---
+
+## 2026-10-04 -- SPEC-36 implemented (D-W-01..D-W-03, S3..S12a)
+
+- D-W-01 hard pin (4 files): `NetworkContext` probe skip at both levels; `OfflineIndicator` null on web; settings Offline text/card/Check web-guarded; login strip web-gated.
+- D-W-02 force-migrate: `login.tsx handleLegacyLocalAuth` routes legacy web local-logins to Settings Make Online; `register.tsx` verified closed (forced online + hard block, zero diff).
+- D-W-03 full API-direct (v1.1→v1.2, session exception): Transactions, Categories, Savings, Dues, UserProfile load from API and write directly (open-failure copy, no repo/flag/queue); `useSyncStatus` idle on web; alerts session-memory (`webAlertStore`); no local seeding in register/login/startup; reset epoch in session memory.
+- S12a `utils/webPin.test.ts`: 16 source-text guards (ACC-W-01..04). Suite 314 → 330 when run.
+- Fixed 2 tsc TS2367 (web early-return narrowing): removed dead reload branch in `_layout`, reused `isWeb` in register. Rule logged: never re-compare after an early return in the same flow.
+- Open (user-run): `npm test`, `npm run lint`, web-export + Expo Go matrix (ACC-W-05/06); backend curl matrix still skipped (accepted risk).
+
+---
+
+## 2026-10-04 -- SPEC-37: Onboarding Opening Balance paymentMethod
+
+- `specs/37-onboarding-opening-balance-payment-method.md`: FINAL per user call. Root cause: onboarding posted the Opening Balance with no `paymentMethod` → `sanitizeTransaction` filled `""` → server zod `min(1)` (`wallet_API/src/schemas/transactionSchema.js:9`) → 400 → app threw "check your connection" (`context/TransactionsContext.tsx:186`); the catch (`app/onboarding.tsx:57`) logged only → stuck screen.
+- `utils/onboardingPayload.ts` (D-01, new, pure): `buildOpeningBalancePayload(balance)` returns null for 0 (no transaction, CON-05), else the full payload with `paymentMethod: "cash"` (mirrors the add-transaction default, DEC-02).
+- `app/onboarding.tsx` (D-02): ledger entry routes through the builder; catch sets a rendered `setupError` HelperText (ternary, re-triable) instead of console-only.
+- `utils/onboardingPayload.test.ts` (D-03, new): ACC-01/ACC-02 + category shape across `Platform.OS` android/ios/web; source-text guards for ACC-03/ACC-04.
+- No backend, storage, API-contract, route, or dependency change. Native queue path untouched (CON-02).
+- Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, `npx tsc --noEmit`, web Get Started matrix (ACC-S01..S03), Expo Go add-transaction regression, `expo export --platform web`.
+
+---
+
+## 2026-10-04 -- SPEC-38: Settings Account Mode from Token Only
+
+- `specs/38-settings-account-mode-token-only.md`: FINAL per user call. Root cause: settings OR-ed the token with an `isUsernameOnly` name check (`settings.tsx:192-194`) — onboarding overwrites `profile.name` with the display name, so every post-onboarding cloud account showed "Local-only account — stored on this device" / SyncStatusCard "Local-only", with Auto-Backup OFF + disabled and Backup/Restore unreachable. Data path was always online (proven by the SPEC-37 stack trace); only the label lied.
+- `app/(tabs)/settings.tsx` (D-01): deleted `isValidEmail`/`isUsernameOnly`/`isEffectivelyLocal`; subtitle, SyncStatusCard prop, switch `disabled`, and Make Online now read token `isLocal`; Backup/Restore also gated behind `Platform.OS !== "web"` (their handlers read local repos — SPEC-36 ACC-W-03). `:1062` card verified already token-based, untouched.
+- `utils/settingsAccountMode.test.ts` (D-02, new): ACC-01..03 across `Platform.OS` android/ios/web + ACC-04 web-gate count guard.
+- Governance (CON-04): amends SPEC-26 CON-11 for settings account-mode copy only; SPEC-26 keeps register/login; SPEC-04 :107-113 satisfied. Legacy username-era locals still show local via their local token (CON-06, no migration).
+- No backend/storage/API/route/dependency change. Pre-write leak parked as follow-up.
+- Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, `npx tsc --noEmit`, matrix ACC-S01..S04 (web cloud copy, legacy local login, native Cloud-OFF buttons, Expo Go + web export).
+
+---
+
+## 2026-10-04 -- SPEC-39: Web Auto-Backup Switch Disabled
+
+- `specs/39-web-auto-backup-switch-disabled.md`: FINAL per user call. On web, `autoBackup` guards nothing (SPEC-36 API-direct), but the switch was `disabled={isLocal}` — web users could toggle a dead flag. Honesty fix: `disabled={isLocal || Platform.OS === "web"}` at `settings.tsx:1136`.
+- `app/(tabs)/settings.tsx` (D-01): one-line `disabled` prop extension. Native Cloud-OFF untouched (CON-02/CON-04).
+- `utils/settingsAccountMode.test.ts` (D-02): extended with SPEC-39 ACC-01 web-disable guard.
+- No backend/storage/API/route/dependency change. Zero behavior change on web.
+- Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, matrix ACC-S01..S03 (web switch disabled, native Cloud-OFF toggleable, Expo Go + web export).
+
+---
+
+## 2026-10-04 -- SPEC-30 v2.4: Web Exception (refresh keeps session)
+
+- `specs/30-force-reauth-on-cold-start.md` amended to v2.4 per user call. Web refresh no longer logs out — the session persists on localStorage. Native force-reauth unchanged.
+- `app/_layout.tsx:78-81` — `ColdStartSessionGuard`'s effect returns on web before the latch and before `logout()`, so a page reload keeps the session. v2.2 originally placed this as a component-level `return null` above the hooks; `npm run lint` caught four `react-hooks/rules-of-hooks` errors and v2.4 moved the check inside the effect. Behavior is identical (`Platform.OS` is constant per render) — the hooks are now unconditional again.
+- `utils/webPin.test.ts` — ACC-W-05 asserts the web return precedes both `clearedRef.current = true` and `logout()`, and that no component-level early return sits above the hooks.
+- 401 handler (`apiClient.ts:49-55`) is the safety net for dead tokens.
+- v2.3 also rewrote this spec's ACC-11 to be count-agnostic (`98 passed, 98 total` was invalidated by SPEC-37/38/39), annotating the equivalent pins in SPEC-27/SPEC-28 as historical record and leaving SPEC-31's DRAFT pins for its own implementation.
+- No backend/storage/API/route/dependency change. Native behavior unchanged.
+- Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, matrix ACC-12..ACC-17 (web refresh stays logged in, native cold start still logs out, dead token → 401 redirect).
+
+---
+
+## 2026-10-05 -- SPEC-40: authFetch Envelope Unwrap
+
+- `specs/40-authfetch-envelope-unwrap.md`: FINAL per user call. Web refresh replayed `/intro` → `/onboarding` for an already-onboarded account.
+- **Root cause (HAR-proven, 17 exchanges all HTTP 200):** the server nests its payload one level deeper than `authFetch` unwraps — `{status, results, data:{transactions:[…]}}`. `apiClient.ts:69` descended to `data` and stopped, so `authFetch<Transaction[]>` yielded `{transactions:[…]}` and every consumer's `Array.isArray(data)` guard failed. Nothing threw (`ok` was `true`), so 8 call sites silently kept empty/default state: `UserProfileContext` (→ `DEFAULT_PROFILE.isFirstRun: true` → `_layout.tsx:195` → the wizard), `CategoriesContext:42,54`, `TransactionsContext:93,104`, `useDues:49,61`, `useSavings:56,69`, `add-transaction:82`, `payment-methods:39`, `settings:290-292,403-407,670-673,949-951`. The bug was invisible precisely because the requests all *succeeded*.
+- `utils/apiClient.ts` (D-01): exported `RESPONSE_WRAPPER_KEYS` (6 names) + `unwrapEnvelope<T>()`, applied at `:99`. Keyed on **known names, never key count** (CON-02) — `storage/upload` returns `{url}`, a legitimate single-key object that a count-based rule would flatten to `undefined` and silently break receipt upload. An **unknown** wrapper key passes through untouched (ACC-04) so a future endpoint fails loudly in review rather than silently reading empty in production. All 8 consumer files byte-identical (CON-03); 401 / `onAuthFailure` path byte-identical (CON-04).
+- **D-01 also grew a type fix beyond the approved slice:** `let body: Record<string, unknown>` was a false assertion — `response.json()` is typed `unknown` in this lib config, and ts-jest surfaced it as TS2322 when a test finally type-checked the file. Now `let body: unknown` + a local `env` narrow to the three fields actually read (`status`, `data`, `error`). No behavior change; removes a lie rather than adding one. Flagged in-session because it was not what was signed off on.
+- `utils/apiClient.test.ts` (D-02, new): ACC-01 (4 list endpoints), ACC-02 (`profile`), ACC-03 (`{url}` hazard), ACC-04 (unknown key not unwrapped), ACC-05 (non-success + multi-key), bare-array. **360 → 361 tests, 12 suites.**
+- **Three rounds to green, two of them my error:** (1) a `Promise<any>` mock annotation could never work — the call site's type comes from the ambient lib, not the mock; I should have read `tsconfig.test.json` first. (2) ACC-05 asserted whole-body passthrough, but the pre-existing envelope `data`-extraction was already there; the assertion was wrong, not the code.
+- No backend/storage-key/dependency/native change. Native reads don't use `authFetch`, so impact is web-dominant.
+- Deferred, documented in `docs/todo-specs.md`: T-01 `GO_BACK` unhandled on sub-screens after refresh (plausibly newly reachable via SPEC-30 v2.4 — unconfirmed), T-02 web update/delete consult `txRepo` before the API call (**SPEC-36 D-W-03's "full API-direct" claim is inaccurate**), T-03 stale `98/98` constraint at `specs/28-…:90`, T-04 rotate a JWT pasted into the transcript (manual, no code).
+- Verified (user-run): `npx jest` → **12 suites, 361 passed, 361 total, 0 failed**. Open: `npm run lint`, `npx tsc --noEmit`, and matrix ACC-S01 (onboard → F5 → dashboard holds), ACC-S02 (lists populate), ACC-S03 (receipt upload stores a URL), ACC-S04 (Expo Go no regression).
+

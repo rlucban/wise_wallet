@@ -4,7 +4,7 @@
 |---|---|
 | ID | SPEC-27 |
 | Title | Replace Remaining Hardcoded `#fff` Control Labels with Theme Tokens |
-| Status | **FINAL** (approved 2026-09-30) |
+| Status | **FINAL** (approved 2026-09-30; ACC-01 annotated 2026-10-04 per SPEC-30 v2.3) |
 | Owner | User (final authority) |
 | Version | 1.1 |
 | Scope | The 9 remaining hardcoded `#fff` label/icon colors on `/add-allocation`, `/add-due`, `/dues`, `/savings`, `/category-settings`; the `/add-allocation` disabled-state button text token |
@@ -126,7 +126,7 @@ platform's rendering.
 
 | ID | Criterion |
 |---|---|
-| **ACC-01** | `utils/themeColors.test.js` reports 0 violations for all 8 files × `android`/`ios`/`web`; `npm test` ends with `Tests: 98 passed, 98 total`, 0 failed. |
+| **ACC-01** | `utils/themeColors.test.js` reports 0 violations for all 8 files × `android`/`ios`/`web`; `npm test` ends with `Tests: 98 passed, 98 total`, 0 failed. **Annotated 2026-10-04 (SPEC-30 v2.3):** `98/98` is the verified baseline *for this spec as shipped* and is preserved as historical record. The repo-wide total is now higher (SPEC-37/38/39 added `utils/onboardingPayload.test.ts` and `utils/settingsAccountMode.test.ts`, plus guards in `utils/webPin.test.ts`), so a current run reports more than 98 tests. The gate is **0 failed**, not a fixed number. |
 | **ACC-02** | The 9 literals in §1.1 + §1.2 are gone: a repo search of the 5 files for `#fff`/`#FFF`/`white`/`rgb(` returns no match outside comment text. |
 | **ACC-03** | `app/add-allocation.tsx` computes the label as: disabled → `theme.colors.surface`, enabled → `theme.colors.onPrimary`; fill remains `theme.colors.onSurface` (disabled) / `theme.colors.primary` (enabled). |
 | **ACC-04** | `git diff --stat -- utils/themeColors.test.js` is empty (guard byte-identical, per CON-02). |

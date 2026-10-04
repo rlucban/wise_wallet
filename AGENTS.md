@@ -60,6 +60,26 @@
     checks in Expo Go and `expo export --platform web` for native/UI paths
     that jest cannot prove. No platform-only behavior without a `CON-*` +
     `ACC-*` + `D-*`. This extends `SPEC-04 CON-07`.
+11. **Bare-minimum diffs.** Implement the smallest change that satisfies the
+    FINAL spec's `ACC-*` — nothing more. No refactoring, no drive-by cleanups,
+    no new files, helpers, or abstractions unless a `D-*` item names them. If
+    the minimal fix exposes adjacent rot, note it in `docs/savepoint.md` and
+    stop; that second fix needs its own spec.
+12. **No new dependencies unless instructed.** Do not add npm packages, native
+    modules, fonts, or any third-party code unless the user explicitly instructs
+    it or the FINAL spec requires it by name (install command goes to the user
+    to run, per §1.3). Prefer existing imports and stdlib.
+13. **Plan-fix validation gate.** `/implement-fix` reads ONLY a plan file with
+    `status: ready-for-implement-fix` containing decision, in-scope/out-of-scope
+    paths, and calibration. Before the first slice, validate: every slice maps
+    to a `D-*` in the FINAL spec; no out-of-scope path is touched; no overlap
+    with another FINAL spec's scope (if two specs cover the same behavior, stop
+    and ask which governs — never implement both readings); no dependency beyond
+    rule 12. Any failure → stop and ask. Never re-plan inside `/implement-fix`.
+14. **One home per spec and slice.** Never duplicate a spec, slice, or test
+    across worktrees or files — cross-reference instead. If the same behavior is
+    specified twice, treat it as an overlap: stop, ask which is canonical, and
+    reconcile before writing code.
 
 ---
 
@@ -409,6 +429,23 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   are **untouched** — rollback is two files. v1.1 dropped a never-read `strokeWidth`
   parameter (recorded in the spec's History). Peso risk carried forward (DEC-11, ACC-16).
   See `docs/savepoint.md`.
+- **2026-10-03 — Spec 36 DRAFT v0.1 (not yet FINAL).** `specs/36-web-platform-invariants.md`:
+  web always-Online, never-Local, always-`autoBackup=true` (open: `DEC-W1` pin
+  hardness, `DEC-W2` legacy web locals, `DEC-W3` legacy Cloud-OFF normalization).
+  Amends SPEC-04 v1.4 on web only (no SPEC-35 in this tree — caller conformance
+  is generic); native untouched. Needs user call + FINAL mark. See `docs/savepoint.md`.
+- **2026-10-03 — Standing rules §1.11–§1.14 (mirrored per user call).** Same
+  four rules as the PIN worktree: bare-minimum diffs; no new dependencies
+  unless instructed or FINAL-spec-named; plan-fix validation gate; one home
+  per spec/slice (the SPEC-36 copy in `spec-change-pin` is the known §1.14
+  overlap — canonical home undecided). See `docs/savepoint.md`.
+- **2026-10-04 — Spec 36 FINAL v1.0.** `specs/36-web-platform-invariants.md` rewritten to FINAL: scope corrected to Local-vs-API-connected only (`autoBackup` excised); web persists API-direct, flag ignored, fail-open; `DEC-W1` hard pin, `DEC-W2` force-migrate legacy web locals. Implementable one slice at a time. See `docs/savepoint.md`.
+- **2026-10-04 — Spec 36 implemented (D-W-01..D-W-03, S3..S12a).** Hard pin, force-migrate routing, and full API-direct web paths across 12 files; session-memory alerts; `utils/webPin.test.ts` (16 guards, ACC-W-01..04). Fixed 2 TS2367 via narrowing rule. Open: user-run jest/lint + web-export/Expo Go matrix. See `docs/savepoint.md`.
+- **2026-10-04 — Spec 37 FINAL + implemented.** `specs/37-onboarding-opening-balance-payment-method.md`: onboarding Opening Balance omitted `paymentMethod` → sanitize `""` → server zod 400, masked as "connection" error with console-only catch (stuck screen). D-01 new `utils/onboardingPayload.ts` (`"cash"`, null for 0); D-02 `app/onboarding.tsx` routes through builder + rendered re-triable error; D-03 `utils/onboardingPayload.test.ts` (ACC-01..04, android/ios/web). No backend/storage/API/route/dep change. Open: user-run jest/lint/tsc + web Get Started matrix. See `docs/savepoint.md`.
+- **2026-10-04 — Spec 38 FINAL + implemented.** `specs/38-settings-account-mode-token-only.md`: settings OR-ed the token with an `isUsernameOnly` name check — onboarding writes display names, so every cloud account showed "Local-only" with Auto-Backup OFF + disabled. D-01 `app/(tabs)/settings.tsx` derives mode from `useIsLocalAccount()` only, Backup/Restore hidden on web (SPEC-36 ACC-W-03); D-02 `utils/settingsAccountMode.test.ts` (ACC-01..04, android/ios/web). Amends SPEC-26 CON-11 for settings copy only. No backend/storage/API/route/dep change. Open: user-run jest/lint/tsc + ACC-S01..S04 matrix. See `docs/savepoint.md`.
+- **2026-10-04 — Spec 39 FINAL + implemented.** `specs/39-web-auto-backup-switch-disabled.md`: web `autoBackup` guards nothing (SPEC-36 API-direct) but the switch was `disabled={isLocal}` — web users could toggle a dead flag. D-01 `app/(tabs)/settings.tsx:1136` → `disabled={isLocal || Platform.OS === "web"}`; D-02 `utils/settingsAccountMode.test.ts` extended. Native Cloud-OFF untouched. Zero behavior change on web. Open: user-run jest/lint + ACC-S01..S03 matrix. See `docs/savepoint.md`.
+- **2026-10-04 — SPEC-30 v2.4 (web exception).** `specs/30-force-reauth-on-cold-start.md` amended: web refresh no longer logs out — session persists on localStorage. D-01 `app/_layout.tsx:78-81` — `ColdStartSessionGuard`'s effect returns on web before the latch and `logout()`. v2.2 put that check as a component-level `return null` above the hooks; lint reported 4 `react-hooks/rules-of-hooks` errors, so v2.4 moved it inside the effect (same behavior, hooks unconditional again). D-02 `utils/webPin.test.ts` ACC-W-05 asserts that ordering + no early return above hooks. v2.3: ACC-11 made count-agnostic (98/98 invalidated by SPEC-37/38/39); SPEC-27/SPEC-28 pins annotated, SPEC-31's DRAFT pins deferred. Native force-reauth unchanged; 401 handler catches dead tokens. Open: user-run jest/lint + ACC-12..ACC-17 matrix. See `docs/savepoint.md`.
+- **2026-10-05 — Spec 40 FINAL + implemented.** `specs/40-authfetch-envelope-unwrap.md`: server nests its payload one level deeper than `authFetch` unwrapped, so every consumer's `Array.isArray(data)` guard failed *silently* (`ok` was true) — 8 sites read empty, and `UserProfileContext` reset to `DEFAULT_PROFILE` (`isFirstRun: true`), replaying `/intro` → `/onboarding` on every web refresh. D-01 `utils/apiClient.ts` — exported `RESPONSE_WRAPPER_KEYS` + `unwrapEnvelope`, keyed on known names never key count (`{url}` from `storage/upload` must survive); unknown key passes through so a future endpoint fails loudly. Also widened `body` to `unknown` + local narrow (TS2322 surfaced by ts-jest; `Record<string, unknown>` was a false assertion). All 8 consumers + the 401 path byte-identical. D-02 `utils/apiClient.test.ts` ACC-01..05. No backend/storage-key/dep/native change. Verified: `npx jest` 361/361, 12 suites. Open: lint/tsc + ACC-S01..S04. Deferred → `docs/todo-specs.md` (T-01 GO_BACK, T-02 txRepo pre-writes, T-03 stale 98/98, T-04 rotate pasted JWT). See `docs/savepoint.md`.
 
 ---
 

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
+import { Platform } from "react-native";
 import { Transaction } from "../types";
 import {
     getSetting,
@@ -85,6 +86,16 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     const fetchTransactions = useCallback(async () => {
         setLoading(true);
         try {
+            if (Platform.OS === "web") {
+                // SPEC-36 CON-W-03 (v1.2): web loads API-direct — no local reads, no merge, no queue.
+                if (API_URL && activeUserId) {
+                    const { ok, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
+                    if (ok && Array.isArray(remoteData)) {
+                        setTransactions(remoteData.map(addCategoryFallback));
+                    }
+                }
+                return;
+            }
             const localData = (await txRepo.getAll()).map(addCategoryFallback);
             setTransactions(localData);
 
@@ -164,6 +175,20 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 id: generateUUID()
             });
 
+            if (Platform.OS === "web") {
+                // SPEC-36 CON-W-03 (v1.2): web writes API-direct — no local repo, no flag gate, no queue.
+                const uploaded = await uploadReceiptIfNeeded(newTransaction);
+                const { ok } = await authFetch('transactions', {
+                    method: "POST",
+                    body: JSON.stringify({ ...uploaded, userId: activeUserId }),
+                });
+                if (!ok) {
+                    throw new Error("Failed to save transaction. Please check your connection.");
+                }
+                setTransactions((prev) => [...prev, uploaded]);
+                return;
+            }
+
             await txRepo.upsert(newTransaction);
             setTransactions((prev) => [...prev, newTransaction]);
 
@@ -191,6 +216,21 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 t.id === id ? { ...t, ...updates } : t
             ));
 
+            if (Platform.OS === "web") {
+                // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
+                const { ok } = await authFetch(`transactions/${id}`, {
+                    method: "PUT",
+                    body: JSON.stringify({ ...updates, userId: activeUserId }),
+                });
+                if (!ok) {
+                    throw new Error("Failed to save changes. Please check your connection.");
+                }
+                setTransactions((prev) => prev.map(t =>
+                    t.id === id ? { ...t, ...updates } : t
+                ));
+                return;
+            }
+
             if (!isLocal) {
                 const autoBackup = await getSetting('autoBackup');
                 if (API_URL && autoBackup !== 'false') {
@@ -208,6 +248,16 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         try {
             await txRepo.deleteById(id);
             setTransactions((prev) => prev.filter(t => t.id !== id));
+
+            if (Platform.OS === "web") {
+                // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
+                const { ok } = await authFetch(`transactions/${id}`, { method: "DELETE" });
+                if (!ok) {
+                    throw new Error("Failed to delete transaction. Please check your connection.");
+                }
+                setTransactions((prev) => prev.filter(t => t.id !== id));
+                return;
+            }
 
             if (!isLocal) {
                 const autoBackup = await getSetting('autoBackup');

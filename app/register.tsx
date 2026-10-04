@@ -43,7 +43,7 @@ export default function RegisterScreen() {
         const { generateUUID } = require('../utils/uuid');
         const offlineId = generateUUID();
 
-        const users = await getUsers();
+        const users = isWeb ? [] : await getUsers();
         const localDuplicate = users.find((u) => (u.name as string).toLowerCase() === emailAddr.toLowerCase());
 
         if (localDuplicate) {
@@ -80,10 +80,13 @@ export default function RegisterScreen() {
             const responseData = await response.json();
 
             if (response.ok) {
-                await addUser(responseData.data.user.id, emailAddr.trim(), pin.trim());
-                await saveUserProfile({ name: emailAddr.trim(), isFirstRun: true, initialBalance: 0 }, responseData.data.user.id);
-                await initDb(responseData.data.user.id);
-                await setSetting('autoBackup', 'true');
+                if (Platform.OS !== "web") {
+                    // SPEC-36 CON-W-03 (v1.2): no local seeding on web — server owns the account.
+                    await addUser(responseData.data.user.id, emailAddr.trim(), passcode.trim());
+                    await saveUserProfile({ name: emailAddr.trim(), isFirstRun: true, initialBalance: 0 }, responseData.data.user.id);
+                    await initDb(responseData.data.user.id);
+                    await setSetting('autoBackup', 'true');
+                }
                 await login(responseData.data.user.id, responseData.data.token);
                 return true;
             } else {

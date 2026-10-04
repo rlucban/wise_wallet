@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { SystemAlert } from "../types";
 import {
   checkAndTriggerNegativeBalanceAlert,
+  clearWebAlertStoreForTests,
   getSystemAlerts as getAlerts,
   saveSystemAlerts as saveAlerts,
 } from "./notifications";
@@ -58,6 +59,7 @@ function runSuite(os: "android" | "ios" | "web") {
     beforeEach(async () => {
       mockOS = os;
       mockSchedule.mockClear();
+      clearWebAlertStoreForTests();
       await AsyncStorage.clear();
     });
 

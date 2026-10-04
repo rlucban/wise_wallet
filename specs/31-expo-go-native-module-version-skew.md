@@ -73,10 +73,13 @@ API, or route is involved, so rollback is exact.
   continue to make `scheduleDueNotifications` and `areLocalRemindersSupported()` no-ops, and
   `expo-notifications` MUST remain lazily `require`d behind that guard. Local due reminders are
   therefore expected to be inert in Expo Go after this spec; that is intended, not a regression.
-- **CON-06 — SPEC-30 untouched.** The cold-start login forcing, `SystemResetManager` guard,
+- **CON-06 — SPEC-30 untouched by this spec.** The cold-start login forcing, `SystemResetManager` guard,
   `lastActiveUserId` reminder hint, and `NetworkContext` sync-queue gate all remain exactly as
   implemented. The offline-banner and `cloud_not_configured` items raised in the same discussion
-  remain out of scope and unapproved.
+  remain out of scope and unapproved. SPEC-30 was later amended to v2.2 (2026-10-04, separate user
+  call) to skip `ColdStartSessionGuard` on web so a browser refresh preserves the session; that
+  amendment is web-only, leaves Android/iOS force-reauth intact, and does not touch anything in
+  this spec.
 - **CON-07 — Verification gates.** `npx expo-doctor` MUST report 21/21; `npm test` MUST stay
   98/98; `npm run lint` MUST report 0 errors and 0 warnings; `npx tsc --noEmit` MUST report 0
   errors. (Commands are run by the user, per AGENTS.md §1.3.)
