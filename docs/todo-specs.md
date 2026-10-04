@@ -178,3 +178,125 @@ invalidate the session, or rotate the JWT secret server-side if the token
 outlives it. **No code change needed — this is a manual step.**
 
 ---
+
+## T-05 — Sync queue: 400/404 destroy live native edits and stamp a false "last synced"
+
+| Field | Value |
+|---|---|
+| Status | OPEN — no spec written |
+| Severity | **High on native** — silent data loss behind a success-looking UI |
+| Platform | Android / iOS only (verified via Expo Go device, 2026-10-05). Web unaffected. |
+| Found | 2026-10-05, during the SPEC-40 session |
+| Failing field | **UNCONFIRMED** — see "Diagnosis" |
+
+### Symptom
+
+```
+WARN  [Sync] transactions update rejected by server (400): HTTP 400. Dequeuing.
+```
+
+repeated in bursts on a native device. Note the **absence of a `Web` prefix** —
+browser lines in the same terminal carry `Web INFO`, so these warnings are the
+device's.
+
+### Mechanism (verified in code)
+
+`utils/syncProcessor.ts` `processSingleItem`:
+
+```
+:97   else if (apiResult.status === 400) {
+:98     console.warn(`… (400): ${apiResult.error}. Dequeuing.`);
+:99     return { success: true };        ← reports failure as success
+:100  }
+
+processSyncQueue:
+:127  if (result.success) {
+:128    await dequeueSync(item.id);      ← item DELETED
+:129    await updateLastSyncedAt();     ← "last sync" stamped
+:130  }
+```
+
+### Three defects
+
+**1. Live native edits are destroyed (high).** On native the queue *is* the sync
+path (local-first, SPEC-04). An `update` item is a real user edit. Returning
+`success: true` sends it to `dequeueSync`, so the edit survives only in local
+AsyncStorage and never reaches the server — lost on reinstall or device change.
+`markSyncFailed` (which records `lastError`) is never reached, so **nothing
+records what was dropped or what it contained**.
+
+**2. `updateLastSyncedAt()` runs on a failure.** `SyncStatusCard` then shows a
+fresh "Last sync" and, with `autoBackup` on, **"All synced"** — over discarded
+data. Same failure class as SPEC-40: a success-looking state over a failed
+operation.
+
+**3. `authFetch` reads the wrong error field.** The server's global handler
+returns `{status, message}` (`wallet_API/src/app.js:51`); `authFetch` reads
+`body?.error` (`utils/apiClient.ts:107`). So `apiResult.error` is always the
+string `"HTTP 400"` and the zod message naming the failing field is discarded
+before it reaches the log. **This is why defect 1 went undiagnosed** — and it
+will hide every future API bug behind a bare status code.
+
+### Also noted (same function)
+
+- **`:94-96` 404 does the identical thing** — `success: true` → dequeue. For 404
+  that is defensible ("server may not support this entity"), but it shares the
+  silent-record problem.
+- **`:92-93` 401 retries without a ceiling.** `markSyncFailed` increments
+  `retryCount`, and `getRetryDelay` (`syncQueue.ts:47-50`) caps the *delay* at
+  32s but nothing caps the *count*. A dead session retries indefinitely.
+- **Inverse risk profile:** permanently-invalid payloads (400) drop instantly;
+  permanently-failing ones (401/5xx) retry forever.
+- **`:122-136` drain loop** has no pause between items, so a backlog produces a
+  burst of consecutive warnings.
+
+### Diagnosis — the failing field is UNCONFIRMED
+
+Two competing explanations, **not yet distinguished**:
+
+1. **Stale pre-SPEC-37 payloads.** Those enqueued before the `paymentMethod`
+   fix would carry `paymentMethod: ""` and hit the same `min(1)` constraint
+   onboarding did. `edit-transaction.tsx:78` does
+   `setPaymentMethod(tx.paymentMethod || "cash")`, so *new* edits send a valid
+   value.
+2. **Live invalid payloads** from some other path.
+
+**Two observation checks, no code needed:**
+
+- Settings → Data Management → `SyncStatusCard`. **"N pending" that never
+  drains** ⇒ live items failing now (urgent). **"All synced"** with warnings
+  already logged ⇒ backlog already drained and dropped.
+- Delete the app's data (wipes the queue; also logs out) and relaunch. Warnings
+  that do not return confirm a drained backlog.
+
+**For the field name, the server log is authoritative:** `validate.js` builds the
+zod message with the exact path, and `wallet_API`'s console / Vercel logs will
+name it.
+
+### Correction to an earlier in-session claim
+
+While triaging this, I asserted the queue was being drained **on web** via
+`NetworkContext`'s pinned-Online transition. **That was wrong** — the Expo Go
+device log disproves it; `NetworkContext.tsx:122-124` evidently returns before
+reaching the transition handler at `:145-156`. Recorded so the claim is not
+inherited. No file was written with the wrong version.
+
+### Candidate fix directions (undecided)
+
+- Return a distinct terminal result for 400/404 so the loop can dequeue
+  **without** stamping `lastSyncedAt`, and record the dropped payload +
+  reason (e.g. `markSyncFailed` with a terminal marker, or a dedicated
+  dead-letter list).
+- Read `message` as well as `error` in `authFetch` so failures are diagnosable.
+- Add a `retryCount` ceiling for the 401/5xx retry path.
+- Do **not** retry 400s — retrying a validation failure cannot succeed.
+
+### Notes
+
+- Unrelated to SPEC-40: a 400 is request-side; the unwrap only affects response
+  parsing. SPEC-37's `paymentMethod: "cash"` reduces these rather than causing
+  them. Pre-existing defect.
+- `clearSyncQueue()` exists (`utils/syncQueue.ts:154`) but is not known to be
+  reachable from the UI — unverified.
+
+---
