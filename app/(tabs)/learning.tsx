@@ -8,8 +8,9 @@ import { FinancialTip } from "../../components/FinancialTip";
 import { useThemeData } from "../../context/ThemeContext";
 import { LEARNING_RESOURCES } from "../../utils/learningData";
 import { prefetchFemaleVoice, speakWithFemaleVoice } from "../../utils/speechVoice";
+import { TAB_BAR_CONTENT_CLEARANCE } from "../../utils/tabBarMetrics";
 
-const UNIFIED_FILTERS = ["All", "For Students", "For Workers", "Budgeting", "Savings", "Debt"] as const;
+const UNIFIED_FILTERS = ["All", "For Students", "For Workers", "Budgeting", "Savings", "Debt", "App Guide"] as const;
 type UnifiedFilter = (typeof UNIFIED_FILTERS)[number];
 
 export default function LearningScreen() {
@@ -57,6 +58,79 @@ export default function LearningScreen() {
         });
     };
 
+    const renderArticleCard = (item: (typeof LEARNING_RESOURCES)[number]) => {
+        const tagStyle = getPastelTagStyle(item.topic, theme);
+        const isBookmarked = bookmarkedIds.has(item.id);
+
+        return (
+            <View key={item.id} style={isDesktop ? styles.desktopCardWrapper : styles.mobileCardWrapper}>
+                <Card
+                    style={styles.articleCard}
+                    onPress={() => router.push({ pathname: "/(tabs)/learning-detail", params: { id: item.id } })}
+                >
+                    <Card.Content style={styles.articleRow}>
+                        <View style={[styles.iconBox, { backgroundColor: theme.colors.primaryContainer }]}>
+                            <MaterialCommunityIcons name={item.icon as string} size={24} color={theme.colors.primary} />
+                        </View>
+                        <View style={styles.articleBody}>
+                            <Text variant="bodyLarge" style={styles.articleTitle}>{item.title}</Text>
+                            <Text variant="bodySmall" style={[styles.articleDesc, { color: theme.colors.onSurfaceVariant }]}>
+                                {item.description}
+                            </Text>
+                            <View style={styles.badgeRow}>
+                                <View style={[styles.badge, { backgroundColor: tagStyle.backgroundColor }]}>
+                                    <Text variant="labelSmall" style={{ color: tagStyle.textColor, fontWeight: "600" }}>
+                                        {item.topic}
+                                    </Text>
+                                </View>
+                                {item.audience && (
+                                    <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
+                                        <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600" }}>
+                                            {item.audience}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+                        <View style={{ alignItems: "center" }}>
+                            <IconButton
+                                icon={activeArticleId === item.id ? "square" : "volume-high"}
+                                iconColor={theme.colors.primary}
+                                size={22}
+                                style={activeArticleId === item.id ? { backgroundColor: theme.colors.primaryContainer } : undefined}
+                                onPress={() => handlePlayAudio(item)}
+                            />
+                            <IconButton
+                                icon={isBookmarked ? "bookmark" : "bookmark-outline"}
+                                iconColor={isBookmarked ? theme.colors.primary : theme.colors.outline}
+                                size={22}
+                                onPress={() => toggleBookmark(item.id)}
+                            />
+                        </View>
+                    </Card.Content>
+                </Card>
+            </View>
+        );
+    };
+
+    const renderSection = (title: string, items: (typeof LEARNING_RESOURCES)[number][]) => {
+        if (items.length === 0) return null;
+
+        return (
+            <View style={styles.section} key={title}>
+                <View style={styles.resultsHeader}>
+                    <Text variant="titleMedium" style={styles.sectionTitle}>{title}</Text>
+                    <Text variant="labelMedium" style={{ color: theme.colors.outline }}>
+                        {items.length} {items.length === 1 ? "article" : "articles"}
+                    </Text>
+                </View>
+                <View style={isDesktop ? styles.desktopGrid : styles.mobileList}>
+                    {items.map(renderArticleCard)}
+                </View>
+            </View>
+        );
+    };
+
     const filteredResources = useMemo(() => {
         return LEARNING_RESOURCES.filter((item) => {
             let matchesFilter = true;
@@ -77,6 +151,15 @@ export default function LearningScreen() {
         });
     }, [activeFilter, searchQuery]);
 
+    const appGuideResources = useMemo(
+        () => filteredResources.filter((item) => item.topic === "App Guide"),
+        [filteredResources]
+    );
+    const literacyResources = useMemo(
+        () => filteredResources.filter((item) => item.topic !== "App Guide"),
+        [filteredResources]
+    );
+
     const getPastelTagStyle = (topic: string, theme: ReturnType<typeof useThemeData>["theme"]) => {
         const colors = theme?.colors ?? {};
         const c = colors as unknown as Record<string, string>;
@@ -96,6 +179,8 @@ export default function LearningScreen() {
                 return { backgroundColor: secondaryBg, textColor: secondaryText };
             case "Debt":
                 return { backgroundColor: tertiaryBg, textColor: tertiaryText };
+            case "App Guide":
+                return { backgroundColor: c.errorContainer ?? colors.surfaceVariant, textColor: c.onErrorContainer ?? colors.onSurfaceVariant };
             default:
                 return { backgroundColor: colors.surfaceVariant, textColor: colors.onSurfaceVariant };
         }
@@ -159,16 +244,9 @@ export default function LearningScreen() {
                         <FinancialTip showFooter={false} style={{ margin: 0, width: "100%" }} />
                     </View>
 
-                    {/* Articles Section */}
-                    <View style={styles.section}>
-                        <View style={styles.resultsHeader}>
-                            <Text variant="titleMedium" style={styles.sectionTitle}>Recommended Reading</Text>
-                            <Text variant="labelMedium" style={{ color: theme.colors.outline }}>
-                                Showing {filteredResources.length} {filteredResources.length === 1 ? "article" : "articles"}
-                            </Text>
-                        </View>
-
-                        {filteredResources.length === 0 ? (
+                    {/* Literacy + App Guide grouped sections */}
+                    {filteredResources.length === 0 ? (
+                        <View style={styles.section}>
                             <Card style={[styles.emptyCard, { borderColor: theme.colors.outline, backgroundColor: theme.colors.surface }]}>
                                 <Card.Content style={styles.emptyContent}>
                                     <MaterialCommunityIcons name="book-open-page-variant-outline" size={40} color={theme.colors.outline} />
@@ -177,65 +255,13 @@ export default function LearningScreen() {
                                     </Text>
                                 </Card.Content>
                             </Card>
-                        ) : (
-                            <View style={isDesktop ? styles.desktopGrid : styles.mobileList}>
-                                {filteredResources.map((item) => {
-                                    const tagStyle = getPastelTagStyle(item.topic, theme);
-                                    const isBookmarked = bookmarkedIds.has(item.id);
-
-                                    return (
-                                        <View key={item.id} style={isDesktop ? styles.desktopCardWrapper : styles.mobileCardWrapper}>
-                                            <Card
-                                                style={styles.articleCard}
-                                                onPress={() => router.push({ pathname: "/(tabs)/learning-detail", params: { id: item.id } })}
-                                            >
-                                                <Card.Content style={styles.articleRow}>
-                                                    <View style={[styles.iconBox, { backgroundColor: theme.colors.primaryContainer }]}>
-                                                        <MaterialCommunityIcons name={item.icon as string} size={24} color={theme.colors.primary} />
-                                                    </View>
-                                                    <View style={styles.articleBody}>
-                                                        <Text variant="bodyLarge" style={styles.articleTitle}>{item.title}</Text>
-                                                        <Text variant="bodySmall" style={[styles.articleDesc, { color: theme.colors.onSurfaceVariant }]}>
-                                                            {item.description}
-                                                        </Text>
-                                                        <View style={styles.badgeRow}>
-                                                            <View style={[styles.badge, { backgroundColor: tagStyle.backgroundColor }]}>
-                                                                <Text variant="labelSmall" style={{ color: tagStyle.textColor, fontWeight: "600" }}>
-                                                                    {item.topic}
-                                                                </Text>
-                                                            </View>
-                                                            {item.audience && (
-                                                                <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
-                                                                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600" }}>
-                                                                        {item.audience}
-                                                                    </Text>
-                                                                </View>
-                                                            )}
-                                                        </View>
-                                                    </View>
-                                                    <View style={{ alignItems: "center" }}>
-                                                        <IconButton
-                                                            icon={activeArticleId === item.id ? "square" : "volume-high"}
-                                                            iconColor={theme.colors.primary}
-                                                            size={22}
-                                                            style={activeArticleId === item.id ? { backgroundColor: theme.colors.primaryContainer } : undefined}
-                                                            onPress={() => handlePlayAudio(item)}
-                                                        />
-                                                        <IconButton
-                                                            icon={isBookmarked ? "bookmark" : "bookmark-outline"}
-                                                            iconColor={isBookmarked ? theme.colors.primary : theme.colors.outline}
-                                                            size={22}
-                                                            onPress={() => toggleBookmark(item.id)}
-                                                        />
-                                                    </View>
-                                                </Card.Content>
-                                            </Card>
-                                        </View>
-                                    );
-                                })}
-                            </View>
-                        )}
-                    </View>
+                        </View>
+                    ) : (
+                        <>
+                            {renderSection("Financial Literacy", literacyResources)}
+                            {renderSection("WiseWallet App Guide", appGuideResources)}
+                        </>
+                    )}
                 </View>
             </ScrollView>
         </View>
@@ -244,7 +270,7 @@ export default function LearningScreen() {
 
 const styles = StyleSheet.create({
     screen: { flex: 1 },
-    scrollContent: { paddingBottom: 40, width: "100%" },
+    scrollContent: { paddingBottom: TAB_BAR_CONTENT_CLEARANCE, width: "100%" },
     container: {
         width: "100%",
         flex: 1,

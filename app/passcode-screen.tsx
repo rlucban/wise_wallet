@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { View, StyleSheet, TextInput as NativeTextInput } from "react-native";
 import { Text, TextInput, useTheme, Card, HelperText } from "react-native-paper";
 import { usePasscode } from "../context/PasscodeContext";
+import { normalizePasscodeInput } from "../utils/passcodeValidation";
 
 export default function PasscodeScreen() {
   const theme = useTheme();
@@ -9,10 +10,7 @@ export default function PasscodeScreen() {
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
 
- // const inputRef = useRef<NativeTextInput>(null);
-
   const inputRef = useRef<NativeTextInput | null>(null);
-
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -22,7 +20,7 @@ export default function PasscodeScreen() {
   }, []);
 
   const handleInputChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 4);
+    const cleaned = normalizePasscodeInput(text);
     setInput(cleaned);
     setError("");
 
@@ -30,7 +28,7 @@ export default function PasscodeScreen() {
       if (cleaned === passcode) {
         setIsUnlocked(true);
       } else {
-        setError("Incorrect passcode. Please try again.");
+        setError("Incorrect Passcode");
         setTimeout(() => {
           setInput("");
         }, 600);

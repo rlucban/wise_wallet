@@ -2,7 +2,9 @@ import fs from "fs";
 import path from "path";
 import {
     getTabBarMetrics,
+    getTabBarSizing,
     ICON_HEIGHT,
+    TAB_BAR_CONTENT_CLEARANCE,
     LABEL_FONT_SIZE,
     LABEL_LINE_HEIGHT_RATIO,
     TAB_BAR_CONTENT_HEIGHT,
@@ -179,6 +181,101 @@ describe("getTabBarMetrics (ACC-03)", () => {
     runSuite("web");
 });
 
+// SPEC-40 ACC-04 — getTabBarSizing returns the pinned §3.1 values on every
+// platform. Same literal expectation per case, so a platform branch fails here.
+describe("getTabBarSizing (SPEC-40 ACC-04)", () => {
+    const EXPECTED_MOBILE = {
+        paddingVertical: 12,
+        labelFontSize: 15,
+        labelFontWeight: "600",
+        focusedLabelFontWeight: "700",
+        iconSize: 24,
+        actionButtonSize: 56,
+        actionButtonRadius: 28,
+        actionIconSize: 26,
+    };
+
+    const EXPECTED_DESKTOP = {
+        paddingVertical: 12,
+        labelFontSize: 15,
+        labelFontWeight: "600",
+        focusedLabelFontWeight: "700",
+        iconSize: 24,
+        actionButtonSize: 58,
+        actionButtonRadius: 29,
+        actionIconSize: 26,
+    };
+
+    function runSizingSuite(os: "android" | "ios" | "web") {
+        describe(`Platform.OS=${os}`, () => {
+            beforeEach(() => {
+                mockOS = os;
+            });
+
+            it("returns the mobile sizing values", () => {
+                expect(getTabBarSizing(false)).toEqual(EXPECTED_MOBILE);
+            });
+
+            it("returns the desktop sizing values", () => {
+                expect(getTabBarSizing(true)).toEqual(EXPECTED_DESKTOP);
+            });
+
+            it("keeps the action button radius exactly half its size", () => {
+                expect(getTabBarSizing(false).actionButtonRadius).toBe(
+                    getTabBarSizing(false).actionButtonSize / 2
+                );
+                expect(getTabBarSizing(true).actionButtonRadius).toBe(
+                    getTabBarSizing(true).actionButtonSize / 2
+                );
+            });
+        });
+    }
+
+    runSizingSuite("android");
+    runSizingSuite("ios");
+    runSizingSuite("web");
+
+    it("returns identical numbers on every platform (no Platform.OS branch)", () => {
+        expect(getTabBarSizing(false)).toEqual(EXPECTED_MOBILE);
+        expect(getTabBarSizing(true)).toEqual(EXPECTED_DESKTOP);
+    });
+});
+
+// SPEC-44 CON-04 — clearance constant is pinned and platform-identical.
+describe("TAB_BAR_CONTENT_CLEARANCE (SPEC-44)", () => {
+    function runClearanceSuite(os: "android" | "ios" | "web") {
+        describe(`Platform.OS=${os}`, () => {
+            beforeEach(() => {
+                mockOS = os;
+            });
+
+            it("is 100 on every platform", () => {
+                expect(TAB_BAR_CONTENT_CLEARANCE).toBe(100);
+            });
+        });
+    }
+
+    runClearanceSuite("android");
+    runClearanceSuite("ios");
+    runClearanceSuite("web");
+});
+
+// SPEC-44 ACC-01 — every tab screen sources its scroll clearance from the helper.
+describe("tab screens use TAB_BAR_CONTENT_CLEARANCE (SPEC-44 ACC-01)", () => {
+    const SCREENS = ["index.tsx", "reports.tsx", "settings.tsx", "learning.tsx"];
+
+    for (const screen of SCREENS) {
+        it(`${screen} imports and applies the constant`, () => {
+            const source = fs.readFileSync(
+                path.resolve(__dirname, "..", "app", "(tabs)", screen),
+                "utf-8"
+            );
+            expect(source).toContain("TAB_BAR_CONTENT_CLEARANCE");
+            expect(source).toMatch(/paddingBottom:\s*TAB_BAR_CONTENT_CLEARANCE/);
+        });
+    }
+});
+
 // ACC-04 — no platform branching or global font-scale read inside the helper.
 describe("utils/tabBarMetrics.ts source (ACC-04)", () => {
     const source = fs.readFileSync(METRICS_PATH, "utf-8");
@@ -234,6 +331,10 @@ describe("app/(tabs)/_layout.tsx source (ACC-05)", () => {
             .filter(Boolean)
             .sort();
         expect(fields).toEqual(["height", "paddingBottom", "paddingTop"]);
+    });
+
+    it("consumes getTabBarSizing for the floating bar (SPEC-40 D-02)", () => {
+        expect(source).toContain("getTabBarSizing(isDesktop)");
     });
 
     it("keeps the tab bar theme values (CON-06)", () => {

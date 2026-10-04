@@ -1,9 +1,9 @@
 import { View, TouchableOpacity, Platform } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { FAB, Text, Card, IconButton } from "react-native-paper";
+import { Text, Card, IconButton } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useFocusEffect } from "expo-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { startOfWeek, endOfWeek, isWithinInterval, format } from "date-fns";
 import { useThemeData } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
@@ -19,6 +19,10 @@ import { CloudLinkBanner } from "../../components/CloudLinkBanner";
 import { SmartInsights } from "../../components/SmartInsights";
 import { Transaction } from "../../types";
 import EmptyState from "../../components/EmptyState";
+import { TAB_BAR_CONTENT_CLEARANCE } from "../../utils/tabBarMetrics";
+import CalendarDaySheet from "../../components/CalendarDaySheet";
+import CenteredDialogModal from "../../components/CenteredDialogModal";
+import CalculatorModal from "../../components/CalculatorModal";
 
 const renderCategoryIcon = (category?: string, title?: string, type?: string): string => {
   const text = `${category || ''} ${title || ''}`.toLowerCase();
@@ -61,6 +65,8 @@ export default function Dashboard() {
     [dues, weekRange]
   );
   const { activeUserId } = useAuth();
+  const [calendarSheetVisible, setCalendarSheetVisible] = useState(false);
+  const [calculatorModalVisible, setCalculatorModalVisible] = useState(false);
 
   const loading = txLoading;
 
@@ -247,7 +253,7 @@ export default function Dashboard() {
 
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 16, paddingHorizontal: 20 }}>
         <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onBackground }}>Recent Activity</Text>
-        <TouchableOpacity onPress={() => router.push("/reports")}>
+        <TouchableOpacity onPress={() => router.push("/transactions")}>
           <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: "600" }}>See All</Text>
         </TouchableOpacity>
       </View>
@@ -270,7 +276,12 @@ export default function Dashboard() {
               {format(new Date(), "MMMM d, yyyy")}
             </Text>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: theme.colors.surface, borderRadius: 999, paddingHorizontal: 4, paddingVertical: 2, ...Platform.select({ web: { boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.08)" }, default: { shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.10, shadowRadius: 8, elevation: 6 } }) }}>
+            <IconButton
+              icon="calculator-variant-outline"
+              size={24}
+              onPress={() => setCalculatorModalVisible(true)}
+            />
             <View style={{ position: "relative" }}>
               <IconButton
                 icon="bell-outline"
@@ -308,16 +319,23 @@ export default function Dashboard() {
         keyExtractor={(item: Transaction) => item.id}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={<EmptyState icon="receipt" title="No transactions yet" subtitle="Tap + to add your first transaction" />}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: TAB_BAR_CONTENT_CLEARANCE }}
         showsVerticalScrollIndicator={false}
       />
 
-      <FAB
-        icon="plus"
-        label="Transaction"
-        style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
-        color="#fff"
-        onPress={() => router.push("/add-transaction")}
+      <CenteredDialogModal
+        visible={calendarSheetVisible}
+        onDismiss={() => setCalendarSheetVisible(false)}
+      >
+        <View style={{ alignItems: "flex-end" }}>
+          <IconButton icon="close" size={22} onPress={() => setCalendarSheetVisible(false)} />
+        </View>
+        <CalendarDaySheet />
+      </CenteredDialogModal>
+
+      <CalculatorModal
+        visible={calculatorModalVisible}
+        onRequestClose={() => setCalculatorModalVisible(false)}
       />
     </View>
   );

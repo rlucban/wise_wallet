@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { View, ScrollView } from "react-native";
+import React, { useState, useMemo } from "react";
+import { View, ScrollView, TouchableOpacity } from "react-native";
 import { Appbar, List, IconButton, FAB, Portal, Modal, TextInput, Button, SegmentedButtons, useTheme, Card, Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { useCategoriesData, useCategoriesActions } from "../context/CategoriesContext";
 import { TransactionType, Category } from "../types";
 import ConfirmDialog from "../components/ConfirmDialog";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 
 export default function CategorySettings() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function CategorySettings() {
   const { categories } = useCategoriesData();
   const { addCategory, deleteCategory } = useCategoriesActions();
   const [type, setType] = useState<TransactionType>("expense");
+  const [sortBy, setSortBy] = useState<"alphabetical-asc" | "alphabetical-desc">("alphabetical-asc");
   const [modalVisible, setModalVisible] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
@@ -22,7 +24,18 @@ export default function CategorySettings() {
     setDeleteTarget(null);
   };
 
-  const filteredCategories = categories.filter((c) => c.type === type);
+  const sortedCategories = useMemo(() => {
+    let result = categories.filter((c) => c.type === type);
+    switch (sortBy) {
+      case "alphabetical-asc":
+        result.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "alphabetical-desc":
+        result.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+    }
+    return result;
+  }, [categories, type, sortBy]);
 
   const handleAdd = async () => {
     if (newCatName.trim()) {
@@ -42,6 +55,25 @@ export default function CategorySettings() {
       <Appbar.Header>
         <Appbar.BackAction onPress={() => router.back()} />
         <Appbar.Content title="Manage Categories" />
+        <TouchableOpacity
+          onPress={() => setSortBy(prev => prev === "alphabetical-asc" ? "alphabetical-desc" : "alphabetical-asc")}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: "#E8EEFF",
+            borderRadius: 20,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            marginRight: 8,
+          }}
+        >
+          <MaterialCommunityIcons
+            name={sortBy === "alphabetical-asc" ? "sort-alphabetical-ascending" : "sort-alphabetical-descending"}
+            size={22}
+            color={theme.colors.onSurface}
+          />
+          <Text variant="labelLarge" style={{ marginLeft: 6, color: theme.colors.onSurface, fontWeight: "600" }}>Sort</Text>
+        </TouchableOpacity>
       </Appbar.Header>
 
       <View style={{ padding: 16 }}>
@@ -56,7 +88,7 @@ export default function CategorySettings() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
-        {filteredCategories.map((cat) => (
+        {sortedCategories.map((cat) => (
           <Card key={cat.id} style={{ marginBottom: 8, backgroundColor: theme.colors.surface }}>
             <List.Item
               title={cat.name}

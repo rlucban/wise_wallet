@@ -1,7 +1,7 @@
-export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[A-Za-z]{2,}$/;
 
 export const EMAIL_REQUIRED_ERROR = "Email is required";
-export const INVALID_EMAIL_ERROR = "Please enter a valid email address";
+export const INVALID_EMAIL_ERROR = "Please enter a valid email address (e.g., name@example.com)";
 export const INVALID_PIN_ERROR = "Passcode must be exactly 4 digits";
 
 export type RegisterValidationResult = {

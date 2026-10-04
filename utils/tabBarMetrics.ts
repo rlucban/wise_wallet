@@ -75,6 +75,53 @@ export interface TabBarMetrics {
 }
 
 /**
+ * Extra bottom padding for scroll content on tab screens, so the last
+ * element clears the floating pill tab bar (SPEC-44). The floating bar is
+ * position:absolute and overlays content; 100px covers pill height (~68) plus
+ * its bottom offset with margin.
+ */
+export const TAB_BAR_CONTENT_CLEARANCE = 100;
+
+export interface TabBarSizing {
+  /** Vertical padding of the floating pill container. */
+  paddingVertical: number;
+  /** Tab label font size. */
+  labelFontSize: number;
+  /** Tab label weight when the tab is not focused. */
+  labelFontWeight: "600";
+  /** Tab label weight when the tab is focused. */
+  focusedLabelFontWeight: "700";
+  /** Tab icon size. */
+  iconSize: number;
+  /** Detached circular `+` button width/height. */
+  actionButtonSize: number;
+  /** Detached circular `+` button border radius (size / 2). */
+  actionButtonRadius: number;
+  /** Plus glyph size inside the action button. */
+  actionIconSize: number;
+}
+
+/**
+ * Sizing constants for the floating pill tab bar (SPEC-40). Pure and
+ * platform-agnostic: the same numbers come back on Android, iOS, and web; the
+ * only branch is the desktop/mobile viewport split.
+ */
+export function getTabBarSizing(isDesktop: boolean): TabBarSizing {
+    const actionButtonSize = isDesktop ? 58 : 56;
+
+    return {
+        paddingVertical: 12,
+        labelFontSize: 15,
+        labelFontWeight: "600",
+        focusedLabelFontWeight: "700",
+        iconSize: 24,
+        actionButtonSize,
+        actionButtonRadius: actionButtonSize / 2,
+        actionIconSize: 26,
+    };
+}
+
+/**
  * Resolves the tab bar's height and vertical padding.
  *
  * `insetsBottom` is the bottom safe-area inset (home indicator / gesture bar). It is

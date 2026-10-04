@@ -409,6 +409,44 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   are **untouched** — rollback is two files. v1.1 dropped a never-read `strokeWidth`
   parameter (recorded in the spec's History). Peso risk carried forward (DEC-11, ACC-16).
   See `docs/savepoint.md`.
+- **2026-10-03 — Spec 35 FINAL v1.0 + implemented.** `specs/35-passcode-settings-live-validation-and-disabled-states.md`:
+  unified passcode dialog validation hardening. D-01 new pure `utils/passcodeValidation.ts`
+  (`normalizePasscodeInput`, `isFourDigitPasscode`, format/new/confirm errors,
+  `canSubmitPasscodeChange`, exact copy constants); D-02 new `utils/passcodeValidation.test.ts`
+  parameterized by `Platform.OS` android/ios/web; D-03 `app/(tabs)/settings.tsx`
+- **2026-10-04 — Spec 36 FINAL + implemented.** `specs/36-reports-yearly-menu-icon.md`:
+  Fix Reports screen period dropdown menu "Yearly" item icon.
+  D-01 `app/(tabs)/reports.tsx`: updated `leadingIcon` on "Yearly" `Menu.Item` from `"calendar-year"`
+  to `"calendar-range"`, eliminating the fallback question mark `?` icon.
+  See `docs/savepoint.md`.
+- **2026-10-04 — Spec 37 FINAL + implemented.** `specs/37-dedicated-transaction-history-screen.md`:
+  Dedicated Transaction History screen and Recent Activity "See All" button re-route.
+  D-01 `app/transactions.tsx`: created dedicated Transaction History screen with header, search bar,
+  type filters ("All", "Expense", "Income"), and FlashList rendering.
+  D-02 `app/_layout.tsx`: registered `<Stack.Screen name="transactions" />`.
+  D-03 `app/(tabs)/index.tsx`: updated "See All" button to navigate to `/transactions`.
+  See `docs/savepoint.md`.
+- **2026-10-04 — Spec 38 FINAL + implemented.** `specs/38-floating-pill-tab-bar.md`:
+  Floating Pill Bottom Navigation Bar & Action Button.
+  D-01 `app/(tabs)/_layout.tsx`: implemented custom `FloatingTabBar` with capsule container,
+  active tab highlight sticking to brand primary color, and detached circular `+` button.
+- **2026-10-04 — Spec 39 FINAL + implemented.** `specs/39-responsive-floating-tab-bar.md`:
+  Responsive Floating Pill Navigation Bar.
+  D-01 `app/(tabs)/_layout.tsx`: added responsive viewport detection via `useWindowDimensions`;
+  desktop screens (`width >= 768px`) expand to `maxWidth: 760`, horizontal icon+label layout,
+  14px font size, and 58x58px circular action button; mobile screens retain compact vertical layout.
+  See `docs/savepoint.md`.
+- **2026-10-04 — Spec 62 FINAL v1.1 + implemented.** `specs/62-simplified-calendar-modal.md`:
+  Simplified Calendar Modal (Grid + Summary + Tip Only). Fixes: (1) iOS dim-only modal — the old
+  bottom sheet (`Pressable flex:1` + `height:"92%"` inside `justifyContent:"flex-end"`) was
+  squeezed to ~0 height on iOS; (2) Web clutter — per-day transaction list under the FinancialTip.
+  D-01 `components/CalendarDaySheet.tsx`: removed the transaction list (grid → Income/Expense
+  summary → FinancialTip only), kept totals computation, wrapped in a `useWindowDimensions`-bounded
+  ScrollView (`maxHeight: 80%`) so small phones scroll instead of clip. D-02 `app/(tabs)/index.tsx`:
+  swapped the bottom-sheet Modal for the existing `CenteredDialogModal` helper + close button inside
+  the card (drag handle removed). D-03 `app/calendar.tsx`: unchanged — route keeps the same
+  simplified content + FAB. D-04 `utils/calendarSheetGuards.test.ts`: source-guard jest tests
+  (ACC-01..03, 05..06) parameterized by `Platform.OS`. No dependency/storage/API/route change.
 
 ---
 

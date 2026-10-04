@@ -208,6 +208,7 @@ function MainLayout() {
             <Stack.Screen name="completed-dues" />
             <Stack.Screen name="savings" />
             <Stack.Screen name="archived-allocations" />
+            <Stack.Screen name="transactions" />
             <Stack.Screen name="payment-methods" options={{ animation: "slide_from_right" }} />
           </Stack>
         </View>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
 import { Text, TextInput, Button, HelperText } from "react-native-paper";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useUserProfileActions } from "../context/UserProfileContext";
@@ -22,9 +23,9 @@ export default function OnboardingScreen() {
         if (!name.trim()) {
             newErrors.name = "Please enter your name.";
         }
-        if (isNaN(parseAmount(balance))) {
+        if (balance.trim() !== "" && isNaN(parseAmount(balance))) {
             newErrors.balance = "Please enter a valid number.";
-        } else if (parseAmount(balance) > 10000000) {
+        } else if (balance.trim() !== "" && parseAmount(balance) > 10000000) {
             newErrors.balance = "Amount must not exceed 10,000,000.";
         }
         setErrors(newErrors);
@@ -70,7 +71,7 @@ export default function OnboardingScreen() {
                 <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                     {/* Logo & Welcome */}
                     <View style={styles.header}>
-                        <Text style={styles.walletEmoji}>💰</Text>
+                        <MaterialCommunityIcons name="wallet" size={64} color="#fff" style={styles.walletEmoji} />
                         <Text style={styles.appName}>WiseWallet</Text>
                         <Text style={styles.tagline}>Your personal finance companion</Text>
                     </View>
@@ -101,7 +102,7 @@ export default function OnboardingScreen() {
 
                         {/* Initial Balance Field */}
                         <TextInput
-                            label="Initial Balance"
+                            label="Initial Balance (Optional)"
                             value={balance}
                             onChangeText={(t) => setBalance(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
                             mode="outlined"
