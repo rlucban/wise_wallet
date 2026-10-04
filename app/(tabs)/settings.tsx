@@ -212,6 +212,7 @@ export default function SettingsScreen() {
   const [showNewAccountDialog, setShowNewAccountDialog] = useState(false);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [pinInput, setPinInput] = useState("");
+  const [clearDataPinError, setClearDataPinError] = useState("");
   const [showChangePasscodeDialog, setShowChangePasscodeDialog] = useState(false);
   const [currentPasscodeInput, setCurrentPasscodeInput] = useState("");
   const [newPasscodeInput, setNewPasscodeInput] = useState("");
@@ -660,7 +661,8 @@ export default function SettingsScreen() {
     }
 
 if (!pinVerified) {
-      showMessage("error", "Incorrect PIN", "Please try again.");
+      setClearDataPinError("Incorrect PIN. Please try again.");
+      setPinInput("");
       setIsSyncing(false);
       return;
     }
@@ -1171,7 +1173,7 @@ if (!pinVerified) {
               Import Data
             </Button>
 
-            <Button mode="contained-tonal" buttonColor={paperTheme.colors.errorContainer} textColor={paperTheme.colors.onErrorContainer} icon="delete-alert" onPress={() => setShowPinPrompt(true)} style={{ marginTop: 8 }}>
+            <Button mode="contained-tonal" buttonColor={paperTheme.colors.errorContainer} textColor={paperTheme.colors.onErrorContainer} icon="delete-alert" onPress={() => { setPinInput(""); setClearDataPinError(""); setShowPinPrompt(true); }} style={{ marginTop: 8 }}>
               Clear All Data
             </Button>
 
@@ -1425,11 +1427,14 @@ if (!pinVerified) {
             <TextInput
               label="PIN"
               value={pinInput}
-              onChangeText={(t) => setPinInput(normalizePasscodeInput(t))}
+              onChangeText={(t) => { setPinInput(normalizePasscodeInput(t)); setClearDataPinError(""); }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
             />
+            {clearDataPinError ? (
+              <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>{clearDataPinError}</Text>
+            ) : null}
           </Dialog.Content>
           <Dialog.Actions style={{ justifyContent: "center", gap: 12 }}>
             <Button mode="outlined" onPress={() => setShowPinPrompt(false)}>Cancel</Button>

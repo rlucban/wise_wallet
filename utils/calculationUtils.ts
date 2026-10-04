@@ -10,4 +10,4 @@ export const divide = (a: number, b: number): number | null => {
 };
 
 export const formatResult = (num: number): string =>
-  Number.isInteger(num) ? String(num) : Number(num.toFixed(2));
+  Number.isInteger(num) ? String(num) : num.toFixed(2);

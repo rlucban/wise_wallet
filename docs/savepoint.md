@@ -680,3 +680,31 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - User-run gates (AGENTS.md §1.3): `npm run lint`, `npx tsc --noEmit`, `npm test`, Expo Go (Android + iOS), `expo export --platform web`.
 
 ---
+
+### 2026-10-04 — Clear Data PIN error displayed inline (bug fix)
+
+- **Bug:** Entering an incorrect PIN in the "Enter PIN to Clear Data" dialog caused the "Incorrect PIN" error to appear in a separate `messageDialog` modal rendered *behind* the still-open PIN prompt dialog, making it invisible to the user.
+- **Fix (`app/(tabs)/settings.tsx`):**
+  - Added `clearDataPinError` state variable for the Clear Data PIN dialog.
+  - `handleClearData` now sets inline error via `setClearDataPinError("Incorrect PIN. Please try again.")` instead of `showMessage(...)`, and clears `pinInput`.
+  - PIN dialog JSX now displays error `<Text>` below the `<TextInput>` (red, `marginTop: 8`), matching the pattern used by Change Passcode and Delete Account dialogs.
+  - Error clears on user typing (`onChangeText`) and on dialog open.
+- Lint clean.
+
+---
+
+### SPEC-64: Category Sort Button Restyling (2026-10-05)
+
+- **Spec:** `specs/64-category-sort-button-restyling.md` (FINAL)
+- **File:** `app/category-settings.tsx`
+- **Changes:**
+  - Removed old sort button (tiny 36×36 circle with ambiguous icons) from below segment tabs.
+  - Added new sort pill button in `Appbar.Header` (right-aligned, inline with title).
+  - Button shows `MaterialCommunityIcons` icon (`sort-alphabetical-ascending` / `sort-alphabetical-descending`) + "Sort" text label.
+  - Styled as rounded pill with `#E8EEFF` light blue background, `borderRadius: 16`.
+  - Simplified from 3-state cycle (A-Z → Z-A → Most Recent) to 2-state toggle (A-Z ↔ Z-A only).
+  - Removed `"most-recent"` sort branch from `sortedCategories` useMemo.
+  - Default sort on mount: A-Z (ascending).
+- Lint clean.
+
+---
