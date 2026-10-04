@@ -188,10 +188,7 @@ export default function SettingsScreen() {
 
 
 
-   const isValidEmail = (str: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
-   const isUsernameOnly = profile?.name && !isValidEmail(profile.name);
-   const autoBackup = isUsernameOnly || isLocal ? false : profile?.autoBackup ?? true;
-   const isEffectivelyLocal = isLocal || !!isUsernameOnly;
+   const autoBackup = isLocal ? false : profile?.autoBackup ?? true;
   const [isSyncing, setIsSyncing] = useState(false);
   const [showPinPrompt, setShowPinPrompt] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -1052,7 +1049,7 @@ if (!pinVerified) {
                <View style={{ marginLeft: 16 }}>
                  <Text variant="titleMedium">{profile?.name || "Wise User"}</Text>
                  <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
-                   {isEffectivelyLocal ? "Local-only account — stored on this device" : autoBackup ? "Cloud Sync Enabled" : "Cloud account — sync off"}
+                    {isLocal ? "Local-only account — stored on this device" : autoBackup ? "Cloud Sync Enabled" : "Cloud account — sync off"}
                  </Text>
                </View>
             </View>
@@ -1129,25 +1126,25 @@ if (!pinVerified) {
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>Data Management</Text>
 
-            <SyncStatusCard autoBackup={autoBackup} isLocal={isEffectivelyLocal} />
+            <SyncStatusCard autoBackup={autoBackup} isLocal={isLocal} />
 
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 }}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <List.Icon icon="cloud-sync" color={paperTheme.colors.onSurfaceVariant} />
                 <Text variant="bodyLarge" style={{ marginLeft: 12 }}>Auto-Backup</Text>
               </View>
-              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={isUsernameOnly || isLocal} />
+              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={isLocal} />
             </View>
 
             <Divider style={{ marginVertical: 8 }} />
 
-            {(!autoBackup && !isEffectivelyLocal) && (
+            {(!autoBackup && !isLocal && Platform.OS !== "web") && (
               <Button mode="outlined" icon="backup-restore" onPress={handleManualBackup} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
                 Backup Data to Cloud API Now
               </Button>
             )}
 
-            {(!autoBackup && !isEffectivelyLocal) && (
+            {(!autoBackup && !isLocal && Platform.OS !== "web") && (
               <Button mode="outlined" icon="cloud-download" onPress={handleRestoreFromCloud} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
                 Restore Data from Cloud API
               </Button>
@@ -1171,7 +1168,7 @@ if (!pinVerified) {
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
             <Text variant="titleMedium" style={{ marginBottom: 16 }}>Account</Text>
-            {isEffectivelyLocal && (
+            {isLocal && (
               <Button mode="contained" icon="cloud-upload-outline" onPress={() => handleToggleAutoBackup(true)} style={{ marginBottom: 8 }}>
                 Make Online
               </Button>

@@ -600,3 +600,14 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - No backend, storage, API-contract, route, or dependency change. Native queue path untouched (CON-02).
 - Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, `npx tsc --noEmit`, web Get Started matrix (ACC-S01..S03), Expo Go add-transaction regression, `expo export --platform web`.
 
+---
+
+## 2026-10-04 -- SPEC-38: Settings Account Mode from Token Only
+
+- `specs/38-settings-account-mode-token-only.md`: FINAL per user call. Root cause: settings OR-ed the token with an `isUsernameOnly` name check (`settings.tsx:192-194`) — onboarding overwrites `profile.name` with the display name, so every post-onboarding cloud account showed "Local-only account — stored on this device" / SyncStatusCard "Local-only", with Auto-Backup OFF + disabled and Backup/Restore unreachable. Data path was always online (proven by the SPEC-37 stack trace); only the label lied.
+- `app/(tabs)/settings.tsx` (D-01): deleted `isValidEmail`/`isUsernameOnly`/`isEffectivelyLocal`; subtitle, SyncStatusCard prop, switch `disabled`, and Make Online now read token `isLocal`; Backup/Restore also gated behind `Platform.OS !== "web"` (their handlers read local repos — SPEC-36 ACC-W-03). `:1062` card verified already token-based, untouched.
+- `utils/settingsAccountMode.test.ts` (D-02, new): ACC-01..03 across `Platform.OS` android/ios/web + ACC-04 web-gate count guard.
+- Governance (CON-04): amends SPEC-26 CON-11 for settings account-mode copy only; SPEC-26 keeps register/login; SPEC-04 :107-113 satisfied. Legacy username-era locals still show local via their local token (CON-06, no migration).
+- No backend/storage/API/route/dependency change. Pre-write leak parked as follow-up.
+- Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, `npx tsc --noEmit`, matrix ACC-S01..S04 (web cloud copy, legacy local login, native Cloud-OFF buttons, Expo Go + web export).
+
