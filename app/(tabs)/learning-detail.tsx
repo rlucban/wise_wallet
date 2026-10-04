@@ -97,6 +97,45 @@ Effective Tracking Steps:
 
 Pro Tip:
 Combine daily tracking in WiseWallet with automated alerts to stay well within your available budget before overspending occurs!`
+    },
+    guide_track_expenses: {
+        title: "WiseWallet 101: Tracking Expenses",
+        content: `Tracking expenses is the foundation of financial management in WiseWallet.
+
+How to do it:
+1. Tap the + button on the Home screen or tab bar.
+2. Enter the amount, choose Income or Expense, and pick a category.
+3. Add an optional note, payment method, or receipt photo.
+4. Save, then watch your Dashboard balance and Reports update instantly.
+
+Pro Tip:
+Review the Recent Activity list daily so no spending goes unrecorded.`
+    },
+    guide_allocations: {
+        title: "How to Create & Manage Allocations",
+        content: `Allocations turn your savings goals into trackable targets.
+
+Getting started:
+1. Open the Savings screen and tap the + Allocation button.
+2. Name your goal (e.g., Emergency Fund) and set a target amount.
+3. Transfer money in from your main balance as you save.
+4. Watch the progress bar fill; archive the allocation once it is complete.
+
+Pro Tip:
+Set realistic targets you can fund monthly to keep the habit sustainable.`
+    },
+    guide_scheduled_dues: {
+        title: "Managing Scheduled Dues",
+        content: `Scheduled Dues keeps bills from sneaking up on you.
+
+Setup steps:
+1. Open Scheduled and tap the + button.
+2. Enter the title, amount, category, and due date.
+3. Choose one-time or recurring (weekly, monthly, yearly).
+4. When the bill is paid, mark it done — WiseWallet logs the transaction and auto-creates the next occurrence when enabled.
+
+Pro Tip:
+Review upcoming dues weekly so you always have enough balance on due dates.`
     }
 };
 

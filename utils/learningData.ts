@@ -1,4 +1,4 @@
-export type ArticleTopic = "Budgeting" | "Savings" | "Debt";
+export type ArticleTopic = "Budgeting" | "Savings" | "Debt" | "App Guide";
 export type AudienceType = "Students" | "Workers";
 
 export const LEARNING_CATEGORIES = ["All", "Budgeting", "Savings", "Debt"] as const;
@@ -11,7 +11,7 @@ export interface LearningResource {
   icon: string;
   topic: ArticleTopic;
   minutes: number;
-  audience: AudienceType;
+  audience?: AudienceType;
 }
 
 export const LEARNING_RESOURCES: LearningResource[] = [
@@ -68,5 +68,29 @@ export const LEARNING_RESOURCES: LearningResource[] = [
     topic: "Budgeting",
     minutes: 3,
     audience: "Students",
+  },
+  {
+    id: "guide_track_expenses",
+    title: "WiseWallet 101: Tracking Expenses",
+    description: "How to log, categorize, and review your daily spending in WiseWallet.",
+    icon: "cash-register",
+    topic: "App Guide",
+    minutes: 2,
+  },
+  {
+    id: "guide_allocations",
+    title: "How to Create & Manage Allocations",
+    description: "Set up savings goals, track progress, and transfer funds between allocations.",
+    icon: "piggy-bank",
+    topic: "App Guide",
+    minutes: 2,
+  },
+  {
+    id: "guide_scheduled_dues",
+    title: "Managing Scheduled Dues",
+    description: "Create recurring bills, mark them paid, and let WiseWallet log them automatically.",
+    icon: "calendar-check",
+    topic: "App Guide",
+    minutes: 2,
   },
 ];

@@ -6,8 +6,10 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
+import { TAB_BAR_CONTENT_CLEARANCE } from "../../utils/tabBarMetrics";
 
 import { setSetting, clearAllLocalData, exportData, importData, deleteUser, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
+import CenteredDialogModal from "../../components/CenteredDialogModal";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
@@ -18,6 +20,14 @@ import { authFetch } from "../../utils/apiClient";
 import { useSyncStatus } from "../../hooks/useSyncStatus";
 import { useNetwork } from "../../context/NetworkContext";
 import { useIsLocalAccount } from "../../utils/authMode";
+import {
+  canSubmitPasscodeChange,
+  getConfirmPasscodeError,
+  getNewPasscodeError,
+  getPasscodeFormatError,
+  isFourDigitPasscode,
+  normalizePasscodeInput,
+} from "../../utils/passcodeValidation";
 import * as Crypto from 'expo-crypto';
 import { Transaction, Category, Due, SavingsItem, UserProfile } from "../../types";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -153,12 +163,12 @@ export default function SettingsScreen() {
     const next = newPasscodeInput.trim();
     const confirm = confirmPasscodeInput.trim();
 
-    if (passcode && (!/^\d{4}$/.test(current) || current !== passcode)) {
-      setChangePasscodeError("Incorrect current PIN.");
+    if (passcode && (!isFourDigitPasscode(current) || current !== passcode)) {
+      setChangePasscodeError("Incorrect Current PIN.");
       return;
     }
-    if (!/^\d{4}$/.test(next)) {
-      setChangePasscodeError("New PIN must be 4 digits.");
+    if (!isFourDigitPasscode(next)) {
+      setChangePasscodeError("PIN must be 4 digits.");
       return;
     }
     if (passcode && next === current) {
@@ -1039,7 +1049,7 @@ if (!pinVerified) {
         <Appbar.Content title="Settings" titleStyle={{ fontWeight: "700" }} />
       </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: TAB_BAR_CONTENT_CLEARANCE }}>
         {/* User Profile Section */}
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
@@ -1233,7 +1243,7 @@ if (!pinVerified) {
       </ScrollView>
 
       <Portal>
-        <Dialog visible={showDeleteDialog} onDismiss={closeDeleteDialog} style={styles.dialog}>
+        <CenteredDialogModal visible={showDeleteDialog} onDismiss={closeDeleteDialog} style={styles.dialog}>
           <Dialog.Title>Delete Account</Dialog.Title>
           <Dialog.Content>
             <Text style={{ color: paperTheme.colors.error, fontWeight: "700" }}>
@@ -1249,7 +1259,7 @@ if (!pinVerified) {
             <TextInput
               label="Current PIN"
               value={deletePinInput}
-              onChangeText={(t) => { setDeletePinInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setDeletePinError(""); setPinVerified(false); }}
+              onChangeText={(t) => { setDeletePinInput(normalizePasscodeInput(t)); setDeletePinError(""); setPinVerified(false); }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
@@ -1302,9 +1312,9 @@ if (!pinVerified) {
               Delete Permanently
             </Button>
           </Dialog.Actions>
-        </Dialog>
+        </CenteredDialogModal>
 
-        <Dialog visible={messageDialog.visible} onDismiss={closeMessage} style={styles.dialog}>
+        <CenteredDialogModal visible={messageDialog.visible} onDismiss={closeMessage} style={styles.dialog}>
           <Dialog.Icon
             icon={messageDialog.type === "success" ? "check-circle-outline" : "alert-circle-outline"}
             color={messageDialog.type === "success" ? paperTheme.colors.tertiary : paperTheme.colors.error}
@@ -1316,7 +1326,7 @@ if (!pinVerified) {
           <Dialog.Actions style={{ justifyContent: "center" }}>
             <Button mode="contained" onPress={closeMessage}>OK</Button>
           </Dialog.Actions>
-        </Dialog>
+        </CenteredDialogModal>
 
         <ConfirmDialog
           visible={showRestoreConfirm}
@@ -1331,7 +1341,7 @@ if (!pinVerified) {
           onCancel={() => setShowRestoreConfirm(false)}
         />
 
-        <Dialog visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)} style={styles.dialog}>
+        <CenteredDialogModal visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)} style={styles.dialog}>
           <Dialog.Title>{isLocal ? "Make Online" : "Verify Account PIN"}</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
@@ -1343,7 +1353,7 @@ if (!pinVerified) {
             <TextInput
               label="Current PIN"
               value={pinVerificationInput}
-              onChangeText={(t) => { setPinVerificationInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setVerificationError(""); }}
+              onChangeText={(t) => { setPinVerificationInput(normalizePasscodeInput(t)); setVerificationError(""); }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
@@ -1357,9 +1367,9 @@ if (!pinVerified) {
             <Button onPress={() => { setShowPinVerificationDialog(false); setPinVerificationInput(""); setVerificationError(""); }}>Cancel</Button>
             <Button onPress={verifyPinForSync} loading={isSyncing} disabled={isSyncing}>Verify & Sync</Button>
           </Dialog.Actions>
-        </Dialog>
+        </CenteredDialogModal>
 
-        <Dialog visible={showNewAccountDialog} onDismiss={() => setShowNewAccountDialog(false)} style={styles.dialog}>
+        <CenteredDialogModal visible={showNewAccountDialog} onDismiss={() => setShowNewAccountDialog(false)} style={styles.dialog}>
           <Dialog.Title>{isLocal ? "Create Cloud Account" : "PIN Doesn't Match"}</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
@@ -1376,9 +1386,9 @@ if (!pinVerified) {
             <Button onPress={() => setShowNewAccountDialog(false)}>Cancel</Button>
             <Button onPress={createNewAccountAndMigrate} loading={isSyncing} disabled={isSyncing}>Create New & Migrate</Button>
           </Dialog.Actions>
-        </Dialog>
+        </CenteredDialogModal>
 
-        <Dialog visible={showBackupDialog} onDismiss={() => setShowBackupDialog(false)} style={styles.dialog}>
+        <CenteredDialogModal visible={showBackupDialog} onDismiss={() => setShowBackupDialog(false)} style={styles.dialog}>
           <Dialog.Title>Enable Auto-save</Dialog.Title>
           <Dialog.Content>
             <Text>Enabling Auto-save may overwrite your data during synchronization. Do you want to check for data on the server first?</Text>
@@ -1387,9 +1397,9 @@ if (!pinVerified) {
             <Button onPress={() => setShowBackupDialog(false)}>Cancel</Button>
             <Button onPress={proceedWithBackupEnable} loading={isSyncing} disabled={isSyncing}>Proceed</Button>
           </Dialog.Actions>
-        </Dialog>
+        </CenteredDialogModal>
 
-        <Dialog visible={showConflictDialog} onDismiss={() => setShowConflictDialog(false)} style={styles.dialog}>
+        <CenteredDialogModal visible={showConflictDialog} onDismiss={() => setShowConflictDialog(false)} style={styles.dialog}>
           <Dialog.Title>Sync Conflict</Dialog.Title>
           <Dialog.Content>
             <Text>We found data for your account on the server. How would you like to resolve this?</Text>
@@ -1406,16 +1416,16 @@ if (!pinVerified) {
               </Button>
               <Button onPress={() => setShowConflictDialog(false)}>Cancel</Button>
             </Dialog.Actions>
-         </Dialog>
+         </CenteredDialogModal>
 
-        <Dialog visible={showPinPrompt} onDismiss={() => setShowPinPrompt(false)} style={styles.dialog}>
+        <CenteredDialogModal visible={showPinPrompt} onDismiss={() => setShowPinPrompt(false)} style={styles.dialog}>
           <Dialog.Title style={{ textAlign: "center" }}>Enter PIN to Clear Data</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16, textAlign: "center" }}>This action cannot be undone. All local data will be permanently deleted.</Text>
             <TextInput
               label="PIN"
               value={pinInput}
-              onChangeText={(t) => setPinInput(t.replace(/[^0-9]/g, "").slice(0, 4))}
+              onChangeText={(t) => setPinInput(normalizePasscodeInput(t))}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
@@ -1425,9 +1435,9 @@ if (!pinVerified) {
             <Button mode="outlined" onPress={() => setShowPinPrompt(false)}>Cancel</Button>
             <Button mode="contained" buttonColor={paperTheme.colors.error} textColor="#fff" onPress={handleClearData} loading={isSyncing} disabled={isSyncing}>Clear Data</Button>
           </Dialog.Actions>
-        </Dialog>
+        </CenteredDialogModal>
 
-        <Dialog visible={showDeleteConfirmation} onDismiss={() => setShowDeleteConfirmation(false)} style={styles.dialog}>
+        <CenteredDialogModal visible={showDeleteConfirmation} onDismiss={() => setShowDeleteConfirmation(false)} style={styles.dialog}>
           <Dialog.Title style={{ textAlign: "center" }}>Are you absolutely sure?</Dialog.Title>
           <Dialog.Content style={styles.dialogContent}>
             <Text style={{ marginBottom: 16, textAlign: "center", alignSelf: "center", width: "100%" }}>
@@ -1447,9 +1457,9 @@ if (!pinVerified) {
               CLEAR EVERYTHING
             </Button>
           </Dialog.Actions>
-        </Dialog>
+        </CenteredDialogModal>
 
-        <Dialog visible={showChangePasscodeDialog} onDismiss={closeChangePasscodeDialog} style={styles.dialog}>
+        <CenteredDialogModal visible={showChangePasscodeDialog} onDismiss={closeChangePasscodeDialog} style={styles.dialog}>
           {passcode ? (
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
               <Dialog.Title>{pinStep === 1 ? "Change Passcode" : "Enter New Passcode"}</Dialog.Title>
@@ -1471,11 +1481,17 @@ if (!pinVerified) {
                       {pinError}
                     </Text>
                   ) : null}
+                  {getPasscodeFormatError(currentPasscodeInput) ? (
+                    <Text style={{ color: paperTheme.colors.error, marginBottom: 8 }}>
+                      {getPasscodeFormatError(currentPasscodeInput)}
+                    </Text>
+                  ) : null}
                   <TextInput
                     label="Current Passcode"
+                    placeholder="4 digits"
                     value={currentPasscodeInput}
                     onChangeText={(t) => {
-                      setCurrentPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                      setCurrentPasscodeInput(normalizePasscodeInput(t));
                       setPinError(null);
                     }}
                     secureTextEntry
@@ -1492,9 +1508,10 @@ if (!pinVerified) {
                   </Text>
                   <TextInput
                     label="New Passcode"
+                    placeholder="4 digits"
                     value={newPasscodeInput}
                     onChangeText={(t) => {
-                      setNewPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                      setNewPasscodeInput(normalizePasscodeInput(t));
                       setChangePasscodeError("");
                     }}
                     secureTextEntry
@@ -1504,9 +1521,10 @@ if (!pinVerified) {
                   />
                   <TextInput
                     label="Confirm New Passcode"
+                    placeholder="4 digits"
                     value={confirmPasscodeInput}
                     onChangeText={(t) => {
-                      setConfirmPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                      setConfirmPasscodeInput(normalizePasscodeInput(t));
                       setChangePasscodeError("");
                     }}
                     secureTextEntry
@@ -1514,6 +1532,16 @@ if (!pinVerified) {
                     maxLength={4}
                     style={{ marginBottom: 12 }}
                   />
+                  {getNewPasscodeError(newPasscodeInput, passcode) ? (
+                    <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>
+                      {getNewPasscodeError(newPasscodeInput, passcode)}
+                    </Text>
+                  ) : null}
+                  {getConfirmPasscodeError(newPasscodeInput, confirmPasscodeInput) ? (
+                    <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>
+                      {getConfirmPasscodeError(newPasscodeInput, confirmPasscodeInput)}
+                    </Text>
+                  ) : null}
                   {changePasscodeError ? (
                     <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>
                       {changePasscodeError}
@@ -1529,9 +1557,10 @@ if (!pinVerified) {
                 </Text>
                 <TextInput
                   label="New Passcode"
+                  placeholder="4 digits"
                   value={newPasscodeInput}
                   onChangeText={(t) => {
-                    setNewPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                    setNewPasscodeInput(normalizePasscodeInput(t));
                     setChangePasscodeError("");
                   }}
                   secureTextEntry
@@ -1541,9 +1570,10 @@ if (!pinVerified) {
                 />
                 <TextInput
                   label="Confirm New Passcode"
+                  placeholder="4 digits"
                   value={confirmPasscodeInput}
                   onChangeText={(t) => {
-                    setConfirmPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                    setConfirmPasscodeInput(normalizePasscodeInput(t));
                     setChangePasscodeError("");
                   }}
                   secureTextEntry
@@ -1551,6 +1581,16 @@ if (!pinVerified) {
                   maxLength={4}
                   style={{ marginBottom: 12 }}
                 />
+                {getNewPasscodeError(newPasscodeInput, null) ? (
+                  <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>
+                    {getNewPasscodeError(newPasscodeInput, null)}
+                  </Text>
+                ) : null}
+                {getConfirmPasscodeError(newPasscodeInput, confirmPasscodeInput) ? (
+                  <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>
+                    {getConfirmPasscodeError(newPasscodeInput, confirmPasscodeInput)}
+                  </Text>
+                ) : null}
                 {changePasscodeError ? (
                   <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>
                     {changePasscodeError}
@@ -1570,18 +1610,18 @@ if (!pinVerified) {
                       setPinStep(2);
                       setPinError(null);
                     } else {
-                      setPinError("Incorrect Current PIN. Try again.");
+                      setPinError("Incorrect Current PIN.");
                       setCurrentPasscodeInput("");
                     }
                   }}
-                  disabled={currentPasscodeInput.trim().length !== 4}
+                  disabled={!isFourDigitPasscode(currentPasscodeInput)}
                 >
                   Verify Current PIN
                 </Button>
               ) : (
                 <Button
                   onPress={handleChangePasscode}
-                  disabled={newPasscodeInput.length !== 4 || newPasscodeInput !== confirmPasscodeInput}
+                  disabled={!canSubmitPasscodeChange(newPasscodeInput, confirmPasscodeInput, passcode)}
                 >
                   Set Passcode
                 </Button>
@@ -1589,13 +1629,13 @@ if (!pinVerified) {
             ) : (
               <Button
                 onPress={handleChangePasscode}
-                disabled={newPasscodeInput.length !== 4 || newPasscodeInput !== confirmPasscodeInput}
+                disabled={!canSubmitPasscodeChange(newPasscodeInput, confirmPasscodeInput, null)}
               >
                 Set Passcode
               </Button>
             )}
           </Dialog.Actions>
-        </Dialog>
+        </CenteredDialogModal>
       </Portal>
     </View>
   );

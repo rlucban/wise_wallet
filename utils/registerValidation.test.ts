@@ -36,6 +36,10 @@ describe.each(PLATFORMS)('register validation on %s', (platform) => {
         expect(isValidEmail('first.last+tag@example.com')).toBe(true);
         expect(isValidEmail('x@y-z.io')).toBe(true);
         expect(isValidEmail(' a@b.co ')).toBe(true);
+        expect(isValidEmail('rclucban@gmail.com')).toBe(true);
+        expect(isValidEmail('rclucban@yahoo.com')).toBe(true);
+        expect(isValidEmail('user@domain.org')).toBe(true);
+        expect(isValidEmail('first.last@sub.domain.ph')).toBe(true);
     });
 
     // ACC-06
@@ -48,6 +52,11 @@ describe.each(PLATFORMS)('register validation on %s', (platform) => {
         expect(isValidEmail('a b@c.co')).toBe(false);
         expect(isValidEmail('a@b')).toBe(false);
         expect(isValidEmail('a@@b.co')).toBe(false);
+        expect(isValidEmail('rclucban@')).toBe(false);
+        expect(isValidEmail('rclucban@gmail')).toBe(false);
+        expect(isValidEmail('@b.com')).toBe(false);
+        expect(isValidEmail('a@b..com')).toBe(false);
+        expect(isValidEmail('a@b.c')).toBe(false);
     });
 
     // ACC-07

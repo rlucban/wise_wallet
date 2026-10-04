@@ -473,7 +473,12 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         <Appbar.Action
           icon="check-circle-outline"
           color={theme.colors.primary}
+          size={24}
           onPress={() => router.push("/completed-dues")}
+          style={{
+            borderRadius: 10,
+            backgroundColor: "#E8EEFF",
+          }}
         />
       </Appbar.Header>
 

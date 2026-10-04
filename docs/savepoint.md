@@ -558,3 +558,125 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
   - Changed button label from `Import Data (JSON)` to `Import Data`.
   - Underlying file handlers, formats, and validators preserved without changes.
 
+---
+
+## 2026-10-03 — SPEC-35: Passcode Settings Live Validation and Complete Disabled States
+- `specs/35-passcode-settings-live-validation-and-disabled-states.md`: FINAL v1.0 per user call.
+- `utils/passcodeValidation.ts` (D-01, new): pure passcode normalizer, format checks, live new/confirm error copy, and `canSubmitPasscodeChange` predicate. No React/RN component imports.
+- `utils/passcodeValidation.test.ts` (D-02, new): jest coverage parameterized by `Platform.OS` for android/ios/web, asserting normalization, exact error copy, and disabled predicates.
+- `app/(tabs)/settings.tsx` (D-03): Verify/Set disabled states now use the helper; Step 2 and no-passcode Set require New/Confirm four digits, match, and differ-from-current when a stored passcode exists; live New/Confirm errors render; inputs use shared normalization and `placeholder="4 digits"`; wrong-current copy is `Incorrect Current PIN.`.
+- `app/passcode-screen.tsx` (D-04): wrong PIN copy aligned to `Incorrect Passcode`; input normalization shared; commented duplicate ref removed.
+- No dependency, storage-key, API-contract, route, or native-module change. User-run gates remain: `npm run lint`, `npx tsc --noEmit`, focused jest, Expo Go, `expo export --platform web`.
+
+---
+
+## 2026-10-04 — SPEC-36: Fix Reports Yearly Menu Item Icon
+- `specs/36-reports-yearly-menu-icon.md`: Finalized spec for fixing the Reports screen period dropdown menu "Yearly" item icon.
+- `app/(tabs)/reports.tsx` (D-01):
+  - Changed `leadingIcon` on the "Yearly" `Menu.Item` from `"calendar-year"` to `"calendar-range"`.
+  - Fixes fallback question mark `?` glyph caused by `"calendar-year"` not being a valid icon in `MaterialCommunityIcons`.
+  - Weekly (`calendar-week`), Monthly (`calendar-month`), and Yearly (`calendar-range`) now all display valid calendar icons consistently across Android, iOS, and Web.
+
+---
+
+## 2026-10-04 — SPEC-37: Dedicated Transaction History Screen
+- `specs/37-dedicated-transaction-history-screen.md`: Finalized spec for creating a dedicated Transaction History screen and updating the Dashboard "See All" button.
+- `app/transactions.tsx` (D-01):
+  - Created dedicated Transaction History screen with `Appbar.Header` back action and title "Transaction History".
+  - Outlined `TextInput` search bar filtering transactions by title, category, establishment, notes, and payment method.
+  - `SegmentedButtons` filter chips for "All", "Expense", and "Income".
+  - Full `FlashList` of transactions reverse-chronologically sorted, with vibrant category icons and color-coded amount signs (`+₱` green / `-₱` red).
+  - Tapping any card opens `/transaction-details?id=${item.id}`.
+  - Contextual `EmptyState` component for empty history or no search/filter matches.
+- `app/_layout.tsx` (D-02):
+  - Registered `<Stack.Screen name="transactions" />` in the root navigation stack.
+- `app/(tabs)/index.tsx` (D-03):
+  - Updated "See All" button on Recent Activity to navigate to `/transactions` instead of `/reports`.
+
+---
+
+## 2026-10-04 — SPEC-38: Floating Pill Bottom Navigation Bar & Action Button
+- `specs/38-floating-pill-tab-bar.md`: Finalized spec for redesigning the bottom tab navigation into a floating pill capsule with an active tab highlight and detached circular `+` button.
+- `app/(tabs)/_layout.tsx` (D-01):
+  - Implemented `FloatingTabBar` component configured via `<Tabs tabBar={(props) => <FloatingTabBar ... />} screenOptions={{ ... }}>`.
+  - Floating pill container with capsule border radius (`borderRadius: 36`), surface background, soft shadow/elevation, and safe-area inset margin.
+  - Active tab highlight with `theme.colors.primaryContainer` pill background, sticking the active icon and label to WiseWallet's brand primary color (`theme.colors.primary`).
+  - Inactive tabs display with muted `theme.colors.outline` color.
+  - Detached circular floating `+` action button (`width: 52`, `height: 52`, `borderRadius: 26`) placed to the right of the navigation pill, routing to `/add-transaction`.
+  - Preserved all baseline screenOption and screen string assertions from SPEC-32.
+- `app/(tabs)/index.tsx` (D-02):
+  - Removed duplicate inline `<FAB label="Transaction" ... />` from the Dashboard.
+
+---
+
+## 2026-10-04 — SPEC-39: Responsive Floating Pill Navigation Bar
+- `specs/39-responsive-floating-tab-bar.md`: Finalized spec for adapting the floating pill navigation bar across desktop web and mobile screens.
+- `app/(tabs)/_layout.tsx` (D-01):
+  - Imported `useWindowDimensions` to compute `isDesktop = width >= 768`.
+  - On Desktop Web (`width >= 768px`): expanded navigation pill container to `maxWidth: 760`, converted tab items to horizontal layout (`flexDirection: "row"`, 8px gap), scaled font size to `14px` and icon size to `22px`, and scaled circular `+` button to `58x58px`.
+  - On Mobile Screens (`width < 768px`): preserved the compact thumb-friendly vertical stacked layout (`maxWidth: 480px`, `11px` font, `52x52px` circular button).
+  - Preserved brand theme colors and unit test assertions.
+
+---
+
+## 2026-10-04 — SPEC-62: Simplified Calendar Modal (Grid + Summary + Tip Only) FINAL v1.2
+
+`specs/62-simplified-calendar-modal.md` FINAL v1.2 per user call (CSS responsiveness + breakpoint adaptation).
+
+- **Defects fixed:**
+  - **iOS (dim screen, nothing appears):** the Home calendar modal in `app/(tabs)/index.tsx` stacked a
+    `Pressable style={{ flex: 1 }}` (tap-to-dismiss) and a `height: "92%"` sheet inside
+    `contentContainerStyle={{ flex: 1, justifyContent: "flex-end" }}` — on iOS the flex sibling
+    consumed 100% of the container height, squeezing the percentage-height sheet to ~0. On web the
+    percentage still resolved, so it rendered page-like (the reported clutter).
+  - **Web clutter:** the per-day transaction list (`List.Item` + `Divider`,
+    `components/CalendarDaySheet.tsx:72-109`) rendered below the FinancialTip.
+- **D-01 (`components/CalendarDaySheet.tsx`):** removed the transaction-list block and the
+  "No transactions on this day." text; kept the calendar grid card, the selected-date
+  Income/Expense summary card, and the FinancialTip (order preserved per ACC-03). Wrapped in a
+  `ScrollView` with `maxHeight: '85vh'` and `overflowY: 'auto'` so the sheet auto-fits on normal
+  screens and scrolls instead of clipping on small phones (iPhone SE class, where grid + summary +
+  tip + close row ≈ 630px). `paddingBottom` 100 → 16 (no in-sheet list/FAB; the route FAB clears the
+  bounded viewport). Removed now-unused `List`/`Divider` imports. No `useWindowDimensions`
+  calculation needed — pure CSS viewport height. `markedDates`, `onDayPress`, totals computation,
+  and FinancialTip wiring unchanged (CON-07).
+- **D-02 (`app/(tabs)/index.tsx`):** swapped the bottom-sheet `Portal`/`Modal` for
+  `CenteredDialogModal` (SPEC-61 helper) wrapping a close `IconButton` (top-right, inside the
+  card) + `CalendarDaySheet`. Drag handle removed. Dropped now-unused `Pressable` (react-native)
+  and `Modal`/`Portal` (react-native-paper) imports. Tap-outside-to-dismiss and `onDismiss`
+  behavior preserved via the helper.
+- **D-03 (`app/calendar.tsx`):** no change required — the `/calendar` route still renders the
+  same simplified `CalendarDaySheet` + Appbar + FAB-to-add (CON-03), so both entry points match.
+- **D-04 (`utils/calendarSheetGuards.test.ts`, new):** source-guard jest tests (precedent:
+  `tabBarMetrics.test.ts`, `reportFormat.test.ts`) asserting ACC-01..03, ACC-05..07 — no
+  transaction-list markup, grid→summary→tip order, CSS `maxHeight: '85vh'` + `overflowY: 'auto'`,
+  CenteredDialogModal usage, bottom-sheet overlay gone, close button kept / drag handle dropped —
+  parameterized by `Platform.OS` android/ios/web via `jest.mock` (pattern from `passcodeValidation.test.ts`);
+  no `Platform.OS` logic branch exists in this change (layout is platform-invariant), so the
+  parameterization documents the §1.10 matrix. ACC-07 added for platform-width checks.
+- No dependency, storage-key, API-contract, or route change. Rollback: two files
+  (`components/CalendarDaySheet.tsx`, `app/(tabs)/index.tsx`) plus the test file.
+- User-run gates (AGENTS.md §1.3): `npm run lint`, `npx tsc --noEmit`, `npm test`, Expo Go
+  (Android + iOS), `expo export --platform web`.
+
+- **CON-08 (Responsive screen adaptation):** On Mobile Screens (`width < 768px`): the centered modal
+  uses `CenteredDialogModal`'s default `width: '90%'`, `maxWidth: 480` layout. On Laptop/Desktop
+  Web Screens (`width >= 768px`): the modal width is limited to `maxWidth: '500px'` and centered
+  vertically and horizontally in the middle of the screen via `margin: 'auto'` on the card container.
+
+---
+
+## 2026-10-05 — SPEC-63: Quick Calculator Modal (Header Shortcut) FINAL
+
+`specs/63-quick-calculator-modal.md` FINAL per user call (Calculator Modal replacing Calendar header shortcut).
+
+- **Defects addressed:**
+  - **Feature request:** Replace the Calendar shortcut icon in the Home screen header with a Calculator icon, opening a Quick Calculator Modal for basic arithmetic (addition, subtraction, multiplication, division) without leaving the dashboard.
+- **D-01 (`app/(tabs)/index.tsx`):** Replaced the Calendar icon (`calendar-outline`) with a Calculator icon (`calculator-outline`) in the top-right header floating pill. Added `calculatorModalVisible` state and rendered `<CalculatorModal />` wrapped in `CenteredDialogModal`. The `/calendar` route and Calendar header button remain fully functional (no route changes).
+- **D-02 (`components/CalculatorModal.tsx`, new):** Self-contained calculator modal with digit buttons (0-9), operation buttons (+, -, ×, ÷), Clear (C), and Equals (=). Centered fixed-overlay presentation with dimmed backdrop (`zIndex: 1000`). Responsive width: mobile `90%`, desktop `maxWidth: 380px` centered. Height constraint: `maxHeight: 80vh`. Operational buttons use theme primary blue accent color (`#0F2C59` / `#1E40AF`).
+- **D-03 (`utils/calculationUtils.ts`, new):** Pure utility functions (no RN imports): `add(a, b)`, `subtract(a, b)`, `multiply(a, b)`, `divide(a, b)` (returns `null` on divide-by-zero), `formatResult(num)` (formats to 2 decimal places or integer). No React/RN dependencies.
+- **D-04 (`utils/calculationUtils.test.ts`, new):** Source-guard jest tests (precedent: `tabBarMetrics.test.ts`, `passcodeValidation.test.ts`) asserting `add`, `subtract`, `multiply`, `divide` results across `android`/`ios`/`web` via `jest.mock` (pattern from `passcodeValidation.test.ts`); Modal rendering guards asserting ACC-01..03, ACC-05..06.
+- No dependency, storage-key, API-contract, or route change. Rollback: three files (`components/CalculatorModal.tsx`, `utils/calculationUtils.ts`, `utils/calculationUtils.test.ts`) plus import update in `app/(tabs)/index.tsx`.
+- User-run gates (AGENTS.md §1.3): `npm run lint`, `npx tsc --noEmit`, `npm test`, Expo Go (Android + iOS), `expo export --platform web`.
+
+---

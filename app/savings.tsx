@@ -8,7 +8,6 @@ import { useCurrencyActions } from "../context/CurrencyContext";
 import { useTransactions } from "../hooks/useTransactions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
 import { useUserProfile } from "../context/UserProfileContext";
-import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function SavingsScreen() {
@@ -240,7 +239,7 @@ export default function SavingsScreen() {
             <Appbar.Header>
                 <Appbar.BackAction onPress={() => router.back()} />
                 <Appbar.Content title="Allocations" />
-                <Appbar.Action icon="archive-outline" color={theme.colors.primary} onPress={() => router.push("/archived-allocations")} />
+                <Appbar.Action icon="archive-outline" color={theme.colors.primary} size={24} onPress={() => router.push("/archived-allocations")} style={{ borderRadius: 10, backgroundColor: "#E8EEFF" }} />
             </Appbar.Header>
 
             <ScrollView contentContainerStyle={{ padding: 16 }}>
@@ -396,7 +395,7 @@ export default function SavingsScreen() {
                                                             </View>
                                                         </View>
                                                         <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 10 }}>
-                                                            {formatAmount(currentBalance)} / {formatAmount(target)} \u2022 100% Reached
+                                                            {formatAmount(currentBalance)} / {formatAmount(target)} {"\u2022"} 100% Reached
                                                         </Text>
 
                                                         {/* Full Progress Bar */}
@@ -408,19 +407,6 @@ export default function SavingsScreen() {
                                                                 borderRadius: 4,
                                                             }} />
                                                         </View>
-                                                    </View>
-
-                                                    {/* Middle: Green Checkmark Circle */}
-                                                    <View style={{
-                                                        width: 48,
-                                                        height: 48,
-                                                        borderRadius: 24,
-                                                        backgroundColor: ec.successContainer || theme.colors.tertiaryContainer,
-                                                        justifyContent: "center",
-                                                        alignItems: "center",
-                                                        marginRight: 12,
-                                                    }}>
-                                                        <MaterialCommunityIcons name="checkmark-circle" size={28} color={ec.onSuccessContainer || theme.colors.onTertiaryContainer} />
                                                     </View>
 
                                                     {/* Far Right: Only Delete */}
@@ -457,7 +443,7 @@ export default function SavingsScreen() {
                     <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                         <Card.Content style={{ padding: 20 }}>
                             <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Transfer Money In</Text>
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>This creates an expense transaction \u2014 money leaves your main balance.</Text>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>This creates an expense transaction - money leaves your main balance.</Text>
                             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
                                 Available Balance: {formatAmount(availableBalance)}
                             </Text>
@@ -494,7 +480,7 @@ export default function SavingsScreen() {
                                 <Text variant="titleLarge" style={{ color: theme.colors.onSurface }}>Transfer Money Out</Text>
                                 <IconButton icon="close" size={24} onPress={closeTransferOutModal} />
                             </View>
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>This creates an income transaction \u2014 money returns to your main balance.</Text>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>This creates an income transaction - money returns to your main balance.</Text>
                             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
                                 Available balance: {formatAmount(selectedItem?.balance || 0)}
                             </Text>
@@ -534,7 +520,7 @@ export default function SavingsScreen() {
 
 <FAB
         icon="plus"
-        label="New Allocation"
+        label="Allocation"
         style={{ position: "absolute", margin: 16, right: 0, bottom: 0, borderRadius: 20, backgroundColor: theme.colors.primary }}
         color={theme.colors.onPrimary}
         onPress={() => router.push("/add-allocation")}

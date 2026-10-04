@@ -8,6 +8,7 @@ import { DonutChart } from "../../components/DonutChart";
 import { MonthlyTrendChart } from "../../components/MonthlyTrendChart";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { exportToCSV, exportToPDF } from "../../utils/exportUtils";
+import { TAB_BAR_CONTENT_CLEARANCE } from "../../utils/tabBarMetrics";
 import { isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format, subMonths, addMonths, addWeeks, subWeeks } from "date-fns";
 
 const TREND_MONTHS = 6;
@@ -227,7 +228,7 @@ export default function ReportsScreen() {
         >
           <Menu.Item onPress={() => { setPeriod("weekly"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Weekly" leadingIcon="calendar-week" />
           <Menu.Item onPress={() => { setPeriod("monthly"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Monthly" leadingIcon="calendar-month" />
-          <Menu.Item onPress={() => { setPeriod("annually"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Yearly" leadingIcon="calendar-year" />
+          <Menu.Item onPress={() => { setPeriod("annually"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Yearly" leadingIcon="calendar-range" />
         </Menu>
       </Appbar.Header>
 
@@ -244,7 +245,7 @@ export default function ReportsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: TAB_BAR_CONTENT_CLEARANCE }}>
         {/* 3-Column Summary Cards */}
         <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingTop: 16, gap: 10 }}>
           {/* Expense Card */}
