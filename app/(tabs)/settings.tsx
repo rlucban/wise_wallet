@@ -1131,7 +1131,7 @@ if (!pinVerified) {
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 }}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <List.Icon icon="cloud-sync" color={paperTheme.colors.onSurfaceVariant} />
-                <Text variant="bodyLarge" style={{ marginLeft: 12 }}>Auto-Backup</Text>
+                <Text variant="bodyLarge" style={{ marginLeft: 12, color: (isLocal || Platform.OS === "web") ? paperTheme.colors.onSurfaceVariant : paperTheme.colors.onSurface }}>Auto-Backup</Text>
               </View>
               <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={isLocal || Platform.OS === "web"} />
             </View>
