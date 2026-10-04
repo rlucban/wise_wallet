@@ -4,7 +4,7 @@
 |---|---|
 | ID | SPEC-28 |
 | Title | Type the Passcode Screen TextInput Ref |
-| Status | **FINAL** (approved 2026-09-30; v1.2 amendment approved same day after `tsc` rejected v1.1) |
+| Status | **FINAL** (approved 2026-09-30; v1.2 amendment approved same day after `tsc` rejected v1.1; ACC-05 annotated 2026-10-04 per SPEC-30 v2.3) |
 | Owner | User (final authority) |
 | Version | 1.2 |
 | Scope | `app/passcode-screen.tsx` — the `inputRef` declaration (line 11) and the `react-native` import (line 2) |
@@ -110,7 +110,7 @@ type, with no behavior change and no weakening of the lint guard.
 | **ACC-02** | A repo search for `:\s*any\b` / `as any\b` / `<any>` in `app/`, `components/`, `context/`, `hooks/`, `repositories/`, `utils/` returns no match. |
 | **ACC-03** | `app/passcode-screen.tsx:2` imports `TextInput as NativeTextInput` from `react-native` (added to the existing import statement, none added) and `app/passcode-screen.tsx:11` is `const inputRef = useRef<NativeTextInput>(null);`. `TextInput` from `react-native-paper` (line 3) remains the component used in JSX. |
 | **ACC-04** | `npx tsc --noEmit` reports 0 errors — in particular no `TS2322` at `app/passcode-screen.tsx:70` — and `inputRef.current?.focus()` at `app/passcode-screen.tsx:15` type-checks. |
-| **ACC-05** | `npm test` still reports `Tests: 98 passed, 98 total`, 0 failed; `git diff --stat` shows changes only in `app/passcode-screen.tsx` (plus docs/spec). |
+| **ACC-05** | `npm test` still reports `Tests: 98 passed, 98 total`, 0 failed; `git diff --stat` shows changes only in `app/passcode-screen.tsx` (plus docs/spec). **Annotated 2026-10-04 (SPEC-30 v2.3):** `98/98` is the verified baseline *for this spec as shipped* and is preserved as historical record. The repo-wide total is now higher (SPEC-37/38/39 added `utils/onboardingPayload.test.ts` and `utils/settingsAccountMode.test.ts`, plus guards in `utils/webPin.test.ts`), so a current run reports more than 98 tests. The gate is **0 failed**, not a fixed number. The `git diff --stat` clause is unaffected by this annotation. |
 
 ### 3.3 Acceptance criteria (Subjective — reviewer observation, per platform)
 

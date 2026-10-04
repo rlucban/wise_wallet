@@ -621,3 +621,15 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - No backend/storage/API/route/dependency change. Zero behavior change on web.
 - Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, matrix ACC-S01..S03 (web switch disabled, native Cloud-OFF toggleable, Expo Go + web export).
 
+---
+
+## 2026-10-04 -- SPEC-30 v2.4: Web Exception (refresh keeps session)
+
+- `specs/30-force-reauth-on-cold-start.md` amended to v2.4 per user call. Web refresh no longer logs out — the session persists on localStorage. Native force-reauth unchanged.
+- `app/_layout.tsx:78-81` — `ColdStartSessionGuard`'s effect returns on web before the latch and before `logout()`, so a page reload keeps the session. v2.2 originally placed this as a component-level `return null` above the hooks; `npm run lint` caught four `react-hooks/rules-of-hooks` errors and v2.4 moved the check inside the effect. Behavior is identical (`Platform.OS` is constant per render) — the hooks are now unconditional again.
+- `utils/webPin.test.ts` — ACC-W-05 asserts the web return precedes both `clearedRef.current = true` and `logout()`, and that no component-level early return sits above the hooks.
+- 401 handler (`apiClient.ts:49-55`) is the safety net for dead tokens.
+- v2.3 also rewrote this spec's ACC-11 to be count-agnostic (`98 passed, 98 total` was invalidated by SPEC-37/38/39), annotating the equivalent pins in SPEC-27/SPEC-28 as historical record and leaving SPEC-31's DRAFT pins for its own implementation.
+- No backend/storage/API/route/dependency change. Native behavior unchanged.
+- Open (user-run, AGENTS §1.3): `npm test`, `npm run lint`, matrix ACC-12..ACC-17 (web refresh stays logged in, native cold start still logs out, dead token → 401 redirect).
+

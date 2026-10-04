@@ -100,4 +100,17 @@ describe("SPEC-36 web invariants (source-text guards)", () => {
       expect(fn).not.toContain("Offline");
     });
   });
+
+  describe("SPEC-30 v2.2 (web refresh keeps session)", () => {
+    it("ACC-W-05: ColdStartSessionGuard effect returns on web before the latch and logout", () => {
+      const source = readRepo("app/_layout.tsx");
+      const guard = sliceFunction(source, "function ColdStartSessionGuard()", "// SPEC-36");
+      expect(guard).toContain('if (Platform.OS === "web") return;');
+      const webCheck = guard.indexOf('if (Platform.OS === "web") return;');
+      expect(webCheck).toBeLessThan(guard.indexOf("clearedRef.current = true;"));
+      expect(webCheck).toBeLessThan(guard.indexOf("logout();"));
+      // no component-level early return above the hooks (react-hooks/rules-of-hooks)
+      expect(guard).not.toContain("return null; //");
+    });
+  });
 });

@@ -33,9 +33,11 @@ function runSuite(os: "android" | "ios" | "web") {
             expect(source).toContain("isLocal={isLocal}");
         });
 
-        it("ACC-03: switch disabled ⟺ isLocal", () => {
+        it("ACC-03: switch disabled ⟺ isLocal (web also disabled)", () => {
             const source = readRepo("app/(tabs)/settings.tsx");
-            expect(source).toContain("onValueChange={handleToggleAutoBackup} disabled={isLocal}");
+            expect(source).toContain(
+                'onValueChange={handleToggleAutoBackup} disabled={isLocal || Platform.OS === "web"}'
+            );
         });
     });
 }

@@ -75,6 +75,9 @@ function ColdStartSessionGuard() {
   const clearedRef = useRef(false);
 
   useEffect(() => {
+    // SPEC-30 v2.2: on web a refresh is a page reload, not a cold start, and the
+    // session is persisted in localStorage — so the clear is skipped there.
+    if (Platform.OS === "web") return;
     if (isLoading || clearedRef.current) return;
     clearedRef.current = true;
     if (activeUserId) {

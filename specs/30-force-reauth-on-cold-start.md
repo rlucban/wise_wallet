@@ -4,9 +4,9 @@
 |---|---|
 | ID | SPEC-30 |
 | Title | Force Login on Every Cold Start |
-| Status | **FINAL** — v2.1 (2026-10-01, per user call). Supersedes v2.0 and the v1.0 DRAFT. Implementable. |
+| Status | **FINAL** — v2.4 (2026-10-04). Supersedes v2.3: web exception (v2.2), count-agnostic test baseline (v2.3), effect-level web check (v2.4). |
 | Owner | User (final authority) |
-| Version | 2.1 |
+| Version | 2.4 |
 | Scope | Cold-start session clearing (`app/_layout.tsx`); reset-epoch guard (`app/_layout.tsx`); last-user hint + pre-login due reminders (`app/_layout.tsx`, `context/AuthContext.tsx`, `utils/notifications.ts`); logged-out connectivity (`context/NetworkContext.tsx`) |
 | Non-goals | Any change to `isFirstRun` or its resolution — `context/UserProfileContext.tsx`, `app/login.tsx`, `app/register.tsx`, `DEFAULT_PROFILE`; `utils/profileMerge.ts` (never created); `/intro` and `/onboarding` routes/files; `MainLayout`'s redirect table, `session_ended` branch, passcode gate, `Stack.Screen` list; `AuthContext`'s restore effect; `PasscodeContext` persistence; the repository layer (`repositories/*`, `types/repositories.ts`); `user_{id}_*` keys, the `wallet-api` contract, dependencies |
 | Normative source | This file. File+symbol cites are normative; `:line` numbers are hints only. |
@@ -22,6 +22,23 @@
 > account. Verified premise correction carried into v2.0: `app/login.tsx:103`
 > is reached only from the "Create Offline Account" branch (`:85-112`); the normal Local
 > re-login path (`:60-79`) writes no profile, so no `isFirstRun` guard is needed there.
+> v2.2 (2026-10-04, per user call) adds a web exception: a browser refresh is a page reload,
+> not a cold start, and the session is persisted in localStorage, so `ColdStartSessionGuard`
+> returns null on web (CON-01). Android/iOS force-reauth is unchanged. No freshness precheck is
+> added — an expired token exits via the 401 handler in `utils/apiClient.ts:49-55`. CON-12 and
+> ACC-10 are amended to permit exactly this one branch.
+> v2.3 (2026-10-04) rewrites ACC-11 to be count-agnostic and applies the same rule to the
+> pinned totals in SPEC-27 (ACC-01) and SPEC-28 (ACC-05). Those two specs were FINAL and
+> implemented when `98 passed, 98 total` was their real, verified result, so their pins are
+> retained as historical record and annotated rather than rewritten. SPEC-31 (CON-07, ACC-04)
+> is still DRAFT and unimplemented; its pins are corrected when that spec is implemented.
+> The old SPEC-30 pin was invalidated by SPEC-37/38/39, which added three test files.
+> No behavioral or normative change: every one still requires 0 failures, clean lint, clean tsc.
+> v2.4 (2026-10-04) corrects v2.2's implementation shape after `npm run lint` reported four
+> `react-hooks/rules-of-hooks` errors: the web check had been placed as a component-level
+> `return null` above the hooks. It now sits as the first statement of the effect body, ahead
+> of both the latch and `logout()`. Behavior is unchanged (Platform.OS is constant per render),
+> but CON-01 and ACC-10 are reworded because the component-level return no longer exists.
 
 ## Terminology (RFC 2119)
 
@@ -38,7 +55,9 @@ as a requirement.
 session, so an authenticated user never sees Login/Register and the app opens straight into
 the dashboard (or, for `profile.isFirstRun === true`, into `/intro` at `:156-160` →
 `/onboarding` via `app/intro.tsx:63-64`). The user's requirement is that **no session may
-survive a cold start**, so Login/Register is always the first screen presented.
+survive a cold start** on Android/iOS, so Login/Register is always the first screen
+presented there. On Web the session is persisted in localStorage and a refresh is a page
+reload rather than a cold start, so the session survives it (v2.2).
 
 ### 1.2 Why the clear is implemented in `_layout.tsx`, not in `AuthContext`
 
@@ -58,7 +77,7 @@ mount-time `logout()` wrong and shape the implementation:
 | Consequence | Detail | Mitigation |
 |---|---|---|
 | Re-authentication every launch | Every cold start requires authenticating again, Local accounts included. | Accepted (user call). |
-| Web refresh logs out | Every browser refresh / web page load signs the user out. | Accepted for all platforms (user call). |
+| Web refresh logs out | v2.1: every browser refresh / web page load signed the user out. | **Superseded (v2.2)** — the guard is skipped on web; a dead token exits via the 401 handler. |
 | **Data loss** (new) | With no session at startup, `SystemResetManager`'s `isLocal` check is false, so `checkHealth()` runs and an advanced `reset_epoch` triggers `hardResetLocalData()` (`utils/db.ts:286-291`), which wipes `master_users` — i.e. Local accounts and their SHA-256 PINs, unrecoverably. | **Fixed by D-02.** |
 | **False offline banner / silent "local-only" posture** (new) | A signed-out startup has no token, so a connectivity check based on the token would classify the app as a Local-only account and report device connectivity instead of the server's real state. | **Fixed by D-04: online-first.** The API `/health` check is the default for every non-Local session, including the signed-out one; Local is chosen only when the session's token actually is a Local token. |
 | **Due reminders stop** (new) | `AuthLoader`'s scheduling effect (`:224-237`) is gated on `activeUserId`, so reminders are not scheduled at launch; a due later that day could go unnotified. | **Fixed by D-03.** |
@@ -85,7 +104,11 @@ time. Nothing outside the four files changed.
   once per process, calls `logout()` whenever `activeUserId` is non-null. Its latch MUST be a
   `useRef` boolean (process-scoped), and `MainLayout`'s existing `!activeUserId → /login`
   branch (`:127-148`) MUST then present Login/Register. The clear MUST NOT be re-armed or
-  re-run for a session created later in the same process.
+  re-run for a session created later in the same process. **On `Platform.OS === "web"`, the
+  effect MUST return before the latch is set and before `logout()` is called — the session
+  persists across refresh (localStorage).** The check MUST live inside the effect body, not as
+  a component-level early return, so `useAuthData`/`useAuthActions`/`useRef`/`useEffect` are
+  called unconditionally in identical order on every render (`react-hooks/rules-of-hooks`).
 - **CON-02 — No redirect-table changes.** `app/_layout.tsx`'s redirect table (`:141-165`),
   its `session_ended` branch (`:128-139`), the passcode gate (`:168-170`), and the
   `Stack.Screen` list (`:178-189`) MUST remain byte-identical. Only the two additions in
@@ -131,9 +154,10 @@ time. Nothing outside the four files changed.
   exist.
 - **CON-11 — Storage compatibility.** `user_{id}_*`, `activeUserId`, and `authToken` keep their
   names and shapes. `lastActiveUserId` is the only new key; no migration (AGENTS.md §1.4).
-- **CON-12 — Cross-platform parity.** No new `Platform.OS` branch in `app/_layout.tsx`,
-  `context/AuthContext.tsx`, or `context/NetworkContext.tsx`. The only platform guards are
-  the pre-existing ones inside `utils/notifications.ts`.
+- **CON-12 — Cross-platform parity.** No new `Platform.OS` branch in
+  `context/AuthContext.tsx` or `context/NetworkContext.tsx`. In `app/_layout.tsx` the ONLY
+  permitted branch is the `ColdStartSessionGuard` web skip (CON-01); every other platform
+  guard remains the pre-existing ones inside `utils/notifications.ts`.
 - **CON-13 — Guard not weakened.** No ESLint rule change; `utils/themeColors.test.js`
   untouched; no new `any`; no dependency or `package.json` change.
 - **CON-14 — Expo Go / Vercel safe.** No new native module; `expo-notifications` stays
@@ -143,9 +167,10 @@ time. Nothing outside the four files changed.
 
 ## 3. Goal
 
-Every cold start lands on Login/Register — no session survives a process restart — on
-Android, iOS, and Web, **without** introducing new data loss, a false offline banner, or
-dropped due reminders, and **without** changing `isFirstRun` behavior at all.
+Every cold start on Android and iOS lands on Login/Register — no session survives a process
+restart there. On Web the restored session survives a refresh (v2.2). In both cases,
+**without** introducing new data loss, a false offline banner, or dropped due reminders,
+and **without** changing `isFirstRun` behavior at all.
 
 ### 3.1 Platform matrix
 
@@ -153,10 +178,10 @@ dropped due reminders, and **without** changing `isFirstRun` behavior at all.
 |---|---|---|
 | **Android** | ACC-01..ACC-11 | ACC-12, ACC-13, ACC-14, ACC-15, ACC-16, ACC-17 |
 | **iOS** | ACC-01..ACC-11 | ACC-12, ACC-13, ACC-14, ACC-15, ACC-16, ACC-17 |
-| **Web** | ACC-01..ACC-11 | ACC-12, ACC-13, ACC-15, ACC-16, ACC-17 |
+| **Web** | ACC-01..ACC-11 | ACC-12, ACC-15, ACC-16, ACC-17 |
 
-Web is exempt from ACC-14 (no local notifications; `scheduleDueNotifications` no-ops on web)
-and ACC-16's notification half, but MUST satisfy the rest, including ACC-13 (refresh signs out).
+Web is exempt from ACC-13 (refresh keeps session), ACC-14 (no local notifications), and
+ACC-16's notification half, but MUST satisfy the rest.
 
 ### 3.2 Acceptance criteria (Objective — machine-checkable)
 
@@ -171,8 +196,8 @@ and ACC-16's notification half, but MUST satisfy the rest, including ACC-13 (ref
 | **ACC-07** | `AuthLoader`'s pre-login effect is gated on `!activeUserId`, fires at most once per process, calls `getPrefixedKey('dues', hintId)` with the hint id as an explicit override, and calls neither `requestNotificationPermissions` nor `repos.dues.getAll()`. |
 | **ACC-08** | `context/NetworkContext.tsx` selects device connectivity **only** when `isLocal` is true (its original condition), i.e. `!activeUserId` does not appear in the branch; the offline→online transition calls neither `triggerSyncProcessing` nor `processSyncQueue` while `!activeUserId`; `utils/authMode.ts` is unchanged. |
 | **ACC-09** | `context/UserProfileContext.tsx`, `app/login.tsx`, `app/register.tsx`, `app/intro.tsx`, `app/onboarding.tsx`, `context/PasscodeContext.tsx`, `repositories/*`, and `types/repositories.ts` are byte-identical to the pre-change files; `utils/profileMerge.ts` does not exist. |
-| **ACC-10** | No new `Platform.OS` branch exists in `app/_layout.tsx`, `context/AuthContext.tsx`, or `context/NetworkContext.tsx`; the only platform guards remain the pre-existing ones in `utils/notifications.ts`. |
-| **ACC-11** | `npm test` reports `98 passed, 98 total`, 0 failed (no test files added or removed); `npm run lint` reports 0 errors and 0 warnings; `npx tsc --noEmit` reports 0 errors; `package.json` and `package-lock.json` have no change from this spec. |
+| **ACC-10** | `context/AuthContext.tsx` and `context/NetworkContext.tsx` contain no new `Platform.OS` branch; the only branch added in `app/_layout.tsx` is inside `ColdStartSessionGuard`'s effect, where `if (Platform.OS === "web") return;` is the effect's first statement and precedes both `clearedRef.current = true` and the `logout()` call. `npm run lint` reports 0 `react-hooks/rules-of-hooks` errors — no hook is called after an early return. |
+| **ACC-11** | `npm test` reports 0 failed. **No test file is removed by this spec** — v2.2 amends guards inside the existing `utils/webPin.test.ts` and `utils/settingsAccountMode.test.ts` and adds no new test file. `npm run lint` reports 0 errors and 0 warnings; `npx tsc --noEmit` reports 0 errors; `package.json` and `package-lock.json` have no change from this spec. The passed/total count is reported by the user against the current baseline rather than pinned here: SPEC-37/38/39 added three test files that moved the total off 98. |
 
 > Note (AGENTS.md §1.10 coverage limit): this spec adds **no** jest tests. Every change is
 > React lifecycle/ordering or storage I/O in files under `app/` and `context/`, which the
@@ -184,7 +209,7 @@ and ACC-16's notification half, but MUST satisfy the rest, including ACC-13 (ref
 
 | ID | Criterion | Pass condition |
 |---|---|---|
-| **ACC-12** | Android/iOS/Web: sign in, then kill the app (or refresh the web tab) and relaunch. | Login/Register is the first screen presented. The app never opens on the dashboard, `/intro`, or `/onboarding`. |
+| **ACC-12** | Android/iOS: sign in, then kill the app and relaunch. Web: sign in, then refresh the page. | Android/iOS: Login/Register is the first screen presented. The app never opens on the dashboard, `/intro`, or `/onboarding`. Web: the dashboard opens directly — the session persists across refresh. |
 | **ACC-13** | After the relaunch, authenticate (Online account: email+password; Local account: name+PIN). | The dashboard opens. There is **no** logout loop — the session survives at least 30 s without bouncing back to Login. A Local account opens with its stored name and opening balance intact. |
 | **ACC-14** | Android/iOS only: grant notification permission, create a due inside the next 24 h, force-kill the app, relaunch, and **do not** sign in. | No permission prompt appears on the login screen. Once the device time passes the due's 09:00 trigger, the reminder still fires with that due's title and amount. |
 | **ACC-15** | With the API reachable, cold start on each platform while signed out. | The startup performs an API `/health` check (online-first): the log shows the cloud branch, and **no** "You're offline. Changes will sync automatically…" banner appears. Sign in with a Local account and cold start again with the device online but the server unreachable: the log then shows the Local branch, connectivity follows the device, and no banner appears. |
@@ -213,8 +238,9 @@ and ACC-16's notification half, but MUST satisfy the rest, including ACC-13 (ref
 - **DEC-07:** Pre-login scheduling of another account's dues is accepted as the cost of
   keeping reminders alive. It only reads `user_{id}_dues` for the id this device last signed
   in as, only when permission was already granted, and it writes no storage.
-- **DEC-08:** The forcing applies to **all** platforms, including Web, so every refresh signs
-  the user out (user call). No `Platform.OS` branch is introduced (CON-12).
+- **DEC-08:** The forcing applies to **all native platforms** (Android/iOS). On web, the
+  session persists across refresh (localStorage), so the guard is skipped (user call, v2.2).
+  The `Platform.OS === "web"` check in the guard is the only platform branch (CON-12 amended).
 - **DEC-09:** Connectivity is **online-first** (user call): the API `/health` check is the
   default for every session that is not Local, and Local is selected only when the token says
   so. A v2.0 draft that also treated "no session" as device-connectivity-only was rejected — it
@@ -227,7 +253,8 @@ and ACC-16's notification half, but MUST satisfy the rest, including ACC-13 (ref
 
 - **D-01 — `app/_layout.tsx`**: add `ColdStartSessionGuard` (CON-01) and render it inside
   `AuthProvider` in `RootLayout` (ACC-02). `SystemResetManager` and `MainLayout` are otherwise
-  untouched, as is the `Stack` tree (CON-02).
+  untouched, as is the `Stack` tree (CON-02). v2.2: the guard returns null immediately on
+  web (CON-01), so refresh preserves the session; Android/iOS behavior is unchanged.
 - **D-02 — `app/_layout.tsx`**: `SystemResetManager` early-returns when there is no
   `activeUserId` (CON-04), with `activeUserId` added to its effect dependencies.
 - **D-03 — reminders survive a signed-out start**: `context/AuthContext.tsx` `login()` writes
