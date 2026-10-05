@@ -33,6 +33,8 @@ const TransactionsActionsContext = createContext<TransactionsActions | undefined
 
 const sanitizeTransaction = (t: Transaction): Transaction => {
     const withTimestamp = { ...t, updatedAt: t.updatedAt || Date.now() } as Record<string, unknown>;
+    const zDate = toZIso(withTimestamp.date);
+    if (zDate !== null) withTimestamp.date = zDate;
     if (withTimestamp.note === undefined) withTimestamp.note = null;
     if (withTimestamp.receiptUrl === undefined) withTimestamp.receiptUrl = null;
     if (withTimestamp.paymentMethod === undefined) withTimestamp.paymentMethod = "";
@@ -47,6 +49,54 @@ const addCategoryFallback = (t: Transaction): Transaction => ({
     ...t,
     category: t.category || { id: 'uncategorized', name: 'Others', type: t.type || 'expense', updatedAt: 0 },
 });
+
+// SPEC-43 follow-up (HAR-proven): the server echoes PG timestamptz (`+00:00`)
+// which its strict zod datetime rejects, mints ids on create (client UUIDs
+// never reconcile), and omits `updatedAt` on rows. Normalize outbound dates
+// to Z ISO; treat a remote row without any timestamp as authoritative.
+function toZIso(date: unknown): string | null {
+    if (typeof date !== "string") return null;
+    const parsed = new Date(date);
+    return isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function remoteEpoch(remoteTx: Transaction): number {
+    if (remoteTx.updatedAt) return remoteTx.updatedAt;
+    const createdAt = (remoteTx as { createdAt?: unknown }).createdAt;
+    if (typeof createdAt === "string") {
+        const parsed = Date.parse(createdAt);
+        if (!isNaN(parsed)) return parsed;
+    }
+    return Number.POSITIVE_INFINITY;
+}
+
+function hasPendingLocalFile(tx: Transaction): boolean {
+    return !!tx.receiptUrl && tx.receiptUrl.startsWith("file://");
+}
+
+function isSameRecord(a: Transaction, b: Transaction): boolean {
+    const dateA = toZIso(a.date);
+    const dateB = toZIso(b.date);
+    return (
+        dateA !== null &&
+        dateA === dateB &&
+        Number(a.amount || 0) === Number(b.amount || 0) &&
+        (a.type || "") === (b.type || "") &&
+        (a.note ?? null) === (b.note ?? null)
+    );
+}
+
+function isSameContent(a: Transaction, b: Transaction): boolean {
+    return (
+        isSameRecord(a, b) &&
+        (a.title ?? null) === (b.title ?? null) &&
+        (a.paymentMethod ?? null) === (b.paymentMethod ?? null) &&
+        (a.establishment ?? null) === (b.establishment ?? null) &&
+        (a.receiptUrl ?? null) === (b.receiptUrl ?? null) &&
+        (a.category?.id ?? null) === (b.category?.id ?? null) &&
+        (a.dueId ?? null) === (b.dueId ?? null)
+    );
+}
 
 export function TransactionsProvider({ children }: { children: ReactNode }) {
     const { activeUserId } = useAuth();
@@ -112,13 +162,21 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                     for (const localTx of localData) {
                         const remoteTx = mergedMap.get(localTx.id);
                         if (!remoteTx) {
+                            // Fingerprint-adopt: the server mints ids, so an already-POSTed
+                            // payload lives remotely under another id — adopt it instead of
+                            // minting another row. Never drop a pending local file.
+                            const twin = remoteData.find((r) => isSameRecord(localTx, r));
+                            if (twin && !hasPendingLocalFile(localTx)) {
+                                await txRepo.deleteById(localTx.id);
+                                continue;
+                            }
                             const uploaded = await uploadReceiptIfNeeded(sanitizeTransaction(localTx));
                             mergedMap.set(localTx.id, uploaded);
                             await enqueueAndTrigger('transactions', 'create', localTx.id, {
                                 ...uploaded,
                                 userId: activeUserId,
                             });
-                        } else if ((localTx.updatedAt || 0) > (remoteTx.updatedAt || 0)) {
+                        } else if ((localTx.updatedAt || 0) > remoteEpoch(remoteTx) && !isSameContent(localTx, remoteTx)) {
                             mergedMap.set(localTx.id, localTx);
                             await enqueueAndTrigger('transactions', 'update', localTx.id, {
                                 ...localTx,
@@ -218,9 +276,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
+                const updateBody: Record<string, unknown> = { ...updates, userId: activeUserId };
+                const zUpdateDate = toZIso(updateBody.date);
+                if (zUpdateDate !== null) updateBody.date = zUpdateDate;
                 const { ok } = await authFetch(`transactions/${id}`, {
                     method: "PUT",
-                    body: JSON.stringify({ ...updates, userId: activeUserId }),
+                    body: JSON.stringify(updateBody),
                 });
                 if (!ok) {
                     throw new Error("Failed to save changes. Please check your connection.");
@@ -234,8 +295,10 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             if (!isLocal) {
                 const autoBackup = await getSetting('autoBackup');
                 if (API_URL && autoBackup !== 'false') {
-                    const syncData = { ...updates, userId: activeUserId };
-                    await enqueueAndTrigger('transactions', 'update', id, syncData);
+                    const syncBody: Record<string, unknown> = { ...updates, userId: activeUserId };
+                    const zSyncDate = toZIso(syncBody.date);
+                    if (zSyncDate !== null) syncBody.date = zSyncDate;
+                    await enqueueAndTrigger('transactions', 'update', id, syncBody);
                 }
             }
         } catch (error) {
