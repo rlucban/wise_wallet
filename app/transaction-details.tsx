@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 import { Appbar, Text, Card, useTheme } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { useTransactions } from "../hooks/useTransactions";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { Transaction } from "../types";
@@ -48,7 +49,7 @@ export default function TransactionDetails() {
     if (transaction) {
       await deleteTransaction(transaction.id);
       setDeleteDialogVisible(false);
-      router.back();
+      safeGoBack(router);
     }
   };
 
@@ -73,7 +74,7 @@ export default function TransactionDetails() {
         }}
       >
         <View style={styles.appbarLeft}>
-          <Appbar.BackAction onPress={() => router.back()} />
+          <Appbar.BackAction onPress={() => safeGoBack(router)} />
           <Appbar.Content title="Transaction Details" titleStyle={{ fontWeight: "700" }} />
         </View>
         <View style={styles.appbarRight}>

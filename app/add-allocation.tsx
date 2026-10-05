@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, ScrollView } from "react-native";
 import { TextInput, Button, Text, useTheme, Appbar, Card } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { useUserProfile } from "../context/UserProfileContext";
@@ -59,7 +60,7 @@ export default function AddAllocation() {
                 target_amount: cleanGoal > 0 ? cleanGoal : undefined,
                 updatedAt: Date.now(),
             });
-            router.back();
+            safeGoBack(router);
         } catch (e) {
             console.error("Failed to add allocation:", e);
             showToast("Failed to save allocation. Please try again.");
@@ -77,7 +78,7 @@ export default function AddAllocation() {
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <Appbar.Header>
-                <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.BackAction onPress={() => safeGoBack(router)} />
                 <Appbar.Content title="New Allocation" />
             </Appbar.Header>
 

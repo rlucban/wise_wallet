@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { Appbar, Text, Card, IconButton, Snackbar, useTheme } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import EmptyState from "../components/EmptyState";
@@ -63,7 +64,7 @@ export default function ArchivedAllocationsScreen() {
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <Appbar.Header>
-                <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.BackAction onPress={() => safeGoBack(router)} />
                 <Appbar.Content title="Archived Allocations" />
             </Appbar.Header>
 

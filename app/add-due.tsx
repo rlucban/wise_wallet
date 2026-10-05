@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { View, ScrollView } from "react-native";
 import { TextInput, Button, Text, useTheme, Appbar, Card, Chip, SegmentedButtons, Portal, Modal, Switch, Dialog } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { Calendar } from "react-native-calendars";
 import { useCategoriesData } from "../context/CategoriesContext";
 import { useDues } from "../hooks/useDues";
@@ -75,7 +76,7 @@ export default function AddDue() {
                 completed: false,
                 updatedAt: Date.now(),
             });
-            router.back();
+            safeGoBack(router);
         } catch {
             setAlertDialog({ visible: true, title: "Error", message: "Failed to save scheduled item." });
         } finally {
@@ -86,7 +87,7 @@ export default function AddDue() {
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <Appbar.Header>
-                <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.BackAction onPress={() => safeGoBack(router)} />
                 <Appbar.Content title="Add Scheduled Due" />
             </Appbar.Header>
 

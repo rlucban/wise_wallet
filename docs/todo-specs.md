@@ -13,7 +13,7 @@ Status key: `OPEN` (diagnosed, unstarted) · `BLOCKED` (needs a decision first)
 
 | Field | Value |
 |---|---|
-| Status | OPEN — no spec written |
+| Status | SPEC-42 FINAL (2026-10-05; DEC-01/DEC-02 deferred) — see `specs/42-go-back-after-web-refresh.md` |
 | Severity | Low — development-only warning; no user-visible failure |
 | Platform | Web (reachable). Native unaffected in practice (tabs keep history) |
 | Found | 2026-10-05, during SPEC-40 session |

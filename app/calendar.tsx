@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { View, ScrollView } from "react-native";
 import { Appbar, Text, List, FAB, useTheme, Card, Divider } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { Calendar } from "react-native-calendars";
 import { useTransactions } from "../hooks/useTransactions";
 import { useCurrencyActions } from "../context/CurrencyContext";
@@ -48,7 +49,7 @@ export default function CalendarScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
       <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} />
+        <Appbar.BackAction onPress={() => safeGoBack(router)} />
         <Appbar.Content title="Calendar" />
       </Appbar.Header>
 

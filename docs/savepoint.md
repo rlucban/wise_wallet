@@ -647,3 +647,17 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Deferred, documented in `docs/todo-specs.md`: T-01 `GO_BACK` unhandled on sub-screens after refresh (plausibly newly reachable via SPEC-30 v2.4 — unconfirmed), T-02 web update/delete consult `txRepo` before the API call (**SPEC-36 D-W-03's "full API-direct" claim is inaccurate**), T-03 stale `98/98` constraint at `specs/28-…:90`, T-04 rotate a JWT pasted into the transcript (manual, no code).
 - Verified (user-run): `npx jest` → **12 suites, 361 passed, 361 total, 0 failed**. Open: `npm run lint`, `npx tsc --noEmit`, and matrix ACC-S01 (onboard → F5 → dashboard holds), ACC-S02 (lists populate), ACC-S03 (receipt upload stores a URL), ACC-S04 (Expo Go no regression).
 
+## 2026-10-05 -- SPEC-42: GO_BACK After Web Refresh (FINAL, decisions deferred)
+
+- `specs/42-go-back-after-web-refresh.md`: FINAL per explicit user call. User deemed items 1 (persistence) and 2 (implications) addressed; dynamic repro + probe waived, static evidence accepted (14 files, 19 `router.back()` sites, zero `canGoBack` in `app/`). No prior spec covered GO_BACK (SPEC-28 mention incidental) — this file is the canonical home (§1.14) for `rlucban/wise_wallet#44` + T-01.
+- DEC-01 (helper vs inline) and DEC-02 (`/` vs `/(tabs)` fallback) deliberately left OPEN — not guessed. Implementation BLOCKED until the user calls them and names who builds it. No code written; no test file added.
+- `docs/todo-specs.md` T-01 status updated to point here (was "no spec written"). Journal: `AGENTS.md` §3 appended.
+
+## 2026-10-05 -- SPEC-42 implemented (D-01..D-03)
+
+- User said `code this for me` then `do all` = accept both recommendations: DEC-01=(a) central helper, DEC-02=`/` fallback (precedent: `app/_layout.tsx:202`). Recorded in spec (correctable by user); D-00 gate lifted on those calls.
+- D-01 `utils/backNavigation.ts` (new): pure module, zero react-native/expo-router imports — `BackCapableRouter` interface (structurally satisfied by expo-router's Router), `BACK_FALLBACK = "/"`, `safeGoBack(router, fallback?)` implementing the CON-06 branch.
+- D-02 call-site migration (14 files, 19 sites, bare-minimum): one `safeGoBack` import per file (after the expo-router import); 14 `Appbar.BackAction onPress` → `() => safeGoBack(router)`; 5 post-save `router.back();` → `safeGoBack(router);` (`add-transaction:213`, `edit-transaction:161`, `transaction-details:51`, `add-due:78`, `add-allocation:62`). Nothing else touched.
+- D-03 `utils/backNavigation.test.ts` (new): ACC-01 repo-wide scan (zero raw `router.back()` in `app/**/*.tsx`), ACC-02/03/03b helper branch tests + DEC-02 `/` assertion, all parameterized `android`/`ios`/`web` (§1.10).
+- Verified (user-run 2026-10-05): `npm run lint` clean; `npx jest` → **13 suites, 390 passed, 0 failed** (baseline had grown past SPEC-40's 361; 13 new SPEC-42 tests included). Worker "failed to exit gracefully" notice is a pre-existing teardown warning, not a failure. `npx tsc --noEmit` clean (no output) — expo-router `Router` → `BackCapableRouter` structural assignability confirmed. Open: manual ACC-S01 (web F5-then-Back → `/`, no warning), ACC-S02 (dues/add-form/details matrix), ACC-S03 (Expo Go pop unchanged).
+

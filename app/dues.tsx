@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Appbar, Text, Card, FAB, Portal, Modal, TextInput, Button, Checkbox, useTheme, Chip, IconButton, SegmentedButtons, Dialog } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { Calendar } from "react-native-calendars";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { useDues } from "../hooks/useDues";
@@ -468,7 +469,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} />
+        <Appbar.BackAction onPress={() => safeGoBack(router)} />
         <Appbar.Content title="Scheduled" />
         <Appbar.Action
           icon="check-circle-outline"

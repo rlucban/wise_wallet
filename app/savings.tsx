@@ -3,6 +3,7 @@ import EmptyState from "../components/EmptyState";
 import { View, ScrollView, Alert } from "react-native";
 import { Appbar, Text, FAB, Portal, Modal, TextInput, Button, Card, IconButton, Snackbar, useTheme } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { useTransactions } from "../hooks/useTransactions";
@@ -238,7 +239,7 @@ export default function SavingsScreen() {
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <Appbar.Header>
-                <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.BackAction onPress={() => safeGoBack(router)} />
                 <Appbar.Content title="Allocations" />
                 <Appbar.Action icon="archive-outline" color={theme.colors.primary} onPress={() => router.push("/archived-allocations")} />
             </Appbar.Header>
