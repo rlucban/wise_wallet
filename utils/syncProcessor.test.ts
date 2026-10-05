@@ -1,4 +1,11 @@
 import { SyncQueueItem } from './syncQueue';
+import { Platform } from 'react-native';
+
+type PlatformOS = 'android' | 'ios' | 'web';
+
+const PLATFORMS: PlatformOS[] = ['android', 'ios', 'web'];
+
+let mockOS: PlatformOS = 'ios';
 
 jest.mock('./db', () => ({
   get API_URL() {
@@ -9,6 +16,14 @@ jest.mock('./db', () => ({
 
 jest.mock('./apiClient', () => ({
   authFetch: jest.fn(),
+}));
+
+jest.mock('react-native', () => ({
+  Platform: {
+    get OS() {
+      return mockOS;
+    },
+  },
 }));
 
 import { authFetch } from './apiClient';
@@ -70,6 +85,30 @@ import {
   addQueueChangeListener,
 } from './syncProcessor';
 
+// SPEC-41 CON-07: the verbose flag is an import-time const, so each env case
+// reloads the module with a hermetic db mock (exact value, no env consulted,
+// no cross-test leakage through process.env).
+function loadProcessorWithEnv(apiUrl: string | undefined) {
+  jest.resetModules();
+  jest.doMock('./db', () => ({
+    get API_URL() {
+      return apiUrl;
+    },
+    getSetting: jest.fn(),
+  }));
+  return require('./syncProcessor');
+}
+
+function resolveWithStatus(status: number, error?: string) {
+  const { authFetch: freshFetch } = require('./apiClient');
+  (freshFetch as jest.MockedFunction<typeof authFetch>).mockResolvedValue({
+    ok: status >= 200 && status < 300,
+    status,
+    ...(error !== undefined ? { error } : {}),
+    data: {},
+  });
+}
+
 describe('syncProcessor', () => {
   beforeEach(() => {
     queue = [];
@@ -102,68 +141,155 @@ describe('syncProcessor', () => {
       });
     });
 
-    it('dequeues item on 404 — BUG: silently drops item', async () => {
-      const item: SyncQueueItem = {
-        id: 'transactions:create:tx-1',
-        entity: 'transactions',
-        operation: 'create',
-        entityId: 'tx-1',
-        data: { id: 'tx-1', amount: 100 },
-        timestamp: Date.now(),
-        retryCount: 0,
-        nextRetryAt: Date.now(),
-      };
-      queue.push(item);
-
-      mockAuthFetch.mockResolvedValue({
-        ok: false,
-        status: 404,
-        error: 'Not Found',
+  describe.each(PLATFORMS)('sync 400/404 handling on %s', (platform) => {
+      beforeEach(() => {
+        mockOS = platform;
       });
 
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
-
-      await processSyncQueue();
-
-      // BUG: item is dequeued even though it was never synced
-      expect(queue).toHaveLength(0);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('404')
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    it('dequeues item on 400 — BUG: silently drops item', async () => {
-      const item: SyncQueueItem = {
-        id: 'transactions:create:tx-1',
-        entity: 'transactions',
-        operation: 'create',
-        entityId: 'tx-1',
-        data: { id: 'tx-1', amount: 100 },
-        timestamp: Date.now(),
-        retryCount: 0,
-        nextRetryAt: Date.now(),
-      };
-      queue.push(item);
-
-      mockAuthFetch.mockResolvedValue({
-        ok: false,
-        status: 400,
-        error: 'Invalid data',
+      it('runs against the mocked platform', () => {
+        expect(Platform.OS).toBe(platform);
       });
 
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      // ACC-01
+      it('400 with localhost API_URL logs error with payload detail and dequeues', async () => {
+        queue.push({
+          id: 'transactions:update:tx-1',
+          entity: 'transactions',
+          operation: 'update',
+          entityId: 'tx-1',
+          data: { id: 'tx-1', note: 'edited' },
+          timestamp: Date.now(),
+          retryCount: 0,
+          nextRetryAt: Date.now(),
+        });
+        const { processSyncQueue: freshProcess } = loadProcessorWithEnv('http://localhost:3000');
+        resolveWithStatus(400, 'HTTP 400');
+        const errorSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      await processSyncQueue();
+        await freshProcess();
 
-      // BUG: item is dequeued even though server rejected the data
-      expect(queue).toHaveLength(0);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('400')
-      );
+        expect(queue).toHaveLength(0);
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('400'),
+          expect.objectContaining({
+            entity: 'transactions',
+            operation: 'update',
+            entityId: 'tx-1',
+            status: 400,
+            data: { id: 'tx-1', note: 'edited' },
+          })
+        );
 
-      consoleSpy.mockRestore();
+        errorSpy.mockRestore();
+      });
+
+      // ACC-02
+      it('404 with localhost API_URL logs error with payload detail and dequeues', async () => {
+        queue.push({
+          id: 'transactions:update:tx-1',
+          entity: 'transactions',
+          operation: 'update',
+          entityId: 'tx-1',
+          data: { id: 'tx-1', note: 'edited' },
+          timestamp: Date.now(),
+          retryCount: 0,
+          nextRetryAt: Date.now(),
+        });
+        const { processSyncQueue: freshProcess } = loadProcessorWithEnv('http://localhost:3000');
+        resolveWithStatus(404, 'Not Found');
+        const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+        await freshProcess();
+
+        expect(queue).toHaveLength(0);
+        expect(errorSpy).toHaveBeenCalledWith(
+          expect.stringContaining('404'),
+          expect.objectContaining({ entity: 'transactions', operation: 'update' })
+        );
+
+        errorSpy.mockRestore();
+      });
+
+      // ACC-03
+      it('400 with hosted API_URL keeps warn-and-dequeue, no error', async () => {
+        queue.push({
+          id: 'transactions:update:tx-1',
+          entity: 'transactions',
+          operation: 'update',
+          entityId: 'tx-1',
+          data: { id: 'tx-1', note: 'edited' },
+          timestamp: Date.now(),
+          retryCount: 0,
+          nextRetryAt: Date.now(),
+        });
+        const { processSyncQueue: freshProcess } = loadProcessorWithEnv('https://api.example.com');
+        resolveWithStatus(400, 'HTTP 400');
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+        const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+        await freshProcess();
+
+        expect(queue).toHaveLength(0);
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('400'));
+        expect(errorSpy).not.toHaveBeenCalled();
+
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
+      });
+
+      // ACC-03
+      it('404 with hosted API_URL keeps warn-and-dequeue, no error', async () => {
+        queue.push({
+          id: 'transactions:update:tx-1',
+          entity: 'transactions',
+          operation: 'update',
+          entityId: 'tx-1',
+          data: { id: 'tx-1', note: 'edited' },
+          timestamp: Date.now(),
+          retryCount: 0,
+          nextRetryAt: Date.now(),
+        });
+        const { processSyncQueue: freshProcess } = loadProcessorWithEnv('https://api.example.com');
+        resolveWithStatus(404, 'Not Found');
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+        const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+        await freshProcess();
+
+        expect(queue).toHaveLength(0);
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('404'));
+        expect(errorSpy).not.toHaveBeenCalled();
+
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
+      });
+
+      // ACC-04: API_URL unset ⇒ processSyncQueue early-returns, item preserved
+      it('400 with API_URL unset leaves the queue untouched and stays quiet', async () => {
+        queue.push({
+          id: 'transactions:update:tx-1',
+          entity: 'transactions',
+          operation: 'update',
+          entityId: 'tx-1',
+          data: { id: 'tx-1', note: 'edited' },
+          timestamp: Date.now(),
+          retryCount: 0,
+          nextRetryAt: Date.now(),
+        });
+        const { processSyncQueue: freshProcess } = loadProcessorWithEnv(undefined);
+        resolveWithStatus(400, 'HTTP 400');
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+        const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+        await freshProcess();
+
+        expect(queue).toHaveLength(1);
+        expect(warnSpy).not.toHaveBeenCalled();
+        expect(errorSpy).not.toHaveBeenCalled();
+
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
+      });
     });
 
     it('marks item as failed on 401 (does NOT dequeue)', async () => {
