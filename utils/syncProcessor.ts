@@ -16,6 +16,11 @@ import {
 let processingTimeout: ReturnType<typeof setTimeout> | null = null;
 let isProcessing = false;
 
+// SPEC-41 DEC-01/CON-01: verbose sync-failure diagnostics only against a local
+// backend. Unset API_URL ⇒ off (CON-02 safe default).
+const isVerboseSyncLogging =
+  typeof API_URL === 'string' && API_URL.includes('localhost');
+
 const entityEndpoints: Record<SyncEntity, string> = {
   transactions: '/transactions',
   categories: '/categories',
@@ -92,10 +97,42 @@ async function processSingleItem(item: SyncQueueItem): Promise<SyncResult> {
     } else if (apiResult.status === 401) {
       return { success: false, error: 'Unauthorized - session expired' };
     } else if (apiResult.status === 404) {
-      console.warn(`[Sync] Endpoint ${endpoint} returned 404 — server may not support ${item.entity}. Dequeuing.`);
+      if (isVerboseSyncLogging) {
+        console.error(
+          `[Sync] Endpoint ${endpoint} returned 404 — server may not support ${item.entity}. Dequeuing.`,
+          {
+            entity: item.entity,
+            operation: item.operation,
+            entityId: item.entityId,
+            status: apiResult.status,
+            error: apiResult.error,
+            data: item.data,
+            timestamp: item.timestamp,
+            retryCount: item.retryCount,
+          }
+        );
+      } else {
+        console.warn(`[Sync] Endpoint ${endpoint} returned 404 — server may not support ${item.entity}. Dequeuing.`);
+      }
       return { success: true };
     } else if (apiResult.status === 400) {
-      console.warn(`[Sync] ${item.entity} ${item.operation} rejected by server (400): ${apiResult.error}. Dequeuing.`);
+      if (isVerboseSyncLogging) {
+        console.error(
+          `[Sync] ${item.entity} ${item.operation} rejected by server (400): ${apiResult.error}. Dequeuing.`,
+          {
+            entity: item.entity,
+            operation: item.operation,
+            entityId: item.entityId,
+            status: apiResult.status,
+            error: apiResult.error,
+            data: item.data,
+            timestamp: item.timestamp,
+            retryCount: item.retryCount,
+          }
+        );
+      } else {
+        console.warn(`[Sync] ${item.entity} ${item.operation} rejected by server (400): ${apiResult.error}. Dequeuing.`);
+      }
       return { success: true };
     } else {
       return {
