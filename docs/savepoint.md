@@ -661,3 +661,13 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - D-03 `utils/backNavigation.test.ts` (new): ACC-01 repo-wide scan (zero raw `router.back()` in `app/**/*.tsx`), ACC-02/03/03b helper branch tests + DEC-02 `/` assertion, all parameterized `android`/`ios`/`web` (§1.10).
 - Verified (user-run 2026-10-05): `npm run lint` clean; `npx jest` → **13 suites, 390 passed, 0 failed** (baseline had grown past SPEC-40's 361; 13 new SPEC-42 tests included). Worker "failed to exit gracefully" notice is a pre-existing teardown warning, not a failure. `npx tsc --noEmit` clean (no output) — expo-router `Router` → `BackCapableRouter` structural assignability confirmed. Open: manual ACC-S01 (web F5-then-Back → `/`, no warning), ACC-S02 (dues/add-form/details matrix), ACC-S03 (Expo Go pop unchanged).
 
+## 2026-10-05 -- SPEC-43 FINAL (not yet implemented)
+
+- `specs/43-onboarding-opening-balance-once-only.md`: FINAL per user call. Opening Balance writable N times (no existence check, no sync busy guard in `handleGetStarted`). Plan decision A via plan-fix run `20261005-0700-initial-balance-duplicate.md` (most efficient + non-breaking; B merge-loop and C de-dupe deferred as follow-ups). No overlap with SPEC-37 (different defect, same payload). D-01 `app/onboarding.tsx` guard; D-02 `utils/` tests; D-03 manual matrix; D-04 journal. Agent codes slice-by-slice under `/implement-fix` (user: `Code it`, each slice needs explicit apply).
+
+## 2026-10-05 -- HAR findings: guard insufficient, two server-side defects live
+
+- User reported SPEC-43 guard didn't stop duplicates + mobile↔web don't sync + mobile `transactions update 400 → Dequeuing` loop. Web HAR (`wise.har`, 15:47 UTC) inspected (46,648 lines, read-only).
+- Server truth: 5 identical ₱9,999 "Initial account setup" rows (`results:5`, stable in-session), same payload instant, `createdAt` 15:42:07–53 (~15s apart) = one payload re-POSTed, not 5 taps. Server mints ids (5 distinct ids, `categoryId: null`, **no `title` field**) → merge loop (T-05/H1) confirmed in effect; no-title rows pass all `t.title !== "Opening Balance"` filters → **₱49,995 phantom income** in every computed balance.
+- Web clean (zero writes, zero 4xx); dues/savings empty (no cross-entity compounding). Mobile update-400 is a separate PUT-validation defect; zod field still unknown (needs wallet_API/Vercel log — HAR has no PUTs). Full evidence appended to `docs/todo-specs.md` T-05. Next: user pastes server log excerpt, then loop-break + PUT-fix slices (no code written this round).
+

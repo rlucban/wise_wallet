@@ -1,17 +1,19 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { View, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
 import { Text, TextInput, Button, HelperText } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useUserProfileActions } from "../context/UserProfileContext";
-import { useTransactionsActions } from "../context/TransactionsContext";
+import { useTransactionsData, useTransactionsActions } from "../context/TransactionsContext";
 import { formatNumberInput, parseAmount } from "../utils/amount";
-import { buildOpeningBalancePayload } from "../utils/onboardingPayload";
+import { buildOpeningBalancePayload, OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 
 export default function OnboardingScreen() {
     const router = useRouter();
     const { completeSetup } = useUserProfileActions();
     const { addTransaction } = useTransactionsActions();
+    const { transactions } = useTransactionsData();
+    const busyRef = useRef(false);
 
     const [name, setName] = useState("");
     const [balance, setBalance] = useState("0");
@@ -35,6 +37,8 @@ export default function OnboardingScreen() {
 
     const handleGetStarted = async () => {
         if (!validate()) return;
+        if (busyRef.current) return;
+        busyRef.current = true;
         setLoading(true);
         setSetupError(null);
         try {
@@ -43,10 +47,13 @@ export default function OnboardingScreen() {
             // 1. Update Profile (Sets the current balance field)
             await completeSetup(name.trim(), initialBalance);
 
-            // 2. Create the Ledger Entry (Transaction history)
+            // 2. Create the Ledger Entry (Transaction history) — once only (SPEC-43)
             const openingPayload = buildOpeningBalancePayload(initialBalance);
             if (openingPayload) {
-                await addTransaction(openingPayload);
+                const hasOpening = transactions.some((t) => t.category?.id === OPENING_BALANCE_CATEGORY_ID);
+                if (!hasOpening) {
+                    await addTransaction(openingPayload);
+                }
             }
 
             router.replace("/");
@@ -54,6 +61,7 @@ export default function OnboardingScreen() {
             console.error("Setup failed:", e);
             setSetupError("Couldn't save your opening balance. Please check your connection and try again.");
         } finally {
+            busyRef.current = false;
             setLoading(false);
         }
     };

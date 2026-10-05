@@ -75,3 +75,37 @@ describe("SPEC-40 envelope unwrap", () => {
         expect((await authFetch("/x")).data).toEqual([{ id: "1" }]);
     });
 });
+
+describe("SPEC-43 / T-05 error message fallback", () => {
+    it("prefers body.error when present", async () => {
+        respondWith({ status: "error", error: "boom", message: "nope" }, 400);
+        const res = await authFetch("/transactions/1");
+        expect(res.ok).toBe(false);
+        expect(res.status).toBe(400);
+        expect(res.error).toBe("boom");
+    });
+
+    it("falls back to body.message (server shape) before HTTP status", async () => {
+        respondWith({ status: "error", message: "Transaction validation failed: paymentMethod min(1)" }, 400);
+        const res = await authFetch("/transactions/1");
+        expect(res.ok).toBe(false);
+        expect(res.error).toContain("paymentMethod");
+    });
+
+    it("falls back to HTTP status when neither field exists", async () => {
+        respondWith({ status: "error" }, 400);
+        const res = await authFetch("/transactions/1");
+        expect(res.error).toBe("HTTP 400");
+    });
+
+    it("leaves non-JSON bodies unchanged", async () => {
+        mockFetch.mockResolvedValue({
+            ok: false,
+            status: 400,
+            json: async (): Promise<any> => { throw new Error("bad json"); },
+            text: async (): Promise<string> => "Bad Request",
+        });
+        const res = await authFetch("/transactions/1");
+        expect(res.error).toContain("Non-JSON response");
+    });
+});
