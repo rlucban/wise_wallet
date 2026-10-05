@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView } from "react-native";
 import { Appbar, FAB, Portal, Modal, TextInput, Button, Text, useTheme, Card, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { authFetch } from "../utils/apiClient";
 import ConfirmDialog from "../components/ConfirmDialog";
 
@@ -87,7 +88,7 @@ export default function PaymentMethodsScreen() {
     return (
         <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
             <Appbar.Header style={{ backgroundColor: theme.colors.background, elevation: 0 }}>
-                <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.BackAction onPress={() => safeGoBack(router)} />
                 <Appbar.Content title="Payment Methods" titleStyle={{ fontWeight: "700" }} />
             </Appbar.Header>
 

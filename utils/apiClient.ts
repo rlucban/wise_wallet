@@ -96,8 +96,11 @@ export async function authFetch<T = unknown>(
       };
     }
 
-    // json() is typed `unknown`; narrow to the three fields actually read.
-    const env = body as { status?: string; data?: unknown; error?: string } | null;
+    // json() is typed `unknown`; narrow to the fields actually read.
+    // NOTE (T-05): the server's error shape carries `message`, not `error`
+    // (wallet_API/src/app.js — unverified in-tree); `error` stays first so an
+    // `error`-shaped body still wins.
+    const env = body as { status?: string; data?: unknown; error?: string; message?: string } | null;
     const unwrapped: T = unwrapEnvelope<T>(
       env?.status === 'success' && env?.data ? env.data : env
     );
@@ -106,7 +109,7 @@ export async function authFetch<T = unknown>(
       ok: response.ok,
       status: response.status,
       data: unwrapped,
-      error: !response.ok ? (env?.error ?? `HTTP ${response.status}`) as string : undefined,
+      error: !response.ok ? (env?.error ?? env?.message ?? `HTTP ${response.status}`) as string : undefined,
     };
   } catch (e: unknown) {
     return { ok: false, status: 0, error: e instanceof Error ? e.message : String(e) };

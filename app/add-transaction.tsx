@@ -17,6 +17,7 @@ import {
   Dialog,
 } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { authFetch } from "../utils/apiClient";
 import * as ImagePicker from "expo-image-picker";
 import { Calendar } from "react-native-calendars";
@@ -210,7 +211,7 @@ export default function AddTransaction() {
         updatedAt: Date.now(),
       });
 
-      router.back();
+      safeGoBack(router);
     } catch (e) {
       console.warn("Failed to save transaction:", e);
       setAlertDialog({
@@ -228,7 +229,7 @@ export default function AddTransaction() {
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <Appbar.Header>
-                <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.BackAction onPress={() => safeGoBack(router)} />
                 <Appbar.Content title="Add Transaction" />
             </Appbar.Header>
 

@@ -647,3 +647,28 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Deferred, documented in `docs/todo-specs.md`: T-01 `GO_BACK` unhandled on sub-screens after refresh (plausibly newly reachable via SPEC-30 v2.4 — unconfirmed), T-02 web update/delete consult `txRepo` before the API call (**SPEC-36 D-W-03's "full API-direct" claim is inaccurate**), T-03 stale `98/98` constraint at `specs/28-…:90`, T-04 rotate a JWT pasted into the transcript (manual, no code).
 - Verified (user-run): `npx jest` → **12 suites, 361 passed, 361 total, 0 failed**. Open: `npm run lint`, `npx tsc --noEmit`, and matrix ACC-S01 (onboard → F5 → dashboard holds), ACC-S02 (lists populate), ACC-S03 (receipt upload stores a URL), ACC-S04 (Expo Go no regression).
 
+## 2026-10-05 -- SPEC-42: GO_BACK After Web Refresh (FINAL, decisions deferred)
+
+- `specs/42-go-back-after-web-refresh.md`: FINAL per explicit user call. User deemed items 1 (persistence) and 2 (implications) addressed; dynamic repro + probe waived, static evidence accepted (14 files, 19 `router.back()` sites, zero `canGoBack` in `app/`). No prior spec covered GO_BACK (SPEC-28 mention incidental) — this file is the canonical home (§1.14) for `rlucban/wise_wallet#44` + T-01.
+- DEC-01 (helper vs inline) and DEC-02 (`/` vs `/(tabs)` fallback) deliberately left OPEN — not guessed. Implementation BLOCKED until the user calls them and names who builds it. No code written; no test file added.
+- `docs/todo-specs.md` T-01 status updated to point here (was "no spec written"). Journal: `AGENTS.md` §3 appended.
+
+## 2026-10-05 -- SPEC-42 implemented (D-01..D-03)
+
+- User said `code this for me` then `do all` = accept both recommendations: DEC-01=(a) central helper, DEC-02=`/` fallback (precedent: `app/_layout.tsx:202`). Recorded in spec (correctable by user); D-00 gate lifted on those calls.
+- D-01 `utils/backNavigation.ts` (new): pure module, zero react-native/expo-router imports — `BackCapableRouter` interface (structurally satisfied by expo-router's Router), `BACK_FALLBACK = "/"`, `safeGoBack(router, fallback?)` implementing the CON-06 branch.
+- D-02 call-site migration (14 files, 19 sites, bare-minimum): one `safeGoBack` import per file (after the expo-router import); 14 `Appbar.BackAction onPress` → `() => safeGoBack(router)`; 5 post-save `router.back();` → `safeGoBack(router);` (`add-transaction:213`, `edit-transaction:161`, `transaction-details:51`, `add-due:78`, `add-allocation:62`). Nothing else touched.
+- D-03 `utils/backNavigation.test.ts` (new): ACC-01 repo-wide scan (zero raw `router.back()` in `app/**/*.tsx`), ACC-02/03/03b helper branch tests + DEC-02 `/` assertion, all parameterized `android`/`ios`/`web` (§1.10).
+- Verified (user-run 2026-10-05): `npm run lint` clean; `npx jest` → **13 suites, 390 passed, 0 failed** (baseline had grown past SPEC-40's 361; 13 new SPEC-42 tests included). Worker "failed to exit gracefully" notice is a pre-existing teardown warning, not a failure. `npx tsc --noEmit` clean (no output) — expo-router `Router` → `BackCapableRouter` structural assignability confirmed. Open: manual ACC-S01 (web F5-then-Back → `/`, no warning), ACC-S02 (dues/add-form/details matrix), ACC-S03 (Expo Go pop unchanged).
+
+## 2026-10-05 -- SPEC-43 FINAL (not yet implemented)
+
+- `specs/43-onboarding-opening-balance-once-only.md`: FINAL per user call. Opening Balance writable N times (no existence check, no sync busy guard in `handleGetStarted`). Plan decision A via plan-fix run `20261005-0700-initial-balance-duplicate.md` (most efficient + non-breaking; B merge-loop and C de-dupe deferred as follow-ups). No overlap with SPEC-37 (different defect, same payload). D-01 `app/onboarding.tsx` guard; D-02 `utils/` tests; D-03 manual matrix; D-04 journal. Agent codes slice-by-slice under `/implement-fix` (user: `Code it`, each slice needs explicit apply).
+- D-04 implementation record (2026-10-05): D-01 applied — `app/onboarding.tsx` busyRef + existence check (dedicated category-id match), `OPENING_BALANCE_CATEGORY_ID` exported (one-line scope amendment, user-approved via Apply); D-02 applied — new `utils/onboardingGuard.test.ts` (10 tests, android/ios/web); diagnostic slices 3–4 — `utils/apiClient.ts` `message` fallback + 4 tests appended in `apiClient.test.ts` (SPEC-40 block byte-identical). Verified: slice-3 user-run jest/lint/tsc passed. Pending: slice-4 run output, full suite, ACC-S01..S04 manual matrix. Pipeline blocked after slice 4 (PUT 400 field, POST-create shape, heal/filter decisions). HAR evidence appended to T-05.
+
+## 2026-10-05 -- HAR findings: guard insufficient, two server-side defects live
+
+- User reported SPEC-43 guard didn't stop duplicates + mobile↔web don't sync + mobile `transactions update 400 → Dequeuing` loop. Web HAR (`wise.har`, 15:47 UTC) inspected (46,648 lines, read-only).
+- Server truth: 5 identical ₱9,999 "Initial account setup" rows (`results:5`, stable in-session), same payload instant, `createdAt` 15:42:07–53 (~15s apart) = one payload re-POSTed, not 5 taps. Server mints ids (5 distinct ids, `categoryId: null`, **no `title` field**) → merge loop (T-05/H1) confirmed in effect; no-title rows pass all `t.title !== "Opening Balance"` filters → **₱49,995 phantom income** in every computed balance.
+- Web clean (zero writes, zero 4xx); dues/savings empty (no cross-entity compounding). Mobile update-400 is a separate PUT-validation defect; zod field still unknown (needs wallet_API/Vercel log — HAR has no PUTs). Full evidence appended to `docs/todo-specs.md` T-05. Next: user pastes server log excerpt, then loop-break + PUT-fix slices (no code written this round).
+

@@ -3,6 +3,7 @@ import { View, TouchableOpacity, Platform } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Appbar, Text, Menu, Badge } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { format, isToday } from "date-fns";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { Due, SystemAlert } from "../types";
@@ -325,7 +326,7 @@ export default function NotificationsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated style={{ backgroundColor: theme.colors.surface }}>
-        <Appbar.BackAction onPress={() => router.back()} />
+        <Appbar.BackAction onPress={() => safeGoBack(router)} />
         <Appbar.Content
           title="Notifications"
           titleStyle={{ fontSize: 20, fontWeight: "700" }}

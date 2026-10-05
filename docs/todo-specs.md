@@ -13,7 +13,7 @@ Status key: `OPEN` (diagnosed, unstarted) · `BLOCKED` (needs a decision first)
 
 | Field | Value |
 |---|---|
-| Status | OPEN — no spec written |
+| Status | SPEC-42 FINAL (2026-10-05; DEC-01/DEC-02 deferred) — see `specs/42-go-back-after-web-refresh.md` |
 | Severity | Low — development-only warning; no user-visible failure |
 | Platform | Web (reachable). Native unaffected in practice (tabs keep history) |
 | Found | 2026-10-05, during SPEC-40 session |
@@ -298,5 +298,14 @@ inherited. No file was written with the wrong version.
   them. Pre-existing defect.
 - `clearSyncQueue()` exists (`utils/syncQueue.ts:154`) but is not known to be
   reachable from the UI — unverified.
+
+### HAR proof (web `wise.har`, 2026-10-05 ~15:47 UTC, user `248ba32e`)
+
+- Server holds **5 identical ₱9,999 rows** (`results:5`, stable across both GETs in session): same payload instant (`date` 14:53:10.337), `createdAt` 15:42:07/20/37/53 — one payload re-POSTed ~15s apart (queue replay; re-taps would regenerate `date`).
+- **Server mints ids:** 5 distinct server ids for one client UUID → client id never reconciles → `fetchTransactions` merge (`TransactionsContext.tsx:112-121`) re-enqueues `create` forever. H1 confirmed in effect.
+- **Server rows have NO `title`:** every `t.title !== "Opening Balance"` filter passes → all 5 count as income = **₱49,995 phantom income** in every computed balance (dashboard, SummaryCard, add/save guards). Likely the visible "incrementing". Also `categoryId: null` (server drops the category object).
+- Web session is clean: zero POST/PUT/DELETE, zero 4xx/5xx in 46k lines — web is a pure reader here. Dues/savings `results:0` everywhere (loop hasn't compounded other entities).
+- Mobile `update → 400 → Dequeuing` is a second, separate defect (PUT validation rejects an unknown field; mobile log hides the zod message per the `body.error` vs `message` bug above). Needs the wallet_API/Vercel log to name the field — HAR contains no PUTs.
+- Consequence for SPEC-43: the onboarding guard (slices 1–2) only gates NEW UI writes; it can neither heal these 5 rows nor stop replays of the already-queued payload (rows predate the guard). Still-needed: break the loop, fix the PUT payload, heal data (delete 4 dups only AFTER the loop is broken, else mobile re-creates them), and decide whether balance filters must also exclude note `"Initial account setup"`.
 
 ---

@@ -1,6 +1,6 @@
 import { Transaction } from "../types";
 
-const OPENING_BALANCE_CATEGORY_ID = "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19";
+export const OPENING_BALANCE_CATEGORY_ID = "b0eebc99-9c0b-4ef8-bb6d-6bb9bd380b19";
 
 /**
  * Builds the "Opening Balance" transaction payload used once at setup.

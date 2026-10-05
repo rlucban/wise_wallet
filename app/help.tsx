@@ -1,6 +1,7 @@
 import { View, ScrollView } from "react-native";
 import { Appbar, Text, Card, Divider, useTheme } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 
 export default function HelpScreen() {
@@ -10,7 +11,7 @@ export default function HelpScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} />
+        <Appbar.BackAction onPress={() => safeGoBack(router)} />
         <Appbar.Content title="Help & FAQ" />
       </Appbar.Header>
 

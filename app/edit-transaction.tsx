@@ -3,6 +3,7 @@ import { View, ScrollView, Alert } from "react-native";
 import { Image } from "expo-image";
 import { Appbar, TextInput, Button, SegmentedButtons, Text, Chip, IconButton, useTheme, Card, Portal, Modal } from "react-native-paper";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import * as ImagePicker from "expo-image-picker";
 import { Calendar } from "react-native-calendars";
 import { useTransactions } from "../hooks/useTransactions";
@@ -158,7 +159,7 @@ export default function EditTransaction() {
         receiptUrl: receiptImage || undefined,
       });
       setLoading(false);
-      router.back();
+      safeGoBack(router);
     } catch {
       setLoading(false);
       Alert.alert("Error", "Failed to save changes. Please check your connection.");
@@ -170,7 +171,7 @@ export default function EditTransaction() {
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <Appbar.Header>
-                <Appbar.BackAction onPress={() => router.back()} />
+                <Appbar.BackAction onPress={() => safeGoBack(router)} />
                 <Appbar.Content title="Edit Transaction" />
             </Appbar.Header>
 

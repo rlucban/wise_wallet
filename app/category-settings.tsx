@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, ScrollView } from "react-native";
 import { Appbar, List, IconButton, FAB, Portal, Modal, TextInput, Button, SegmentedButtons, useTheme, Card, Text } from "react-native-paper";
 import { useRouter } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { useCategoriesData, useCategoriesActions } from "../context/CategoriesContext";
 import { TransactionType, Category } from "../types";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -40,7 +41,7 @@ export default function CategorySettings() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} />
+        <Appbar.BackAction onPress={() => safeGoBack(router)} />
         <Appbar.Content title="Manage Categories" />
       </Appbar.Header>
 

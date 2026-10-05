@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Appbar, Text, Card, SegmentedButtons, useTheme } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
+import { safeGoBack } from "../utils/backNavigation";
 import { useDues } from "../hooks/useDues";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { Due } from "../types";
@@ -164,7 +165,7 @@ export default function CompletedDuesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header>
-        <Appbar.BackAction onPress={() => router.back()} />
+        <Appbar.BackAction onPress={() => safeGoBack(router)} />
         <Appbar.Content title="Completed Dues" />
       </Appbar.Header>
 
