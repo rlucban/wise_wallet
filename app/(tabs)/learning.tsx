@@ -57,8 +57,30 @@ export default function LearningScreen() {
         });
     };
 
-    const filteredResources = useMemo(() => {
+    const filteredGuides = useMemo(() => {
         return LEARNING_RESOURCES.filter((item) => {
+            if (item.topic !== "App Guide") return false;
+
+            let matchesFilter = true;
+            if (activeFilter === "For Students") {
+                matchesFilter = item.audience === "Students";
+            } else if (activeFilter === "For Workers") {
+                matchesFilter = item.audience === "Workers";
+            }
+
+            const matchesSearch =
+                searchQuery.trim() === "" ||
+                item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                item.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+            return matchesFilter && matchesSearch;
+        });
+    }, [activeFilter, searchQuery]);
+
+    const filteredLiteracy = useMemo(() => {
+        return LEARNING_RESOURCES.filter((item) => {
+            if (item.topic === "App Guide") return false;
+
             let matchesFilter = true;
             if (activeFilter === "For Students") {
                 matchesFilter = item.audience === "Students";
@@ -159,27 +181,27 @@ export default function LearningScreen() {
                         <FinancialTip showFooter={false} style={{ margin: 0, width: "100%" }} />
                     </View>
 
-                    {/* Articles Section */}
+                    {/* App Guide Section */}
                     <View style={styles.section}>
                         <View style={styles.resultsHeader}>
-                            <Text variant="titleMedium" style={styles.sectionTitle}>Recommended Reading</Text>
+                            <Text variant="titleMedium" style={styles.sectionTitle}>WiseWallet App Guide</Text>
                             <Text variant="labelMedium" style={{ color: theme.colors.outline }}>
-                                Showing {filteredResources.length} {filteredResources.length === 1 ? "article" : "articles"}
+                                Showing {filteredGuides.length} {filteredGuides.length === 1 ? "article" : "articles"}
                             </Text>
                         </View>
 
-                        {filteredResources.length === 0 ? (
+                        {filteredGuides.length === 0 ? (
                             <Card style={[styles.emptyCard, { borderColor: theme.colors.outline, backgroundColor: theme.colors.surface }]}>
                                 <Card.Content style={styles.emptyContent}>
                                     <MaterialCommunityIcons name="book-open-page-variant-outline" size={40} color={theme.colors.outline} />
                                     <Text variant="bodyMedium" style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-                                        No articles match your filters.
+                                        No app guides match your filters.
                                     </Text>
                                 </Card.Content>
                             </Card>
                         ) : (
                             <View style={isDesktop ? styles.desktopGrid : styles.mobileList}>
-                                {filteredResources.map((item) => {
+                                {filteredGuides.map((item) => {
                                     const tagStyle = getPastelTagStyle(item.topic, theme);
                                     const isBookmarked = bookmarkedIds.has(item.id);
 
@@ -204,7 +226,85 @@ export default function LearningScreen() {
                                                                     {item.topic}
                                                                 </Text>
                                                             </View>
-                                                            {item.audience && (
+                                                            {item.topic !== "App Guide" && item.audience && (
+                                                                <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
+                                                                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600" }}>
+                                                                        {item.audience}
+                                                                    </Text>
+                                                                </View>
+                                                            )}
+                                                        </View>
+                                                    </View>
+                                                    <View style={{ alignItems: "center" }}>
+                                                        <IconButton
+                                                            icon={activeArticleId === item.id ? "square" : "volume-high"}
+                                                            iconColor={theme.colors.primary}
+                                                            size={22}
+                                                            style={activeArticleId === item.id ? { backgroundColor: theme.colors.primaryContainer } : undefined}
+                                                            onPress={() => handlePlayAudio(item)}
+                                                        />
+                                                        <IconButton
+                                                            icon={isBookmarked ? "bookmark" : "bookmark-outline"}
+                                                            iconColor={isBookmarked ? theme.colors.primary : theme.colors.outline}
+                                                            size={22}
+                                                            onPress={() => toggleBookmark(item.id)}
+                                                        />
+                                                    </View>
+                                                </Card.Content>
+                                            </Card>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Recommended Reading Section */}
+                    <View style={styles.section}>
+                        <View style={styles.resultsHeader}>
+                            <Text variant="titleMedium" style={styles.sectionTitle}>Recommended Reading</Text>
+                            <Text variant="labelMedium" style={{ color: theme.colors.outline }}>
+                                Showing {filteredLiteracy.length} {filteredLiteracy.length === 1 ? "article" : "articles"}
+                            </Text>
+                        </View>
+
+                        {filteredLiteracy.length === 0 ? (
+                            <Card style={[styles.emptyCard, { borderColor: theme.colors.outline, backgroundColor: theme.colors.surface }]}>
+                                <Card.Content style={styles.emptyContent}>
+                                    <MaterialCommunityIcons name="book-open-page-variant-outline" size={40} color={theme.colors.outline} />
+                                    <Text variant="bodyMedium" style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                                        No articles match your filters.
+                                    </Text>
+                                </Card.Content>
+                            </Card>
+                        ) : (
+                            <View style={isDesktop ? styles.desktopGrid : styles.mobileList}>
+                                {filteredLiteracy.map((item) => {
+                                    const tagStyle = getPastelTagStyle(item.topic, theme);
+                                    const isBookmarked = bookmarkedIds.has(item.id);
+
+                                    return (
+                                        <View key={item.id} style={isDesktop ? styles.desktopCardWrapper : styles.mobileCardWrapper}>
+                                            <Card
+                                                style={styles.articleCard}
+                                                onPress={() => router.push({ pathname: "/(tabs)/learning-detail", params: { id: item.id } })}
+                                            >
+                                                <Card.Content style={styles.articleRow}>
+                                                    <View style={[styles.iconBox, { backgroundColor: theme.colors.primaryContainer }]}>
+                                                        <MaterialCommunityIcons name={item.icon as string} size={24} color={theme.colors.primary} />
+                                                    </View>
+                                                    <View style={styles.articleBody}>
+                                                        <Text variant="bodyLarge" style={styles.articleTitle}>{item.title}</Text>
+                                                        <Text variant="bodySmall" style={[styles.articleDesc, { color: theme.colors.onSurfaceVariant }]}>
+                                                            {item.description}
+                                                        </Text>
+                                                        <View style={styles.badgeRow}>
+                                                            <View style={[styles.badge, { backgroundColor: tagStyle.backgroundColor }]}>
+                                                                <Text variant="labelSmall" style={{ color: tagStyle.textColor, fontWeight: "600" }}>
+                                                                    {item.topic}
+                                                                </Text>
+                                                            </View>
+                                                            {item.topic !== "App Guide" && item.audience && (
                                                                 <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
                                                                     <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600" }}>
                                                                         {item.audience}

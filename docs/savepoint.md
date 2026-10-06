@@ -795,3 +795,100 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Edit-screen "8"/"9" rot: closed per user report 2026-10-06 (Edit uses the correct category; Others issue gone — consistent with correct IDs now flowing end-to-end).
 - Still parked (own spec, deferred per user call 2026-10-06): pre-fix "" rows on promotion (migration swallow).
 
+---
+
+## 2026-10-06 -- SPEC-51 FINAL v1.0 + implemented (D-01)
+
+- `specs/51-category-settings-alphabetical-sorting.md`: FINAL per user call 2026-10-06 (PROPOSED -> FINAL, no content change; user declined `accessibilityLabel` addition — spec-only).
+- Problem: Manage Categories rendered in DB retrieval order, no A-Z / Z-A way to locate categories.
+- D-01 `app/category-settings.tsx` only: `sortOrder` state (`"asc"` default) + `toggleSortOrder` + `sortedCategories` via `[...filteredCategories].sort` with `localeCompare(..., { sensitivity: "base" })` (non-destructive copy, CON-03) + `<Appbar.Action>` right side of `Appbar.Header` (`sort-alphabetical-ascending` / `sort-alphabetical-descending`, CON-01/CON-02) + `ScrollView` maps `sortedCategories`. Tab parity preserved (derives from `filteredCategories`, CON-04); pure JS sorting, no native import (CON-05).
+- No storage/API/route/dep change. No jest tests (no D-* names them; §1.10 matrix is user-run ACC-01..05).
+- Open (user-run): `npm run lint`, `npx jest`, `npx tsc --noEmit`, plus ACC-01..05 matrix (Web/Android/iOS toggle ordering, tab persistence, icon-arrow reviewer check) + `expo export --platform web` clean.
+- Rollback: revert 4 hunks in `app/category-settings.tsx`; spec status back to PROPOSED.
+
+---
+
+## 2026-10-06 -- SPEC-52 FINAL v1.0 + implemented (D-01..D-03)
+
+- `specs/52-reports-yearly-icon-validity.md`: FINAL per user call 2026-10-06 (DRAFT v0.1 -> FINAL v1.0, no content change).
+- Problem: Reports period menu Yearly row used `leadingIcon="calendar-year"` (invalid MaterialCommunityIcons glyph) -> blank icon; Weekly (`calendar-week`) / Monthly (`calendar-month`) unaffected.
+- D-01 `app/(tabs)/reports.tsx:230` only: `calendar-year` -> `calendar-outline` (existing MCI import reused, no Ionicons, no `periodOptions` refactor, nothing else touched).
+- D-02 `utils/reportsPeriodIcon.test.ts` (new, 9 tests): ACC-01 zero `calendar-year`, ACC-02 Yearly carries `calendar-outline`, ACC-03 Weekly/Monthly unchanged, all x android/ios/web (source-text guards; jest cannot render glyphs).
+- Open (user-run): `npm run lint`, `npx jest`, `npx tsc --noEmit`, plus ACC-S01..S03 matrix (Expo Go Android/iOS rows show icons, web export no new warning, no other visual change).
+- Rollback: revert 1 line in `app/(tabs)/reports.tsx`; delete test/spec additions.
+
+---
+
+## 2026-10-06 -- SPEC-54 FINAL v1.0 + implemented (D-01..D-05)
+
+- `specs/54-learning-app-guide-sections.md`: FINAL per user call 2026-10-06 (DRAFT v0.1 -> FINAL v1.0, OD-01..OD-04 approved as drafted; guide copy is v1 in-tree, user-editable).
+- Problem: Learning screen had one `Recommended Reading` list mixing app-usage guidance with financial tips; zero guide rows existed (`ArticleTopic` lacked an app-guide member).
+- D-01 `utils/learningData.ts`: `ArticleTopic` += `"App Guide"` + 3 rows (`app_overview`/`how_to_log_dues`/`managing_savings_goals`, MCI icons `information-outline`/`calendar-plus-outline`/`target`); 6 literacy rows byte-identical; badge fallback unchanged (CON-08).
+- D-02 `app/(tabs)/learning.tsx`: `filteredResources` split into `filteredGuides` (topic match; ignores Budgeting/Savings/Debt chips, respects search + Students/Workers) + `filteredLiteracy` (existing predicate + guide exclusion); two stacked sections (`WiseWallet App Guide` first with own count + `No app guides match your filters.` empty card, `Recommended Reading` second unchanged); card/TTS/bookmark JSX reused by copy, no helper added.
+- D-03 `app/(tabs)/learning-detail.tsx`: 3 guide bodies (in-app flows only: tabs tour, dues add/pay/complete-lock, allocations progress/archive/restore); unknown-id path unchanged.
+- D-04 `utils/learningSections.test.ts` (new, 12 tests): ACC-01 rows, ACC-02 header order, ACC-03 split predicates + zero `filteredResources`, ACC-04 bodies + unknown-id path, all x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest`, `npx tsc --noEmit`, plus ACC-S01..S03 matrix (Expo Go sections/counts/filters/search, web mobile+desktop grids, guide detail + TTS/bookmark parity) + `expo export --platform web` clean.
+- Rollback: revert learning.tsx/learning-detail.tsx/learningData.ts hunks; delete test/spec additions.
+
+---
+
+## 2026-10-06 -- SPEC-55 FINAL v1.0 + implemented (D-01..D-03)
+
+- `specs/55-hide-app-guide-audience-chip.md`: FINAL per user call 2026-10-06 (written directly as FINAL; display-only, filtering frozen).
+- Problem: guide cards showed a misleading secondary Students/Workers chip (reused JSX rendered `{item.audience && (...)}` unconditionally in both copies).
+- D-01 `app/(tabs)/learning.tsx` (2 lines via replaceAll): both chip conditions → `{item.topic !== "App Guide" && item.audience && (`; guides show `App Guide` tag alone, literacy cards unchanged, predicates/rows/detail untouched.
+- D-02 `utils/learningSections.test.ts` (+9 tests): SPEC-55 ACC-01 gate count 2 + zero bare `{item.audience && (`, ACC-02 chip JSX intact, ACC-03 predicates unchanged, all x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest utils/learningSections.test.ts`, `npx tsc --noEmit`, plus ACC-S01..S02 matrix (Expo Go + web export: guides tag-only, literacy dual-chip, chips still filter guides) .
+- Rollback: revert 2 lines in `app/(tabs)/learning.tsx`; drop SPEC-55 tests.
+
+---
+
+## 2026-10-06 -- SPEC-56 FINAL v1.0 + implemented (D-01..D-05)
+
+- `specs/56-transaction-history-screen.md`: FINAL per user call 2026-10-06 (OD-01 title + OD-02 complete unfiltered list per original request).
+- Problem: Home See All pushed `/reports` (charts); no `/transactions` route existed, so the full history had no home.
+- D-01 `app/(tabs)/index.tsx:250`: `router.push("/reports")` → `router.push("/transactions")` (sole `/reports` push in tabs; verified zero remain).
+- D-02 `app/transactions.tsx` (new): `Appbar.Header` (`Transaction History` + `BackAction` → `safeGoBack(router)`, fallback `/`) over full history newest-first (Home comparator, no `slice`), row JSX copied from Home (icon/category/amount/date → `/transaction-details?id=`), `EmptyState` preserved, `useFocusEffect` refetch.
+- D-03 `app/_layout.tsx:225`: `<Stack.Screen name="transactions" />` added; existing screens untouched.
+- D-04 `utils/transactionHistory.test.ts` (new, 12 tests): ACC-01 retarget, ACC-02 header + safeGoBack + no raw back, ACC-03 full sort + details nav, ACC-04 registration, all x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest utils/transactionHistory.test.ts`, `npx tsc --noEmit`, plus ACC-S01..S02 matrix (Expo Go See All → history → back → Home, row → details, empty state; web direct-load + back with no GO_BACK warning) + `expo export --platform web` clean.
+- Rollback: revert index line + _layout line; delete screen/spec/test additions.
+
+---
+
+## 2026-10-06 -- SPEC-56 FINAL v1.1 + implemented (D-06..D-09)
+
+- `specs/56-transaction-history-screen.md` v1.0 → v1.1 per user call (GCash-style statement folded in; `specs/57-gcash-statement-history.md` retired to a pointer, one home §1.14).
+- OD-03 month groups (newest month first, `October 2026` headers) / OD-04 modal mapping (full `id`, `Others`/`—` fallbacks) / OD-05 Home rows still push details.
+- D-06 `utils/transactionGroups.ts` (new): pure `groupTransactionsByMonth` (no `react-native` import).
+- D-07 `app/transactions.tsx` (rebuild): month card containers + statement rows (icon, Category, method badge with `—` fallback, Date/Time, signed colored amount); tap opens Paper `Dialog` receipt (Ref ID/Category/Method/Date/Notes + single Close); zero Edit/Delete/Share and zero details navigation (verified by scoped grep: sole `Close` hit); header/refetch/empty state reused.
+- D-08 `utils/transactionGroups.test.ts` (new, 15 tests): ACC-06a/b grouping behavior + ACC-07/08/09 source guards, all x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest utils/transactionGroups.test.ts`, `npx tsc --noEmit`, plus ACC-S03..S04 matrix (Expo Go + web mobile/desktop: month cards, row fields, receipt modal Close-only, backdrop/Escape dismiss) + `expo export --platform web` clean.
+- Rollback: revert transactions.tsx rebuild; delete util/spec-delta/test additions (v1.0 screen remains).
+
+---
+
+## 2026-10-06 -- SPEC-56 FINAL v1.2 + implemented (D-10..D-12)
+
+- `specs/56-transaction-history-screen.md` §5 FINAL per user call (modal deleted, rows static; v1.0/v1.1 text untouched). ACC-10 clarified mid-slice: header `BackAction` `onPress` is the allowed sole exception.
+- D-10 `app/transactions.tsx`: deleted receipt `Dialog` block + `ReceiptRow` + `selected` state; rows `TouchableOpacity` → `View` (no `onPress`/`activeOpacity`); pruned `Dialog`/`Button`/`TouchableOpacity`/`useState` imports. Verified by scoped grep: zero `Dialog|Modal|TouchableOpacity|Pressable|setSelected|Receipt`, sole `onPress` is header back.
+- D-11 `utils/transactionGroups.test.ts`: ACC-07 reworded (static rows), ACC-08 rewritten as absence guards (6 tokens + single-`onPress` count + `BackAction` present) × android/ios/web; ACC-06 behavior untouched.
+- Open (user-run): `npm run lint`, `npx jest utils/transactionGroups.test.ts`, `npx tsc --noEmit`, plus ACC-S05 matrix (Expo Go + web: static rows with no press feedback, no modal, month cards/fields/back/empty unchanged) + `expo export --platform web` clean.
+- Rollback: revert D-10/D-11 hunks (v1.1 modal screen returns).
+
+---
+
+## 2026-10-06 -- SPEC-53 FINAL v1.0 + implemented (D-01..D-05)
+
+- `specs/53-floating-pill-tab-bar.md`: v0.1 DRAFT → v0.2 amendment (OD-01 called, Home FAB removal folded in) → FINAL v1.0 per user `final + code this for me`. OD-02..OD-05 closed on proposed defaults DD-01..DD-05 per owner waiver (no Vercel token sheet supplied — token fidelity, not screenshot parity, governs per ACC-S03). DEC-05 error fallback deleted as over-engineering (single custom-bar path).
+- D-01 `components/FloatingTabBar.tsx` (new): absolute floating row — pill container (`surface`, r28, p8, DD-01 shadows, web `maxWidth: 560` centered) with 4 key-matched tabs (active pill `primaryContainer` r20, icon+label `primary`/`outline`, labels 12/600, `learning-detail` filtered) + contained circular `plus` (`primary`/`onPrimary`) → `router.push("/add-transaction")`; bottom offset via reused `getTabBarMetrics` (DD-04).
+- D-02 `app/(tabs)/_layout.tsx`: added `tabBar` prop + import; SPEC-32 screenOptions/test wiring retained untouched (DD-04, zero SPEC-32 churn).
+- D-04 `app/(tabs)/index.tsx`: deleted Home `FAB` block + import (verified zero `FAB`/`add-transaction` remain); tab-bar `+` is now the sole trigger.
+- D-03 `utils/floatingTabBar.test.ts` (new, 18 tests): ACC-01 prop wiring, ACC-02 key-matched focus, ACC-03 single `+` wire, ACC-04 icons, ACC-05 no-dep/no-native, ACC-07 FAB absence, all x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest utils/floatingTabBar.test.ts`, `npx tsc --noEmit`, plus ACC-S01..S03 matrix (Expo Go floats/pill/`+` on all tabs incl. learning-detail; web mobile+desktop + keyboard reachability; token-fidelity review) + `expo export --platform web` clean.
+- Watch item: `tabBar` prop structural typing vs expo-router's `BottomTabBarProps` is asserted blind (agent runs no CLI) — `tsc` verdict pending user run.
+- Repair 2026-10-06 (user-pasted tsc TS2353/TS7006): `tabBar` is a navigator-level prop (`BottomTabNavigationConfig.tabBar`), NOT a per-screen option — moved to `<Tabs tabBar={FloatingTabBar}>`; component props retyped to fork shapes (`NavigationHelpers<ParamListBase>` from direct-dep `@react-navigation/native`, navigator-supplied `insets` instead of the safe-area hook). Follow-up: ACC-01 guard corrected to `tabBar={FloatingTabBar}` (2 suites failed on the stale `tabBar:` literal). Re-run requested: `npx tsc --noEmit` + `npx jest utils/floatingTabBar.test.ts`.
+- Repair 2 2026-10-06 (user-pasted tsc TS2322 ×1 + TS2322/TS2339 emit-never ×2): fork vendors its own core types (nominal `PrivateValueStore` mismatch vs `@react-navigation/native`) and core's default event map resolves `emit` to `never` — props now use the fork's exact `BottomTabBarProps` via type-only deep import (erased at runtime; no `exports`-map block, no bundle impact). Re-run requested: `npx tsc --noEmit`.
+- Repair 3 2026-10-06 (user-pasted invalid-hook-call at `useTheme`, fork `BottomTabView.js:154` calls `tabBar({...})` as a plain function, not a mounted element): default export is now a hook-free shell returning `<FloatingTabBarThemed/>`, which React mounts as a real fiber holding all hooks; ACC-02 extended with the shell guard. Re-run requested: Expo Go tab render + `npx jest utils/floatingTabBar.test.ts` + `npx tsc --noEmit`.
+- Rollback: revert _layout/index hunks; delete component/spec/test additions (standard bar returns).
+

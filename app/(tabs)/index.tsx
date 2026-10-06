@@ -1,6 +1,6 @@
 import { View, TouchableOpacity, Platform } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { FAB, Text, Card, IconButton } from "react-native-paper";
+import { Text, Card, IconButton } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useCallback, useMemo } from "react";
@@ -247,7 +247,7 @@ export default function Dashboard() {
 
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 16, paddingHorizontal: 20 }}>
         <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onBackground }}>Recent Activity</Text>
-        <TouchableOpacity onPress={() => router.push("/reports")}>
+        <TouchableOpacity onPress={() => router.push("/transactions")}>
           <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: "600" }}>See All</Text>
         </TouchableOpacity>
       </View>
@@ -310,14 +310,6 @@ export default function Dashboard() {
         ListEmptyComponent={<EmptyState icon="receipt" title="No transactions yet" subtitle="Tap + to add your first transaction" />}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
-      />
-
-      <FAB
-        icon="plus"
-        label="Transaction"
-        style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
-        color="#fff"
-        onPress={() => router.push("/add-transaction")}
       />
     </View>
   );

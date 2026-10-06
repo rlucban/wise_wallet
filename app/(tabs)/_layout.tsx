@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import FloatingTabBar from "../../components/FloatingTabBar";
 import { useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getTabBarMetrics } from "../../utils/tabBarMetrics";
@@ -11,6 +12,7 @@ export default function TabLayout() {
 
     return (
         <Tabs
+            tabBar={FloatingTabBar}
             screenOptions={{
                 headerShown: false,
                 tabBarActiveTintColor: theme.colors.primary,

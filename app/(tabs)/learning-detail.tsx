@@ -97,6 +97,39 @@ Effective Tracking Steps:
 
 Pro Tip:
 Combine daily tracking in WiseWallet with automated alerts to stay well within your available budget before overspending occurs!`
+    },
+    app_overview: {
+        title: "App Overview",
+        content: `Welcome to WiseWallet. The bottom tabs take you everywhere: Home shows your balance, dues, and recent activity. Reports shows income-vs-expense charts plus CSV/PDF export. Learning (this screen) holds guides and financial tips. Settings holds categories, payment methods, cloud sync, export/import, passcode lock, and dark mode.
+
+Core Flows:
+1. Add a transaction from Home with the + button: pick income or expense, amount, category, payment method, and establishment.
+2. Open a transaction to see details, edit it, or delete it.
+3. Add a scheduled due from the Dues screen for bills that repeat (one-time, weekly, biweekly, monthly, yearly).
+4. Create a savings allocation from the Savings screen with a goal amount and watch the progress bar.
+5. Check the Calendar and Reports to review the month, then back up from Settings.`
+    },
+    how_to_log_dues: {
+        title: "How to Log Dues",
+        content: `Dues are scheduled items such as bills and subscriptions. Open the Dues screen and tap Add Due.
+
+Steps:
+1. Enter the amount (up to ₱10,000,000), title, and category.
+2. Pick a frequency: one-time, weekly, biweekly, monthly, or yearly.
+3. Pick the date from the calendar picker.
+4. Save, then tap Pay when the due is due and choose the payment method when asked.
+5. Paid dues move to the Completed Dues screen and are locked from editing; only auto-renew dues create their next occurrence.`
+    },
+    managing_savings_goals: {
+        title: "Managing Savings Goals",
+        content: `Savings allocations (IPON goals) live on the Savings screen. Each allocation has a goal amount and a progress bar.
+
+Steps:
+1. Tap Add Allocation, name the goal, and set the goal amount.
+2. Transfer money into the allocation to grow its progress.
+3. Watch the top card for the total actively allocated.
+4. Archive a finished or paused goal to move it to Archived Allocations (read-only).
+5. Restore an archived goal to make it active again, or delete it permanently when it is no longer needed.`
     }
 };
 

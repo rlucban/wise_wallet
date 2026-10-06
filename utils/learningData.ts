@@ -1,4 +1,4 @@
-export type ArticleTopic = "Budgeting" | "Savings" | "Debt";
+export type ArticleTopic = "Budgeting" | "Savings" | "Debt" | "App Guide";
 export type AudienceType = "Students" | "Workers";
 
 export const LEARNING_CATEGORIES = ["All", "Budgeting", "Savings", "Debt"] as const;
@@ -67,6 +67,33 @@ export const LEARNING_RESOURCES: LearningResource[] = [
     icon: "clipboard-text-outline",
     topic: "Budgeting",
     minutes: 3,
+    audience: "Students",
+  },
+  {
+    id: "app_overview",
+    title: "App Overview",
+    description: "Tour the WiseWallet tabs and learn where everything lives.",
+    icon: "information-outline",
+    topic: "App Guide",
+    minutes: 2,
+    audience: "Students",
+  },
+  {
+    id: "how_to_log_dues",
+    title: "How to Log Dues",
+    description: "Create a scheduled due and record its payment.",
+    icon: "calendar-plus-outline",
+    topic: "App Guide",
+    minutes: 2,
+    audience: "Workers",
+  },
+  {
+    id: "managing_savings_goals",
+    title: "Managing Savings Goals",
+    description: "Create an allocation, track progress, and archive it.",
+    icon: "target",
+    topic: "App Guide",
+    minutes: 2,
     audience: "Students",
   },
 ];
