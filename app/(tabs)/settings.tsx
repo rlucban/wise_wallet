@@ -8,6 +8,8 @@ import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
 
 import { setSetting, clearAllLocalData, exportData, importData, deleteUser, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers, updateUserPasscode } from "../../utils/db";
+import { getPrefixedKey, setItem } from "../../utils/storage";
+import { getSyncQueue, saveSyncQueue } from "../../utils/syncQueue";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
@@ -29,7 +31,7 @@ function SyncStatusCard({ autoBackup, isLocal }: { autoBackup: boolean; isLocal:
 
   const getStatusColor = () => {
     if (isLocal) return { icon: "cellphone-off", text: "Local-only", color: paperTheme.colors.outline };
-    if (!autoBackup) return { icon: "cloud-off-outline", text: "Sync off", color: paperTheme.colors.outline };
+    if (!autoBackup) return { icon: "cloud-off-outline", text: "No local backup", color: paperTheme.colors.outline };
     if (isChecking) return { icon: "cloud-sync", text: "Checking...", color: paperTheme.colors.primary };
     if (!isOnline && Platform.OS !== "web") return { icon: "cloud-off", text: "Offline", color: paperTheme.colors.error };
     if (pending > 0) return { icon: "upload", text: `${pending} pending`, color: paperTheme.colors.tertiary };
@@ -276,6 +278,8 @@ export default function SettingsScreen() {
     onClose?: () => void;
   }>({ visible: false, type: "success", title: "", message: "" });
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [repairPreview, setRepairPreview] = useState<{ upload: Transaction[]; delIds: string[]; queued: number } | null>(null);
+  const [showRepairConfirm, setShowRepairConfirm] = useState(false);
 
   // Web-only ref for hidden file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -283,6 +287,21 @@ export default function SettingsScreen() {
    const setAutoBackup = async (value: boolean) => {
      await updateProfile({ autoBackup: value });
      await setSetting('autoBackup', value.toString());
+     if (isLocal || !activeUserId) return;
+     try {
+       if (value) {
+         // ON: populate mirror from API (SPEC-45 DEC-03).
+         const { data } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
+         if (Array.isArray(data)) {
+           await setItem(await getPrefixedKey('transactions'), data);
+         }
+       } else {
+         // OFF: clear mirror (SPEC-45 DEC-03).
+         await setItem(await getPrefixedKey('transactions'), []);
+       }
+     } catch (e) {
+       console.error("Local backup mirror sync failed:", e);
+     }
    };
 
    const handleToggleAutoBackup = async (val: boolean) => {
@@ -660,6 +679,87 @@ export default function SettingsScreen() {
     } catch (e) {
       console.error(e);
       alert("Backup failed.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const txFingerprint = (t: { amount?: unknown; type?: unknown; date?: unknown; note?: unknown }) => {
+    const d = t.date ? new Date(String(t.date)) : null;
+    const day = d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : "?";
+    return `${Number(t.amount || 0)}|${String(t.type || "")}|${day}|${String(t.note ?? "").trim().toLowerCase()}`;
+  };
+
+  const previewRepair = async () => {
+    if (!activeUserId || isLocal) return;
+    setIsSyncing(true);
+    try {
+      const [txResult, queue] = await Promise.all([
+        authFetch<Transaction[]>(`transactions?userId=${activeUserId}`),
+        getSyncQueue(),
+      ]);
+      if (!txResult.ok || !Array.isArray(txResult.data)) {
+        showMessage("error", "Repair Failed", "Could not reach the API. Please check your connection.");
+        return;
+      }
+      const remote = txResult.data;
+      const seen = new Set(remote.map(txFingerprint));
+      const localTxs = await repos.transactions.getAll();
+      const upload = localTxs.filter((t) => !seen.has(txFingerprint(t)));
+      const groups = new Map<string, Transaction[]>();
+      for (const t of remote) {
+        const k = txFingerprint(t);
+        const arr = groups.get(k);
+        if (arr) arr.push(t); else groups.set(k, [t]);
+      }
+      const delIds: string[] = [];
+      for (const [, rows] of groups) {
+        if (rows.length < 2) continue;
+        const sorted = [...rows].sort((a, b) =>
+          String((a as unknown as Record<string, unknown>).createdAt || "").localeCompare(
+            String((b as unknown as Record<string, unknown>).createdAt || "")
+          ) || String(a.id).localeCompare(String(b.id))
+        );
+        delIds.push(...sorted.slice(1).map((t) => t.id));
+      }
+      const queued = queue.filter((q) => q.id.startsWith("transactions:")).length;
+      if (upload.length === 0 && delIds.length === 0 && queued === 0) {
+        showMessage("success", "Nothing to Repair", "No duplicates, unsynced rows, or queued transaction writes found.");
+        return;
+      }
+      setRepairPreview({ upload, delIds, queued });
+      setShowRepairConfirm(true);
+    } catch (e) {
+      console.error("Repair preview failed:", e);
+      showMessage("error", "Repair Failed", "Could not check for duplicates. Please check your connection.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const executeRepair = async () => {
+    if (!activeUserId || !repairPreview) return;
+    setShowRepairConfirm(false);
+    setIsSyncing(true);
+    try {
+      for (const t of repairPreview.upload) {
+        await authFetch(`transactions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...t, categoryId: t.category?.id ? String(t.category.id) : null, userId: activeUserId }),
+        }).catch(() => {});
+      }
+      for (const id of repairPreview.delIds) {
+        await authFetch(`transactions/${id}`, { method: "DELETE" }).catch(() => {});
+      }
+      const queue = await getSyncQueue();
+      await saveSyncQueue(queue.filter((q) => !q.id.startsWith("transactions:")));
+      await refetchTx();
+      setRepairPreview(null);
+      showMessage("success", "Repair Complete", "Uploaded, de-duplicated, and cleared queued transaction writes. Export a fresh backup to confirm.");
+    } catch (e) {
+      console.error("Repair failed:", e);
+      showMessage("error", "Repair Failed", "Repair did not finish. Export your data and try again.");
     } finally {
       setIsSyncing(false);
     }
@@ -1105,7 +1205,7 @@ if (!pinVerified) {
                <View style={{ marginLeft: 16 }}>
                  <Text variant="titleMedium">{profile?.name || "Wise User"}</Text>
                  <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
-                    {isLocal ? "Local-only account — stored on this device" : autoBackup ? "Cloud Sync Enabled" : "Cloud account — sync off"}
+                     {isLocal ? "Local-only account — stored on this device" : autoBackup ? "Cloud Sync Enabled" : "Cloud account — no local backup"}
                  </Text>
                </View>
             </View>
@@ -1132,10 +1232,10 @@ if (!pinVerified) {
                 <List.Icon icon="cloud-off-outline" color={paperTheme.colors.onSurfaceVariant} />
                 <View style={{ marginLeft: 12, flex: 1 }}>
                   <Text variant="titleSmall" style={{ color: paperTheme.colors.onSurfaceVariant, fontWeight: "600" }}>
-                    Sync off
-                  </Text>
-                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, opacity: 0.8 }}>
-                    Auto-backup is disabled. Your data stays on this device only.
+                        No local backup
+                      </Text>
+                      <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant, opacity: 0.8 }}>
+                        Local backup is off. Data loads from the API and is not stored on this device.
                   </Text>
                 </View>
               </View>
@@ -1184,13 +1284,15 @@ if (!pinVerified) {
 
             <SyncStatusCard autoBackup={autoBackup} isLocal={isLocal} />
 
+            {!isLocal && (
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 8 }}>
               <View style={{ flexDirection: "row", alignItems: "center" }}>
                 <List.Icon icon="cloud-sync" color={paperTheme.colors.onSurfaceVariant} />
-                <Text variant="bodyLarge" style={{ marginLeft: 12, color: (isLocal || Platform.OS === "web") ? paperTheme.colors.onSurfaceVariant : paperTheme.colors.onSurface }}>Auto-Backup</Text>
+                <Text variant="bodyLarge" style={{ marginLeft: 12, color: Platform.OS === "web" ? paperTheme.colors.onSurfaceVariant : paperTheme.colors.onSurface }}>Local backup</Text>
               </View>
-              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={isLocal || Platform.OS === "web"} />
+              <Switch value={autoBackup} onValueChange={handleToggleAutoBackup} disabled={Platform.OS === "web"} />
             </View>
+            )}
 
             <Divider style={{ marginVertical: 8 }} />
 
@@ -1203,6 +1305,11 @@ if (!pinVerified) {
             {(!autoBackup && !isLocal && Platform.OS !== "web") && (
               <Button mode="outlined" icon="cloud-download" onPress={handleRestoreFromCloud} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
                 Restore Data from Cloud API
+              </Button>
+            )}
+            {!isLocal && (
+              <Button mode="outlined" icon="auto-fix" onPress={previewRepair} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
+                Repair Transaction Duplicates
               </Button>
             )}
 
@@ -1371,8 +1478,21 @@ if (!pinVerified) {
           </Dialog.Actions>
         </Dialog>
 
-        <ConfirmDialog
-          visible={showRestoreConfirm}
+            <ConfirmDialog
+              visible={showRepairConfirm}
+              title="Repair Duplicates?"
+              message={
+                repairPreview
+                  ? `Upload ${repairPreview.upload.length} unsynced row(s), delete ${repairPreview.delIds.length} duplicate(s) (keeps oldest), and discard ${repairPreview.queued} queued transaction write(s). Server deletes are PERMANENT. Export your data first. Continue?`
+                  : ""
+              }
+              confirmLabel="Repair"
+              icon="database-refresh-outline"
+              onConfirm={() => { executeRepair(); }}
+              onCancel={() => { setShowRepairConfirm(false); setRepairPreview(null); }}
+            />
+            <ConfirmDialog
+              visible={showRestoreConfirm}
           title="Restore from Cloud?"
           message="This will overwrite all your local data with the data from your cloud backup. This action cannot be undone. Are you sure?"
           confirmLabel="Restore"

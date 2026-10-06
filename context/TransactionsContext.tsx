@@ -11,10 +11,11 @@ import { useUserProfile } from "./UserProfileContext";
 import { useSystemAlerts } from "./SystemAlertsContext";
 import { useRepositories } from "./RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
-import { useToast } from "../context/ToastContext";
 import { generateUUID } from "../utils/uuid";
 import * as FileSystem from 'expo-file-system/legacy';
-import { enqueueAndTrigger, processSyncQueue } from "../utils/syncProcessor";
+import { getPrefixedKey, setItem } from "../utils/storage";
+import { updateLastSyncedAt } from "../utils/syncQueue";
+import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 
 interface TransactionsData {
     transactions: Transaction[];
@@ -60,44 +61,6 @@ function toZIso(date: unknown): string | null {
     return isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
-function remoteEpoch(remoteTx: Transaction): number {
-    if (remoteTx.updatedAt) return remoteTx.updatedAt;
-    const createdAt = (remoteTx as { createdAt?: unknown }).createdAt;
-    if (typeof createdAt === "string") {
-        const parsed = Date.parse(createdAt);
-        if (!isNaN(parsed)) return parsed;
-    }
-    return Number.POSITIVE_INFINITY;
-}
-
-function hasPendingLocalFile(tx: Transaction): boolean {
-    return !!tx.receiptUrl && tx.receiptUrl.startsWith("file://");
-}
-
-function isSameRecord(a: Transaction, b: Transaction): boolean {
-    const dateA = toZIso(a.date);
-    const dateB = toZIso(b.date);
-    return (
-        dateA !== null &&
-        dateA === dateB &&
-        Number(a.amount || 0) === Number(b.amount || 0) &&
-        (a.type || "") === (b.type || "") &&
-        (a.note ?? null) === (b.note ?? null)
-    );
-}
-
-function isSameContent(a: Transaction, b: Transaction): boolean {
-    return (
-        isSameRecord(a, b) &&
-        (a.title ?? null) === (b.title ?? null) &&
-        (a.paymentMethod ?? null) === (b.paymentMethod ?? null) &&
-        (a.establishment ?? null) === (b.establishment ?? null) &&
-        (a.receiptUrl ?? null) === (b.receiptUrl ?? null) &&
-        (a.category?.id ?? null) === (b.category?.id ?? null) &&
-        (a.dueId ?? null) === (b.dueId ?? null)
-    );
-}
-
 export function TransactionsProvider({ children }: { children: ReactNode }) {
     const { activeUserId } = useAuth();
     const { profile } = useUserProfile();
@@ -105,7 +68,6 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     const { transactions: txRepo } = useRepositories();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
-    const { showToast } = useToast();
 
     const uploadReceiptIfNeeded = useCallback(async (tx: Transaction): Promise<Transaction> => {
         if (tx.receiptUrl && tx.receiptUrl.startsWith('file://')) {
@@ -133,6 +95,20 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         return tx;
     }, [activeUserId]);
 
+    const refreshFromApi = useCallback(async () => {
+        if (!API_URL || !activeUserId) return;
+        const { ok, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
+        if (ok && Array.isArray(remoteData)) {
+            setTransactions(remoteData.map(addCategoryFallback));
+            const autoBackup = await getSetting('autoBackup');
+            if (autoBackup !== 'false') {
+                const key = await getPrefixedKey('transactions');
+                await setItem(key, remoteData);
+                await updateLastSyncedAt();
+            }
+        }
+    }, [activeUserId]);
+
     const fetchTransactions = useCallback(async () => {
         setLoading(true);
         try {
@@ -146,64 +122,20 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 }
                 return;
             }
-            const localData = (await txRepo.getAll()).map(addCategoryFallback);
-            setTransactions(localData);
-
-            if (!isLocal && API_URL && activeUserId) {
-                const { ok, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
-                if (ok && Array.isArray(remoteData)) {
-                    const mergedMap = new Map<string, Transaction>();
-                    let overwrittenCount = 0;
-
-                    for (const remoteTx of remoteData) {
-                        mergedMap.set(remoteTx.id, remoteTx);
-                    }
-
-                    for (const localTx of localData) {
-                        const remoteTx = mergedMap.get(localTx.id);
-                        if (!remoteTx) {
-                            // Fingerprint-adopt: the server mints ids, so an already-POSTed
-                            // payload lives remotely under another id — adopt it instead of
-                            // minting another row. Never drop a pending local file.
-                            const twin = remoteData.find((r) => isSameRecord(localTx, r));
-                            if (twin && !hasPendingLocalFile(localTx)) {
-                                await txRepo.deleteById(localTx.id);
-                                continue;
-                            }
-                            const uploaded = await uploadReceiptIfNeeded(sanitizeTransaction(localTx));
-                            mergedMap.set(localTx.id, uploaded);
-                            await enqueueAndTrigger('transactions', 'create', localTx.id, {
-                                ...uploaded,
-                                userId: activeUserId,
-                            });
-                        } else if ((localTx.updatedAt || 0) > remoteEpoch(remoteTx) && !isSameContent(localTx, remoteTx)) {
-                            mergedMap.set(localTx.id, localTx);
-                            await enqueueAndTrigger('transactions', 'update', localTx.id, {
-                                ...localTx,
-                                userId: activeUserId,
-                            });
-                        } else if ((remoteTx.updatedAt || 0) > (localTx.updatedAt || 0)) {
-                            overwrittenCount++;
-                        }
-                    }
-
-                    const merged = Array.from(mergedMap.values());
-                    await txRepo.upsertBulk(merged.map(sanitizeTransaction));
-                    setTransactions(merged);
-
-                    if (overwrittenCount > 0) {
-                        showToast(`${overwrittenCount} record(s) updated from another device.`);
-                    }
-                }
+            if (isLocal) {
+                // Local accounts: AsyncStorage only, zero API calls (SPEC-04, SPEC-45 CON-04).
+                const localData = (await txRepo.getAll()).map(addCategoryFallback);
+                setTransactions(localData);
+                return;
             }
-
-            processSyncQueue();
+            // Online native: API is truth (SPEC-45 DEC-01/DEC-03). Replace, never merge.
+            await refreshFromApi();
         } catch (error) {
             console.error("Error fetching transactions:", error);
         } finally {
             setLoading(false);
         }
-    }, [activeUserId, txRepo, uploadReceiptIfNeeded, isLocal, showToast]);
+    }, [activeUserId, txRepo, isLocal, refreshFromApi]);
 
     const { checkNegativeBalance } = useSystemAlerts();
 
@@ -216,7 +148,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         if (!activeUserId || loading) return;
         const initialBalance = Number(profile?.initialBalance || 0);
         const income = transactions
-            .filter((t) => t.type === "income" && t.title !== "Opening Balance")
+            .filter((t) => t.type === "income" && t.note !== "Initial account setup" && t.category?.id !== OPENING_BALANCE_CATEGORY_ID)
             .reduce((sum, t) => sum + Number(t.amount || 0), 0);
         const expense = transactions
             .filter((t) => t.type === "expense")
@@ -247,32 +179,40 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            await txRepo.upsert(newTransaction);
-            setTransactions((prev) => [...prev, newTransaction]);
-
-            if (!isLocal) {
-                const autoBackup = await getSetting('autoBackup');
-                if (API_URL && autoBackup !== 'false') {
-                    const uploaded = await uploadReceiptIfNeeded(newTransaction);
-                    const syncData = { ...uploaded, userId: activeUserId };
-                    await enqueueAndTrigger('transactions', 'create', newTransaction.id, syncData);
-                }
+            if (isLocal) {
+                await txRepo.upsert(newTransaction);
+                setTransactions((prev) => [...prev, newTransaction]);
+                return;
             }
+            // Online native: API first (SPEC-45 DEC-02). No local repo, no queue.
+            const uploaded = await uploadReceiptIfNeeded(newTransaction);
+            const { ok } = await authFetch('transactions', {
+                method: "POST",
+                body: JSON.stringify({ ...uploaded, userId: activeUserId }),
+            });
+            if (!ok) {
+                throw new Error("Failed to save transaction. Please check your connection.");
+            }
+            await refreshFromApi();
+            return;
         } catch (error) {
             console.error("Error adding transaction:", error);
             throw error;
         }
-    }, [txRepo, activeUserId, uploadReceiptIfNeeded, isLocal]);
+    }, [txRepo, activeUserId, uploadReceiptIfNeeded, isLocal, refreshFromApi]);
 
     const updateTransaction = useCallback(async (id: string, updates: Partial<Transaction>) => {
         try {
-            const item = await txRepo.getById(id);
-            if (item) {
-                await txRepo.upsert(sanitizeTransaction({ ...item, ...updates } as Transaction));
+            if (isLocal) {
+                const item = await txRepo.getById(id);
+                if (item) {
+                    await txRepo.upsert(sanitizeTransaction({ ...item, ...updates } as Transaction));
+                }
+                setTransactions((prev) => prev.map(t =>
+                    t.id === id ? { ...t, ...updates } : t
+                ));
+                return;
             }
-            setTransactions((prev) => prev.map(t =>
-                t.id === id ? { ...t, ...updates } : t
-            ));
 
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
@@ -292,25 +232,32 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            if (!isLocal) {
-                const autoBackup = await getSetting('autoBackup');
-                if (API_URL && autoBackup !== 'false') {
-                    const syncBody: Record<string, unknown> = { ...updates, userId: activeUserId };
-                    const zSyncDate = toZIso(syncBody.date);
-                    if (zSyncDate !== null) syncBody.date = zSyncDate;
-                    await enqueueAndTrigger('transactions', 'update', id, syncBody);
-                }
+            // Online native: API first (SPEC-45 DEC-02).
+            const updateBody: Record<string, unknown> = { ...updates, userId: activeUserId };
+            const zUpdateDate = toZIso(updateBody.date);
+            if (zUpdateDate !== null) updateBody.date = zUpdateDate;
+            const { ok } = await authFetch(`transactions/${id}`, {
+                method: "PUT",
+                body: JSON.stringify(updateBody),
+            });
+            if (!ok) {
+                throw new Error("Failed to save changes. Please check your connection.");
             }
+            await refreshFromApi();
+            return;
         } catch (error) {
             console.error("Error updating transaction:", error);
             throw error;
         }
-    }, [txRepo, activeUserId, isLocal]);
+    }, [txRepo, activeUserId, isLocal, refreshFromApi]);
 
     const deleteTransaction = useCallback(async (id: string) => {
         try {
-            await txRepo.deleteById(id);
-            setTransactions((prev) => prev.filter(t => t.id !== id));
+            if (isLocal) {
+                await txRepo.deleteById(id);
+                setTransactions((prev) => prev.filter(t => t.id !== id));
+                return;
+            }
 
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
@@ -322,17 +269,18 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            if (!isLocal) {
-                const autoBackup = await getSetting('autoBackup');
-                if (API_URL && autoBackup !== 'false') {
-                    await enqueueAndTrigger('transactions', 'delete', id);
-                }
+            // Online native: API first (SPEC-45 DEC-02).
+            const { ok } = await authFetch(`transactions/${id}`, { method: "DELETE" });
+            if (!ok) {
+                throw new Error("Failed to delete transaction. Please check your connection.");
             }
+            await refreshFromApi();
+            return;
         } catch (error) {
             console.error("Error deleting transaction:", error);
             throw error;
         }
-    }, [txRepo, isLocal]);
+    }, [txRepo, isLocal, refreshFromApi]);
 
     const dataValue = useMemo(() => ({
         transactions,

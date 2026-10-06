@@ -709,3 +709,25 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Verified (user-run): `npm run lint` clean; `npm test` → **15 suites, 434 passed, 0 failed**; `npx tsc --noEmit` silent.
 - No dependency, route, storage-key, or native-behavior change. Rollback: revert apiClient + AuthContext + test block.
 
+---
+
+## 2026-10-06 -- SPEC-45 FINAL v1.0 (transactions-first; not yet implemented)
+
+- `specs/45-api-source-of-truth.md`: FINAL per user call (v1.0; content unchanged from v0.1 except status). Model decided over 6 rounds: Local = AsyncStorage-only, toggle N/A; Online-mobile = API-first with Online-only/mobile-only `local backup` (ON = API + AsyncStorage mirror via background full-copy replace + timestamp, OFF = API-only, mirror cleared); web always Online, toggle N/A, API as-is; Online + offline = hard-error no-ops (no offline transactions, no later sync — queue write-role deleted, `pending` permanently 0 for Online).
+- Fixes the native tab-navigation duplication at the root: fetch stops enqueuing on read (D-01), so tab switches can't mint rows; twin/fingerprint + `upsertBulk`-stamps-`now` bypassed on the Online path (mirror keeps server `updatedAt`); balance sums move off `title` to the surviving opening marker (D-02); copy `Auto-Backup` → `Local backup`, OFF banner → `No local backup` (D-03); migration runs upload-once → heal-duplicates (keep oldest, Export-first warning) → discard queued transaction items, in that order (D-04/DEC-06). Dues/savings/categories/profile byte-identical (follow-up specs reference this one per §1.14); `syncQueue`/`syncProcessor` files stay until the last entity spec lands; web + local paths byte-identical.
+- Cross-refs (never duplicated): SPEC-04 (sync-vs-auth, promotion), SPEC-36 (web API-direct), SPEC-40 (merge re-enabled), SPEC-43 (write-site guard), T-05 (loop evidence home).
+- Next per §1.13: `/plan-fix` produces the plan file (`status: ready-for-implement-fix`, decision, in/out-of-scope paths, calibration); `/implement-fix` executes one slice at a time (D-01..D-06). No code written in this step.
+
+---
+
+## 2026-10-06 -- SPEC-45 implemented (D-01..D-05; D-06 this entry)
+
+- Implemented via /plan-fix run `20261006-session.md` (fresh-frame diagnosis; SPEC-45 governs per §1.13 gate) + /implement-fix, 10 slices, agent-coded with per-slice user Apply.
+- D-01 `context/TransactionsContext.tsx`: Online fetch = GET-replace + mirror (no merge/enqueue/drain); writes API-first + background re-pull; offline hard-error no-op; dead twin helpers + queue/toast imports removed; web + Local branches byte-identical.
+- D-02 marker migration (4 sites): `components/SummaryCard.tsx`, `app/add-transaction.tsx`, `app/dues.tsx` pay-guard, `context/TransactionsContext.tsx` eval — all off `title`, onto note/category-id marker; `SystemAlertsContext` verified filter-free (no slice); repo-wide grep: zero title-filters left. `utils/onboardingPayload.ts` (builder) untouched.
+- D-03 `app/(tabs)/settings.tsx`: `Local backup` copy (`No local backup` OFF), switch row hidden for Local + web-disabled, toggle populates/clears mirror; Backup/Restore/Make Online untouched. Fallout fixed in-slice: `utils/settingsAccountMode.test.ts` ACC-03 repaired to the new contract (old SPEC-39 expression superseded).
+- D-04 runbook in settings: preview → Export-first confirm → upload-once → heal keep-oldest → discard `transactions:*` queue items → refetch. NOT YET RUN (user-run with Export-first backup).
+- D-05 `utils/apiSourceOfTruth.test.ts` (new, 15 tests): ACC-01..05 x android/ios/web, all strings pre-verified against the tree.
+- Verified (user-run per slice): lint clean, jest green incl. new suites, tsc clean (9 "passed" confirmations). Open user-run: ACC-S01..S04 device matrix + D-04 Repair run.
+- Scope notes: N 7→8 (TxContext eval visit) →9 (ACC-03 repair) →10 (this journal); `useSavings` fetch + `base.storage` stamp fix deferred to follow-up specs (SPEC-45 Non-goals). No new deps, no routes, no storage-key renames, no server change. Rollback: revert slice files in reverse; orphaned mirror inert; server deletes (only via explicit Repair run) irreversible.
+

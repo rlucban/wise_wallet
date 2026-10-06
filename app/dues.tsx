@@ -18,6 +18,7 @@ import { scheduleDueNotifications } from "../utils/notifications";
 import { getTimeOfMonthTip, getRecurringProjectionMessage, isOverdue } from "../utils/financialLiteracy";
 import { ensureOthersOption } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 import { useSavings } from "../hooks/useSavings";
 
 const FREQUENCY_LABELS: Record<DueFrequency, string> = {
@@ -231,7 +232,7 @@ export default function DuesScreen() {
       if (item.type !== "income") {
 
         const totalIncome = transactions
-          .filter((t) => t.type === "income" && t.title !== "Opening Balance")
+          .filter((t) => t.type === "income" && t.note !== "Initial account setup" && t.category?.id !== OPENING_BALANCE_CATEGORY_ID)
           .reduce((sum, t) => sum + Number(t.amount || 0), 0);
         const totalExpense = transactions
           .filter((t) => t.type === "expense")

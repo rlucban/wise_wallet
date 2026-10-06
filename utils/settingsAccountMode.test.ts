@@ -33,11 +33,15 @@ function runSuite(os: "android" | "ios" | "web") {
             expect(source).toContain("isLocal={isLocal}");
         });
 
-        it("ACC-03: switch disabled ⟺ isLocal (web also disabled)", () => {
+        it("ACC-03: switch hidden for Local, web-disabled; OFF copy is No local backup (SPEC-45 D-03)", () => {
             const source = readRepo("app/(tabs)/settings.tsx");
+            expect(source).toContain("{!isLocal && (");
             expect(source).toContain(
-                'onValueChange={handleToggleAutoBackup} disabled={isLocal || Platform.OS === "web"}'
+                'onValueChange={handleToggleAutoBackup} disabled={Platform.OS === "web"}'
             );
+            expect(source).toContain("No local backup");
+            expect(source).not.toContain("Sync off");
+            expect(source).not.toContain("Auto-Backup");
         });
     });
 }

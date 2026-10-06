@@ -29,6 +29,7 @@ import { useCategoriesData } from "../context/CategoriesContext";
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
 import { ensureOthersOption, isOthersCategory } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 import { useSavings } from "../hooks/useSavings";
 
 export default function AddTransaction() {
@@ -64,7 +65,7 @@ export default function AddTransaction() {
   const availableBalance = useMemo(() => {
     const initialBalance = Number(profile?.initialBalance || 0);
     const totalIncome = transactions
-      .filter((t) => t.type === "income" && t.title !== "Opening Balance")
+      .filter((t) => t.type === "income" && t.note !== "Initial account setup" && t.category?.id !== OPENING_BALANCE_CATEGORY_ID)
       .reduce((sum, t) => sum + Number(t.amount || 0), 0);
     const totalExpenses = transactions
       .filter((t) => t.type === "expense")

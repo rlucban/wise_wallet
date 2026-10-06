@@ -7,6 +7,7 @@ import { useUserProfileData } from "../context/UserProfileContext";
 import { useState } from "react";
 import { BalanceBreakdown } from "./BalanceBreakdown";
 import { Transaction, SavingsItem } from "../types";
+import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 
 export function SummaryCard({ transactions = [], goals = [] }: { transactions?: Transaction[]; goals?: SavingsItem[] }) {
   const theme = useTheme();
@@ -16,8 +17,11 @@ export function SummaryCard({ transactions = [], goals = [] }: { transactions?: 
 
   const initialBalance = Number(profile?.initialBalance || 0);
 
+  const isOpeningEntry = (t: Transaction) =>
+    t.note === "Initial account setup" || t.category?.id === OPENING_BALANCE_CATEGORY_ID;
+
   const income = transactions
-    .filter((t) => t.type === "income" && t.title !== "Opening Balance")
+    .filter((t) => t.type === "income" && !isOpeningEntry(t))
     .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
   const expense = transactions
