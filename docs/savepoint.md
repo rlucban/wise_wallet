@@ -807,3 +807,14 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - D-04 `utils/selectRecentTransactions.test.ts`: platform-parameterized ACC-03 cases.
 - Verified user-run pending: lint/jest/tsc + Expo Go/web matrix.
 
+---
+
+## 2026-10-06 -- SPEC-49 implemented (Option A: client-side due-link map)
+
+- Problem: online refetch dropped `dueId`, re-enabling Delete on due-generated transactions.
+- Option chosen: A (client-side link map). Server-side persist parked.
+- `context/TransactionsContext.tsx`: attach links on web/native/local reads; record on POST success; prune on delete.
+- `utils/dueTxLinks.ts`: recordDueLink, pruneDueLinks, pruneDueLinksByDue, attachDueLinks (echo-wins).
+- `utils/dueTxLinks.test.ts`: platform-parameterized guards.
+- Verified user-run pending: lint/jest/tsc + Expo Go/web matrix.
+

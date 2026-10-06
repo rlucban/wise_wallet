@@ -459,6 +459,8 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-06 — Spec 50 FINAL + implemented.** `specs/50-dashboard-highlights-and-recent.md`: Highlights no longer flicker; Recent shows 5 latest-updated. D-01 `hooks/useInsights.ts` memoized on txKey; D-02 `components/SmartInsights.tsx` last-good + no null-flash + latest-1 cap; D-03 `utils/selectRecentTransactions.ts` + wiring in `app/(tabs)/index.tsx`; D-04 tests; D-05 journal. See `docs/savepoint.md`.
 
+- **2026-10-06 — Spec 49 FINAL + implemented (Option A).** `specs/49-scheduled-tx-link-persistence.md`: deletion lock for due-generated transactions persisted via client-side `user_{id}_due_tx_links` map. D-01 `context/TransactionsContext.tsx`: attach links on web/native/local reads, record on POST success, prune on delete. D-02 new `utils/dueTxLinks.ts`: record/prune/attach with echo-wins. D-03 `utils/dueTxLinks.test.ts`. D-04 docs. Server-side persist parked.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode
