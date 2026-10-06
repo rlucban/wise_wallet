@@ -35,7 +35,7 @@ export default function HelpScreen() {
           {'\n\n'}
           <Bold>Income dues</Bold> represent money coming in (payroll, freelance).
           {'\n\n'}
-          When a due date arrives, you can record it as a transaction with one tap. Enable <Bold>Auto-Process</Bold> so that when you mark a recurring due as paid, the next occurrence is automatically created. Without Auto-Process, the recurring chain stops after payment.
+          When a due date arrives, you can record it as a transaction with one tap. Enable <Bold>Auto-renew</Bold> so that when you mark a recurring due as paid, the next occurrence is automatically created. Without Auto-renew, the recurring chain stops after payment.
           {'\n\n'}
           <Bold>Completed dues</Bold> cannot be edited or deleted — they are locked once recorded.
         </Section>

@@ -123,7 +123,7 @@ export default function AddDue() {
                     {frequency !== "once" && (
                         <View style={{ flexDirection: "column", gap: 4, marginBottom: 16, paddingHorizontal: 4 }}>
                             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                                <Text variant="bodyLarge">Auto-Process</Text>
+                                <Text variant="bodyLarge">Auto-renew</Text>
                                 <Switch
                                     value={autoProcess}
                                     onValueChange={setAutoProcess}
@@ -132,7 +132,7 @@ export default function AddDue() {
                                 />
                             </View>
                             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                                Automatically record transaction when due date arrives
+                                Automatically create the next due when this one is paid
                             </Text>
                         </View>
                     )}

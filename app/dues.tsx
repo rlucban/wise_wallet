@@ -74,6 +74,7 @@ export default function DuesScreen() {
   const [payTarget, setPayTarget] = useState<Due | null>(null);
   const [payMethods, setPayMethods] = useState<PaymentMethodInfo[]>(FALLBACK_PAY_METHODS);
   const [payMethod, setPayMethod] = useState("Cash");
+  const [payBusy, setPayBusy] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -254,6 +255,8 @@ export default function DuesScreen() {
   }, []);
 
   const recordTransaction = useCallback(async (item: Due, method: string) => {
+    if (payBusy) return;
+    setPayBusy(true);
     try {
       // Balance validation for expense transactions
       if (item.type !== "income") {
@@ -297,7 +300,8 @@ export default function DuesScreen() {
       await updateDue(item.id, { completed: true });
 
       if (item.autoProcess === true && item.frequency && item.frequency !== "once") {
-        const nextDate = new Date(item.date);
+        const anchorMs = Math.max(Date.now(), new Date(item.date).getTime());
+        const nextDate = new Date(anchorMs);
         switch (item.frequency) {
           case "weekly": nextDate.setDate(nextDate.getDate() + 7); break;
           case "biweekly": nextDate.setDate(nextDate.getDate() + 14); break;
@@ -330,8 +334,10 @@ export default function DuesScreen() {
           title: "Error",
           message: error instanceof Error && error.message ? error.message : "Failed to record transaction.",
         });
+      } finally {
+        setPayBusy(false);
       }
-   }, [addTransaction, addDue, updateDue, categories, transactions, initialBalance, savingsItems, formatAmount]);
+    }, [addTransaction, addDue, updateDue, categories, transactions, initialBalance, savingsItems, formatAmount, payBusy]);
 
    const confirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -422,7 +428,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
                 {due.autoProcess && (
                   <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: theme.colors.surfaceVariant, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                     <MaterialCommunityIcons name="lightning-bolt" size={12} color={theme.colors.tertiary} style={{ marginRight: 2 }} />
-                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", fontSize: 10 }}>AUTO</Text>
+                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", fontSize: 10 }}>AUTO-RENEW</Text>
                   </View>
                 )}
               </View>
@@ -432,6 +438,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
               <Button
                 mode="outlined"
                 compact
+                disabled={payBusy}
                 onPress={() => openPayDialog(due)}
                 theme={{ colors: { primary: theme.colors.primary, outline: theme.colors.primary } }}
               >
@@ -462,7 +469,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         </Card.Content>
       </Card>
     );
-  }, [theme, formatAmount, openPayDialog, handleEdit]);
+  }, [theme, formatAmount, openPayDialog, handleEdit, payBusy]);
 
   const ListHeader = useCallback(() => (
     <View>
@@ -565,7 +572,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
 
           {frequency !== "once" && (
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <Text variant="bodyLarge">Auto-Process</Text>
+              <Text variant="bodyLarge">Auto-renew</Text>
               <Checkbox status={autoProcess ? "checked" : "unchecked"} onPress={() => setAutoProcess(!autoProcess)} />
             </View>
           )}
@@ -654,7 +661,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
               <Button mode="text" onPress={() => setPayTarget(null)}>Cancel</Button>
               <Button
                 mode="contained"
-                disabled={!payTarget}
+                disabled={!payTarget || payBusy}
                 onPress={() => {
                   if (!payTarget) return;
                   const due = payTarget;

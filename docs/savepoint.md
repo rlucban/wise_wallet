@@ -774,6 +774,20 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
+## 2026-10-06 -- SPEC-48 FINAL v1.0 + implemented (D-01/D-02/D-04/D-05; D-03 parked on HAR)
+
+- `specs/48-paid-due-visibility.md`: FINAL per user call (v0.1 as proposed; no amendment round). Problem (user-reported): paid dues reappeared in Upcoming after navigation — correct at submit, wrong after refetch.
+- Decisions: anchor next occurrence on max(today, scheduled); completed handling HAR-gated (U1-class PUT dues/:id → GET); busy flags on Pay + Confirm; Auto-Process → Auto-renew copy (switches, AUTO-RENEW badge, help) with the `autoProcess` field untouched; no background auto-pay exists or scoped.
+- D-01 `app/dues.tsx` (6 hunks): anchor math + busy state/guard/`finally` reset + both tap sites disabled; autoProcess gate untouched. Repair: renderItem dep missed `payBusy` (lint exhaustive-deps caught it); one-line fix.
+- D-02 copy layer (5 swaps): add-due switch + disclosed subtitle rewrite, dues modal label, badge, help terms. Field untouched.
+- D-03 `hooks/useDues.ts`: PARKED awaiting user HAR gate (PUT dues/:id {completed:true} → GET shows persisted?) — skips with record if green.
+- D-04 `utils/dueVisibility.test.ts` (new, 21 tests + 1 disclosed help-body guard): ACC-01 anchor, ACC-02 busy, ACC-03 rename/field, all × android/ios/web; guards-only deviation disclosed (SPEC-47 precedent).
+- Verified (user-run): lint clean (after repair); jest 19 suites / 557 passed / 0 failed; tsc silent.
+- Open (user-run): ACC-S01 overdue recurring → next correctly dated + hidden; ACC-S02 once stays gone across navigation; ACC-S03 double-tap → single row; ACC-S04 web matrix + export clean. Plus the HAR gate verdict for D-03.
+- Rollback: revert dues hunks + copy; delete test/spec additions.
+
+---
+
 ## 2026-10-06 -- Verification close-out (SPEC-46 + SPEC-47 matrices; PUT-400)
 
 - User-run matrices PASSED per user report 2026-10-06: SPEC-47 ACC-S01..S05 (pay with method → 201 + completes + shows method; offline copy; local fallback; server message; web export) and SPEC-46 ACC-S01..S05 (fresh-bundle new rows survive refetch, both platforms).
