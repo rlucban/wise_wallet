@@ -272,6 +272,21 @@ export const addUser = async (id: string, name: string, passcode: string) => {
   }
 };
 
+// SPEC-35 D-02: re-hash the local credential on PIN change so login and
+// PIN-gated destructive flows agree with the new PIN. No-op when the user
+// row is absent (callers surface messaging); same SHA256 call as addUser.
+export const updateUserPasscode = async (id: string, passcode: string) => {
+  const users = await getUsers();
+  const existingUser = users.find(u => u.id === id);
+  if (!existingUser) return;
+
+  existingUser.passcode = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    passcode
+  );
+  await setItem('master_users', users);
+};
+
 export const deleteUser = async (id: string) => {
   const users = await getUsers();
   const filtered = users.filter(u => u.id !== id);
