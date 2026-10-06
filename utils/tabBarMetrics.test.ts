@@ -155,10 +155,10 @@ describe("getTabBarMetrics (ACC-03)", () => {
 
             it("matches the same literal metrics at fontScale 1", () => {
                 expect(getTabBarMetrics(34)).toEqual({
-                    height: 102,
+                    height: 112,
                     paddingTop: 4,
                     paddingBottom: 34,
-                    usableHeight: 54,
+                    usableHeight: 64,
                     requiredHeight: 43,
                     fits: true,
                 });
@@ -238,13 +238,13 @@ describe("app/(tabs)/_layout.tsx source (ACC-05)", () => {
         expect(fields).toEqual(["height", "paddingBottom", "paddingTop"]);
     });
 
-    it("keeps the tab bar theme values (CON-06)", () => {
+    it("keeps the tab bar theme values (CON-06 as amended by SPEC-52/55/56)", () => {
         expect(source).toContain("tabBarActiveTintColor: theme.colors.primary");
         expect(source).toContain("tabBarInactiveTintColor: theme.colors.outline");
-        expect(source).toContain("backgroundColor: theme.colors.surface");
-        expect(source).toContain("borderTopWidth: 1");
-        expect(source).toContain("borderTopColor: theme.colors.surfaceVariant");
-        expect(source).toContain("elevation: 0");
+        expect(source).toContain('theme.dark ? "#2B2930" : theme.colors.surface');
+        expect(source).toContain("borderTopWidth: 0");
+        expect(source).not.toContain("borderTopColor");
+        expect(source).not.toContain("elevation: 0");
     });
 
     it("keeps the label typography (CON-07)", () => {

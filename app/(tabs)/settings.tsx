@@ -1220,7 +1220,7 @@ if (!serverOk && !localOk) {
         <Appbar.Content title="Settings" titleStyle={{ fontWeight: "700" }} />
       </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 160 }}>
         {/* User Profile Section */}
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>

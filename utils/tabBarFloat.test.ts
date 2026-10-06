@@ -8,14 +8,16 @@ function readRepo(relativePath: string): string {
 
 function runSuite(os: "android" | "ios" | "web"): void {
     describe(`SPEC-52 floating tab bar on ${os}`, () => {
-        it("ACC-01: pill geometry, in-flow, SPEC-32 values intact", () => {
+        it("ACC-01: pill geometry, overlay, SPEC-32 values intact", () => {
             const layout = readRepo("app/(tabs)/_layout.tsx");
             expect(layout).toContain("marginHorizontal: 16");
-            expect(layout).toContain("marginBottom: 12");
+            expect(layout).toContain("marginBottom: 32");
             expect(layout).toContain("borderTopWidth: 0");
             expect(layout).not.toContain("borderTopColor");
-            expect(layout).not.toContain('position: "absolute"');
-            expect(layout).not.toContain("position:'absolute'");
+            // SPEC-56: overlay (reverses the old in-flow rule).
+            expect(layout).toContain('position: "absolute"');
+            const positions = layout.match(/position: "absolute"/g) ?? [];
+            expect(positions.length).toBe(1);
             // SPEC-32 metric wiring untouched.
             expect(layout).toContain("useSafeAreaInsets()");
             expect(layout).toContain("getTabBarMetrics(insets.bottom)");
@@ -44,17 +46,17 @@ function runSuite(os: "android" | "ios" | "web"): void {
             expect(layout).toContain("useNativeDriver: false");
             expect(layout).toContain("dip(0.85, 120)");
             expect(layout).toContain("dip(1, 180)");
-            // Accessibility + test pass-through preserved.
-            expect(layout).toContain("accessibilityLabel={accessibilityLabel}");
-            expect(layout).toContain("accessibilityState={accessibilityState}");
-            expect(layout).toContain('accessibilityRole={accessibilityRole ?? "button"}');
+            // Library-faithful passthrough (BottomTabBarButtonProps shape).
             expect(layout).toContain("testID={testID}");
+            expect(layout).toContain("role={role}");
+            expect(layout).toContain("aria-label={ariaLabel}");
+            expect(layout).toContain("style={style}");
         });
 
-        it("ACC-12: dark pill uses the MD3 tonal lift, theme file untouched", () => {
+        it("ACC-12: dark pill uses the M3-baseline lift literal, theme file untouched", () => {
             const layout = readRepo("app/(tabs)/_layout.tsx");
             expect(layout).toContain(
-                "backgroundColor: theme.dark ? theme.colors.surfaceContainerHigh : theme.colors.surface"
+                'theme.dark ? "#2B2930" : theme.colors.surface'
             );
             expect(layout).not.toContain("isDarkMode");
             const theme = readRepo("context/ThemeContext.tsx");
@@ -66,13 +68,35 @@ function runSuite(os: "android" | "ios" | "web"): void {
             const layout = readRepo("app/(tabs)/_layout.tsx");
             expect(layout).toContain("borderRadius: height / 2");
             expect(layout).not.toContain("borderRadius: 24");
-            // 68 + insets.bottom, halved: 34 / 46 / 51.
+            // 78 + insets.bottom, halved: 39 / 51 / 56.
             for (const inset of [0, 24, 34]) {
-                expect(getTabBarMetrics(inset).height / 2).toBe((68 + inset) / 2);
+                expect(getTabBarMetrics(inset).height / 2).toBe((78 + inset) / 2);
             }
-            expect(getTabBarMetrics(0).height / 2).toBe(34);
-            expect(getTabBarMetrics(24).height / 2).toBe(46);
-            expect(getTabBarMetrics(34).height / 2).toBe(51);
+            expect(getTabBarMetrics(0).height / 2).toBe(39);
+            expect(getTabBarMetrics(24).height / 2).toBe(51);
+            expect(getTabBarMetrics(34).height / 2).toBe(56);
+        });
+
+        it("SPEC-56: overlay clearance on all tab screens + FAB", () => {
+            expect(readRepo("app/(tabs)/index.tsx")).toContain("paddingBottom: 160");
+            expect(readRepo("app/(tabs)/index.tsx")).toContain("bottom: 160");
+            expect(readRepo("app/(tabs)/index.tsx")).not.toContain("bottom: 20");
+            expect(readRepo("app/(tabs)/reports.tsx")).toContain("paddingBottom: 160");
+            expect(readRepo("app/(tabs)/learning.tsx")).toContain("paddingBottom: 160");
+            expect(readRepo("app/(tabs)/learning-detail.tsx")).toContain("paddingBottom: 160");
+            expect(readRepo("app/(tabs)/settings.tsx")).toContain("paddingBottom: 160");
+        });
+
+        it("SPEC-54 guards preserved: no blur dep, no web-only props", () => {
+            const layout = readRepo("app/(tabs)/_layout.tsx");
+            expect(layout).not.toContain("expo-blur");
+            expect(layout).not.toContain("backdropFilter");
+            expect(layout).not.toContain("boxShadow");
+            expect(layout).not.toContain("TabBarVeil");
+            expect(layout).not.toContain("tabBarBackground");
+            expect(layout).not.toContain("expo-linear-gradient");
+            const pkg = readRepo("package.json");
+            expect(pkg).not.toContain("expo-blur");
         });
     });
 }

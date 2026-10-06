@@ -870,3 +870,36 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - D-54-02 `utils/tabBarVeil.test.ts`: ACC-01..03 × android/ios/web (veil wiring + gradient spec, higher float with v1.1 values intact, no `expo-blur`/`backdropFilter`/`boxShadow` + import allow-list).
 - Verified user-run pending: lint/jest/tsc + ACC-S01..S04 (Expo Go + web export).
 
+---
+
+## 2026-10-07 -- SPEC-55 FINAL + implemented (D-55-01..D-55-03; D-55-04 this entry; auto-pilot)
+
+- Ask: remove the glassy veil ("footer") + raise + enlarge the pill (user call 2026-10-07; option B).
+- `specs/55-remove-veil-raise-enlarge-tab-bar.md` FINAL v0.1.
+- D-55-01 `app/(tabs)/_layout.tsx`: deleted `TabBarVeil`, `tabBarBackground`, the `expo-linear-gradient` import (kept by login/register), unused `StyleSheet`/`View` imports; `marginBottom` 20 → 32.
+- D-55-02 `utils/tabBarMetrics.ts`: `TAB_BAR_CONTENT_HEIGHT` 68 → 78 (SPEC-32 amended in that one value; usable 54 → 64, capsule 39/51/56).
+- D-55-03 tests: `tabBarMetrics.test.ts` literals updated + `fits=false` boundary re-pinned 2.0 → 3.0 (at 78, 2.0 fits: 57 ≤ 64); `tabBarFloat.test.ts` capsule 39/51/56; `utils/tabBarVeil.test.ts` deleted by user via `Remove-Item` (no delete tool in agent toolbox) with its surviving guards folded into `tabBarFloat.test.ts`.
+- Verified user-run pending: lint/jest/tsc + ACC-S01..S03 (Expo Go + web export).
+
+---
+
+## 2026-10-07 -- SPEC-56 FINAL + implemented (D-56-01..D-56-03; D-56-04 this entry; auto-pilot)
+
+- Ask: kill the white rectangle behind the pill so it truly floats with parallax (user calls 2026-10-07; "make up your mind" — all decisions taken in-spec).
+- Root cause (verified in the installed fork): `styles.bottom` (`BottomTabBar.js:314-317`) carries no `position`, so the bar was in-flow — margin gaps showed the un-themed root background (white rectangle) and content could never pass behind it.
+- `specs/56-overlay-tab-bar-and-clearance.md` FINAL v0.1. Reverses SPEC-52 CON-52-03/DEC-52-01 (declared overlap; SPEC-56 governs positioning).
+- D-56-01 `app/(tabs)/_layout.tsx`: exactly one new key `position: "absolute"` (library `left`/`right`/`bottom: 0` + margins do the floating).
+- D-56-02 clearance `paddingBottom: 160` (= 112 worst-case bar + 32 float + 16) on all five tab scroll tails (index FlashList 100→160, reports 32→160, learning 40→160, learning-detail + settings added); Home FAB `bottom: 20 → 160`. dues/savings FABs untouched (stack screens, no bar). Static worst-case per DEC-56-02 — no hook wiring.
+- D-56-03 `utils/tabBarFloat.test.ts`: overlay + clearance + no-stray-anchor guards × android/ios/web.
+- Verified user-run pending: lint/jest/tsc + ACC-S01..S03 (Expo Go + web export).
+
+---
+
+## 2026-10-07 -- SPEC-52 v1.1 repair (button retype + bg literal + ACC-05)
+
+- Chain failures, all three root-caused (user-pasted jest + tsc output):
+  (1) `tabBarVeil.test.ts` never deleted — asserts the removed veil by design; user deletes via `Remove-Item` (no delete tool in agent toolbox).
+  (2) ACC-05 pinned pre-amendment CON-06 values — updated to the amended values (dark literal, `borderTopWidth: 0`, no `borderTopColor`/`elevation: 0`).
+  (3) tsc, two real defects: invented `accessibilityRole/State` props the fork never sends (it sends `role`/`testID`/`aria-label`/`style`/`href` — verified `BottomTabBar.js:99-135` + `types.d.ts:321-326`) → component retyped to the fork's `BottomTabBarButtonProps` shape with the library's own `style` applied (item layout stays SPEC-32-exact); `surfaceContainerHigh` absent from paper 5.15 types AND runtime (`DarkTheme.js` has zero `surfaceContainer*` keys — the pill would have rendered `undefined`) → M3-baseline literal `#2B2930` pinned (same normative color; CON-52-15/ACC-12 wording corrected, disclosed here).
+- Uncommitted per standing user instruction.
+

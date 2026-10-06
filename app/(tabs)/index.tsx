@@ -306,14 +306,14 @@ export default function Dashboard() {
         keyExtractor={(item: Transaction) => item.id}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={<EmptyState icon="receipt" title="No transactions yet" subtitle="Tap + to add your first transaction" />}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 160 }}
         showsVerticalScrollIndicator={false}
       />
 
       <FAB
         icon="plus"
         label="Transaction"
-        style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
+        style={{ position: "absolute", margin: 20, right: 0, bottom: 160, borderRadius: 20, backgroundColor: theme.colors.primary }}
         color="#fff"
         onPress={() => router.push("/add-transaction")}
       />

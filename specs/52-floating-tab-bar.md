@@ -171,14 +171,14 @@ re-breaking SPEC-32, SPEC-06 (web warnings), or Expo Go safety.**
   `shadowOffset.height: 4 → 6`; Android `elevation: 4 → 8`. Web stays flat
   (CON-52-04 unchanged). All other v1.0 geometry (16/12/24) frozen.
 - **CON-52-15 — Dark-mode pill color (exact).** `tabBarStyle.backgroundColor`
-  MUST be `theme.dark ? theme.colors.surfaceContainerHigh : theme.colors.surface`
-  — a tonal lift, no tint change. `surfaceContainerHigh` ships in the MD3
-  base themes (the app spreads `MD3DarkTheme.colors`, `context/ThemeContext.tsx:51-64`),
-  so no theme edit is needed. `theme.dark` is the MD3 boolean flag
-  (`MD3Theme.dark`), correct for both the custom dark theme and any default;
-  no `isDarkMode` from context is needed and `ThemeContext.tsx` MUST NOT be
-  edited. Active/inactive tints, label color, and the light-mode value MUST
-  remain exactly as v1.0/SPEC-32 froze them (CON-52-02).
+  MUST be `theme.dark ? "#2B2930" : theme.colors.surface` — a tonal lift, no
+  tint change. Correction 2026-10-07 (implementation finding, same normative
+  color): paper 5.15 ships no `surfaceContainerHigh` token (types or
+  runtime — verified in its `DarkTheme.js`), so the M3-baseline value is
+  pinned   literally instead of resolving a token that would be `undefined`.
+  `ThemeContext.tsx` MUST NOT be edited. Active/inactive tints, label color,
+  and the light-mode value MUST remain exactly as v1.0/SPEC-32 froze them
+  (CON-52-02).
   Tonal rationale (informative): dark pill was `surface` `#161B22` against
   `background` `#0D1117` — a 1.06:1 lift, visually flat; `surfaceContainerHigh`
   raises it one tonal step and keeps M3 elevation semantics.
@@ -226,7 +226,7 @@ Objective (machine-checkable):
 | ID | Android | iOS | Web | Check |
 |----|---------|-----|-----|-------|
 | ACC-11 | ✅ | ✅ | ✅ | Source-text guard: exact v1.1 shadow values present; `tabBarButton` + `Animated` + `Easing` + `useNativeDriver: false` present; tints/labels/metrics strings intact |
-| ACC-12 | ✅ | ✅ | ✅ | Source-text guard: `theme.dark ? theme.colors.surfaceContainerHigh : theme.colors.surface` present as the only background value; `ThemeContext.tsx` byte-identical; no new `isDarkMode` import |
+| ACC-12 | ✅ | ✅ | ✅ | Source-text guard: `theme.dark ? "#2B2930" : theme.colors.surface` present as the only background value; `ThemeContext.tsx` byte-identical; no new `isDarkMode` import |
 | ACC-13 | ✅ | ✅ | ✅ | Source-text guard: `borderRadius: height / 2` present and the literal `borderRadius: 24` absent; capsule math asserted in `utils/tabBarFloat.test.ts` for `insetsBottom` 0/24/34 → 34/46/51 |
 | ACC-14 | ✅ | ✅ | ✅ | `jest` 0 failed, `lint` clean, `tsc` clean; no dep/route/storage change |
 

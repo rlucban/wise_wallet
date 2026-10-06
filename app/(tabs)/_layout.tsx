@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Animated, Easing, Pressable, Platform } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 import { Tabs } from "expo-router";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useTheme } from "react-native-paper";
@@ -7,30 +8,28 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getTabBarMetrics } from "../../utils/tabBarMetrics";
 
 /**
- * SPEC-52 v1.1 (CON-52-12/13): eased press-down on every tab. The icon +
- * label dip to 0.85 on press-in and ease back on release. Accessibility
- * props, testID, and navigation behavior pass through untouched.
+ * SPEC-52 v1.1 (CON-52-12/13): eased press-down on every tab. Prop names and
+ * types mirror the fork's BottomTabBarButtonProps (expo-router
+ * bottom-tabs/types.d.ts:321-326); the library's own `style`, `role`,
+ * `testID`, and aria label pass through, so item layout stays exactly as
+ * SPEC-32 measured it.
  */
 function AnimatedTabButton({
     children,
     onPress,
     onLongPress,
-    onPressIn,
-    onPressOut,
-    accessibilityLabel,
-    accessibilityRole,
-    accessibilityState,
     testID,
+    role,
+    style,
+    "aria-label": ariaLabel,
 }: {
     children: React.ReactNode;
-    onPress?: () => void;
-    onLongPress?: () => void;
-    onPressIn?: () => void;
-    onPressOut?: () => void;
-    accessibilityLabel?: string;
-    accessibilityRole?: string;
-    accessibilityState?: { selected?: boolean; disabled?: boolean };
+    onPress?: React.ComponentProps<typeof Pressable>["onPress"];
+    onLongPress?: React.ComponentProps<typeof Pressable>["onLongPress"];
     testID?: string;
+    role?: React.ComponentProps<typeof Pressable>["role"];
+    style?: StyleProp<ViewStyle>;
+    "aria-label"?: string;
 }) {
     const scale = useRef(new Animated.Value(1)).current;
 
@@ -49,19 +48,12 @@ function AnimatedTabButton({
         <Pressable
             onPress={onPress}
             onLongPress={onLongPress}
-            onPressIn={() => {
-                dip(0.85, 120);
-                onPressIn?.();
-            }}
-            onPressOut={() => {
-                dip(1, 180);
-                onPressOut?.();
-            }}
-            accessibilityLabel={accessibilityLabel}
-            accessibilityRole={accessibilityRole ?? "button"}
-            accessibilityState={accessibilityState}
+            onPressIn={() => dip(0.85, 120)}
+            onPressOut={() => dip(1, 180)}
             testID={testID}
-            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+            role={role}
+            aria-label={ariaLabel}
+            style={style}
         >
             <Animated.View style={{ transform: [{ scale }] }}>{children}</Animated.View>
         </Pressable>
@@ -81,8 +73,12 @@ export default function TabLayout() {
                 tabBarInactiveTintColor: theme.colors.outline,
                 tabBarButton: (props) => <AnimatedTabButton {...props} />,
                 tabBarStyle: {
-                    // CON-52-15: dark mode gets an M3 tonal lift; light keeps surface.
-                    backgroundColor: theme.dark ? theme.colors.surfaceContainerHigh : theme.colors.surface,
+                    // SPEC-56 (CON-56-04): overlay — page content scrolls behind the pill.
+                    position: "absolute",
+                    // CON-52-15: dark lift. Paper 5.15 ships no surfaceContainerHigh
+                    // token (types or runtime), so the M3-baseline value is pinned
+                    // literally; light keeps surface.
+                    backgroundColor: theme.dark ? "#2B2930" : theme.colors.surface,
                     borderTopWidth: 0,
                     marginHorizontal: 16,
                     // CON-55-06: float higher still (was 20 in SPEC-54).
