@@ -758,3 +758,26 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Open (user-run): ACC-S05 web Salary survives refresh; ACC-S01 native re-confirmation on fresh bundle (new rows only — pre-fix rows can never heal); ACC-S02..S04.
 - Rollback v1.1: revert the 4 web hunks + 3 its; v1.0 behavior (native-only rehydrate) restored.
 
+---
+
+## 2026-10-06 -- SPEC-47 FINAL v1.0 + implemented (D-01..D-04)
+
+- `specs/47-due-payment-method-picker.md`: FINAL per user call (v0.1 as proposed; no amendment round). Problem (user-reported, HAR-proven ×2 same Weekly due): paying a due POSTed `paymentMethod: ""` → server 400 → generic connection copy shown, due stays open (fail-closed, no phantom completion).
+- Decisions: A′ (picker dialog + API list w/ hardcoded Cash/"Unknown" fallback + end-to-end message surfacing; B rejected Cash mislabeling; C parked). "Unknown" sentinel for local/unreachable (honest under device-vs-server divergence; promotes cleanly later). Copy split at `status !== 0` (HTTP→server message, transport→SPEC-45 copy).
+- D-01 `app/dues.tsx` (7 hunks): picker dialog (API list, FALLBACK Cash/Unknown), `recordTransaction(due, method)` pass-through, dues dialog shows surfaced message. Sole manual caller verified pre-change (no auto-payer, no SPEC-07 collision).
+- D-02 `context/TransactionsContext.tsx` (4 hunks): add×2 + update×2 throws prefer server `error` on HTTP !ok; transport frozen; DELETE throws untouched.
+- D-03 `utils/duePayment.test.ts` (new, 27 guards ACC-01..05 × android/ios/web) + Slice 3b +18 REG guards (45 total). Deviation disclosed: guards-only, no importable pure unit (behavior covered by ACC-S matrix) — same disclosure precedent as SPEC-40. REG-05 repair: my count omitted the fetch-native repull (investigated first: 4 pre-existing SPEC-45 call sites, none in my hunks); test-only fix.
+- Verified (user-run): lint clean; jest green (27/27 → 45/45); tsc silent.
+- Open (user-run): ACC-S01 pay with method → 201 + completes + shows method; ACC-S02 offline copy unchanged; ACC-S03 local fallback/"Unknown"; ACC-S04 server message shown; ACC-S05 web export clean.
+- Adjacent (own specs, not this one): PUT-400 (T-05); edit-screen "8"/"9" rot; pre-fix "" rows on promotion (migration swallow); due-payment HAR proofs archived in run file.
+- Rollback: revert dues hunks + throw lines; delete test/spec additions.
+
+---
+
+## 2026-10-06 -- Verification close-out (SPEC-46 + SPEC-47 matrices; PUT-400)
+
+- User-run matrices PASSED per user report 2026-10-06: SPEC-47 ACC-S01..S05 (pay with method → 201 + completes + shows method; offline copy; local fallback; server message; web export) and SPEC-46 ACC-S01..S05 (fresh-bundle new rows survive refetch, both platforms).
+- PUT-400 (T-05/mobile update-400): user reports already fixed — closed per report, no spec opened. Reopen on recurrence with fresh HAR.
+- Edit-screen "8"/"9" rot: closed per user report 2026-10-06 (Edit uses the correct category; Others issue gone — consistent with correct IDs now flowing end-to-end).
+- Still parked (own spec, deferred per user call 2026-10-06): pre-fix "" rows on promotion (migration swallow).
+
