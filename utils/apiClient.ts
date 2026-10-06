@@ -85,7 +85,8 @@ export async function authFetch<T = unknown>(
     });
 
     if (response.status === 401) {
-      if (!authWarnLatched) {
+      // SPEC-44 CON-06: warn only when the admin toggle is explicitly on.
+      if (!authWarnLatched && process.env.EXPO_PUBLIC_ADMIN_TOGGLE === "true") {
         console.warn('401 Unauthorized - clearing auth credentials');
         authWarnLatched = true;
       }

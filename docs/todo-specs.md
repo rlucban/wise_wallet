@@ -183,8 +183,8 @@ outlives it. **No code change needed — this is a manual step.**
 
 | Field | Value |
 |---|---|
-| Status | OPEN — no spec written |
-| Severity | **High on native** — silent data loss behind a success-looking UI |
+| Status | **FIXED / CLOSED — user report 2026-10-06** |
+| Severity | ~~High on native~~ resolved — silent data loss closed by fix, no open item |
 | Platform | Android / iOS only (verified via Expo Go device, 2026-10-05). Web unaffected. |
 | Found | 2026-10-05, during the SPEC-40 session |
 | Failing field | **UNCONFIRMED** — see "Diagnosis" |

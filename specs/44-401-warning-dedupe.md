@@ -29,6 +29,7 @@
 - **CON-03** — Exactly one diagnostic warn per episode MUST remain (dedupe, never drop).
 - **CON-04** — Response shape (`{ok:false,status:401,…}`), credential clear, and `onAuthFailure('session_ended')` side effects MUST be byte-identical per call.
 - **CON-05** — jest tests parameterized by `Platform.OS` (`android`/`ios`/`web`), source-text guard + behavioral check.
+- **CON-06** — The warn MUST be invisible unless `EXPO_PUBLIC_ADMIN_TOGGLE === "true"` at bundle time. `false`, unset, `null`, or any other value MUST NOT warn. (User call 2026-10-06: banner suppressed by default.)
 
 ## Goal
 
@@ -36,6 +37,7 @@
 - **ACC-01** — First 401 warns once; immediate second 401 (same episode) does not warn again.
 - **ACC-02** — After a login/logout reset, the next 401 warns again.
 - **ACC-03** — Credentials are cleared and `onAuthFailure('session_ended')` fires on EVERY 401, dedupe is logging-only.
+- **ACC-04** — With `EXPO_PUBLIC_ADMIN_TOGGLE` unset/false/null the warn is never emitted; with exactly `"true"` it follows ACC-01/ACC-02.
 
 ## Deliverables
 

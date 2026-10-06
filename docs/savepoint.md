@@ -671,6 +671,18 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - User reported SPEC-43 guard didn't stop duplicates + mobile↔web don't sync + mobile `transactions update 400 → Dequeuing` loop. Web HAR (`wise.har`, 15:47 UTC) inspected (46,648 lines, read-only).
 - Server truth: 5 identical ₱9,999 "Initial account setup" rows (`results:5`, stable in-session), same payload instant, `createdAt` 15:42:07–53 (~15s apart) = one payload re-POSTed, not 5 taps. Server mints ids (5 distinct ids, `categoryId: null`, **no `title` field**) → merge loop (T-05/H1) confirmed in effect; no-title rows pass all `t.title !== "Opening Balance"` filters → **₱49,995 phantom income** in every computed balance.
 - Web clean (zero writes, zero 4xx); dues/savings empty (no cross-entity compounding). Mobile update-400 is a separate PUT-validation defect; zod field still unknown (needs wallet_API/Vercel log — HAR has no PUTs). Full evidence appended to `docs/todo-specs.md` T-05. Next: user pastes server log excerpt, then loop-break + PUT-fix slices (no code written this round).
+- **Closed 2026-10-06:** T-05 fixed per user report. All previously-"never run" manual matrices (SPEC-42, SPEC-43, SPEC-40, SPEC-30, SPEC-32, SPEC-38, SPEC-39) now confirmed run per user. No code change in this entry — status reconciliation only.
+
+---
+
+## 2026-10-06 -- SPEC-44 amendment: EXPO_PUBLIC_ADMIN_TOGGLE gates the 401 warn
+
+- User call: the banner STILL appeared once per invalidation episode (dedupe allowed one pop); user wants it tied to an admin env toggle.
+- `specs/44-…`: added CON-06 + ACC-04 — warn ONLY when `EXPO_PUBLIC_ADMIN_TOGGLE === "true"`; `false`/unset/null/other = silent.
+- `utils/apiClient.ts`: 401 branch now `if (!authWarnLatched && process.env.EXPO_PUBLIC_ADMIN_TOGGLE === "true")` — latched warn stays dedupe-on-episode; side effects (clear creds + `onAuthFailure('session_ended')`) unchanged per call.
+- `utils/apiClient.test.ts`: beforeEach sets toggle `true` (+ afterEach deletes), block `removeSecureItem` mockClear retained, new ACC-04 rows (unset → no warn, `"false"` → no warn) × android/ios/web.
+- Verified (user-run): lint clean, `npx jest utils/apiClient.test.ts` → 25 passed, tsc silent.
+- Reminder: Expo Go needs reload and the var in `.env` (`EXPO_PUBLIC_ADMIN_TOGGLE=true`) to surface the warning; unset = silent.
 
 ---
 
@@ -683,7 +695,7 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - D-03 `app/(tabs)/settings.tsx` (dialog only): async converged save — Cloud: online gate → `authFetch("auth/change-passcode")` (SPEC-40 envelope passes `{token}` through untouched) → mirror re-hash → `setPasscode` (D-01 persist) → `login(id, freshToken)` (changer stays in) → exact copies (401 `'Current PIN is incorrect'` + step reset, 429 throttle, CON-09 offline/success strings); Local: `verifyPasscode` + re-hash + persist, zero API calls, pre-existing success copy kept. Dialog header/content/actions rebranched from `passcode` to `isPasscodeEnabled` (entry button already used it — split killed); Cloud no-lock shows current+new+confirm single step (server owns the PIN, DEC-05); Step-1 is hash-verify for Local, format-gate for Cloud; both save buttons enforce 4-digit + match + new≠current + Cloud-online (late-caught: `replaceAll` hit only the step-2 button — `pinChange` ACC-03 caught the no-lock one, fixed).
 - D-04 `utils/pinChange.test.ts` (new, 21 tests): ACC-01..06 + platform-neutrality across `android`/`ios`/`web` (source-text guards per repo precedent).
 - Verified (user-run): `npm run lint` clean; `npx jest` → **15 suites, 425 passed, 0 failed** (404 + 21 new); `npx tsc --noEmit` clean.
-- Open: D-05 device matrix ACC-S01..S04 (runbook handed over: Local restart/re-login, Cloud online/offline, multi-device 401 → Session Ended); SPEC-API-03 fixed-8h JWT window discussed (recommendation: fixed, not sliding — per-request sliding breaks stateless §1.5), draft deferred per user call until implementation lands. No new deps, no routes, no other storage/API/contract change. Rollback: D-01 key removal + revert order D-03→D-02→D-01.
+- D-05 device matrix: **PASSED per user 2026-10-06** ("D-05 is working"). SPEC-35 closed. SPEC-API-03 (8h fixed JWT) and the `passcodeUpdatedAt`/sid-less grace-gap closure both DECLINED per user call 2026-10-06 (not needed). No new deps, no routes, no other storage/API/contract change. Rollback: D-01 key removal + revert order D-03→D-02→D-01.
 
 ---
 

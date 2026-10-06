@@ -115,11 +115,14 @@ describe("SPEC-44 / 401 warning dedupe", () => {
     beforeEach(() => {
         resetAuthSessionWarningLatch();
         warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-        // Shared module-level mock — clear so ACC counts only this test's calls.
         (jest.requireMock("./secureStorage") as { removeSecureItem: jest.Mock })
             .removeSecureItem.mockClear();
+        process.env.EXPO_PUBLIC_ADMIN_TOGGLE = "true";
     });
-    afterEach(() => warnSpy.mockRestore());
+    afterEach(() => {
+        warnSpy.mockRestore();
+        delete process.env.EXPO_PUBLIC_ADMIN_TOGGLE;
+    });
 
     it.each(["android", "ios", "web"])(
         "ACC-01: first 401 warns, immediate second 401 stays silent (%s)",
@@ -160,6 +163,21 @@ describe("SPEC-44 / 401 warning dedupe", () => {
             expect(onAuthFailure).toHaveBeenCalledWith("session_ended");
             expect(secure.removeSecureItem).toHaveBeenCalledTimes(2);
             setAuthFailureCallback(() => {});
+        }
+    );
+
+    it.each(["android", "ios", "web"])(
+        "ACC-04: no warn when EXPO_PUBLIC_ADMIN_TOGGLE is unset/false/null (%s)",
+        async () => {
+            delete process.env.EXPO_PUBLIC_ADMIN_TOGGLE;
+            respondWith({ status: "error", message: "unauthorized" }, 401);
+            await authFetch("/a");
+            expect(warnSpy).not.toHaveBeenCalled();
+
+            process.env.EXPO_PUBLIC_ADMIN_TOGGLE = "false";
+            resetAuthSessionWarningLatch();
+            await authFetch("/b");
+            expect(warnSpy).not.toHaveBeenCalled();
         }
     );
 });
