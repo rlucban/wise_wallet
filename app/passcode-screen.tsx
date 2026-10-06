@@ -5,7 +5,7 @@ import { usePasscode } from "../context/PasscodeContext";
 
 export default function PasscodeScreen() {
   const theme = useTheme();
-  const { passcode, setIsUnlocked } = usePasscode();
+  const { verifyPasscode, setIsUnlocked } = usePasscode();
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
 
@@ -27,14 +27,17 @@ export default function PasscodeScreen() {
     setError("");
 
     if (cleaned.length === 4) {
-      if (cleaned === passcode) {
-        setIsUnlocked(true);
-      } else {
-        setError("Incorrect passcode. Please try again.");
-        setTimeout(() => {
-          setInput("");
-        }, 600);
-      }
+      // SPEC-35 D-01: hash-aware verify so the persisted lock unlocks after restart.
+      verifyPasscode(cleaned).then((ok) => {
+        if (ok) {
+          setIsUnlocked(true);
+        } else {
+          setError("Incorrect passcode. Please try again.");
+          setTimeout(() => {
+            setInput("");
+          }, 600);
+        }
+      });
     }
   };
 

@@ -7,7 +7,7 @@ import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import { useRepositories } from "../../context/RepositoryContext";
 
-import { setSetting, clearAllLocalData, exportData, importData, deleteUser, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers } from "../../utils/db";
+import { setSetting, clearAllLocalData, exportData, importData, deleteUser, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers, updateUserPasscode } from "../../utils/db";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
@@ -126,12 +126,13 @@ export default function SettingsScreen() {
   const paperTheme = usePaperTheme();
   const { isDarkMode, toggleTheme } = useAppTheme();
   const { profile, updateProfile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
-  const { isPasscodeEnabled, passcode, setIsPasscodeEnabled, setPasscode } = usePasscode();
+  const { isPasscodeEnabled, setIsPasscodeEnabled, setPasscode, verifyPasscode } = usePasscode();
   const { activeUserId, logout, login } = useAuth();
   const { refetch: refetchTx } = useTransactionsActions();
   const { refetch: refetchCats } = useCategoriesActions();
   const repos = useRepositories();
   const isLocal = useIsLocalAccount();
+  const { isOnline } = useNetwork();
 
   const handleLogout = async () => {
     await logout();
@@ -148,29 +149,84 @@ export default function SettingsScreen() {
     setPinError(null);
   };
 
-  const handleChangePasscode = () => {
+  // SPEC-35 D-03: converged change — lock (D-01 persist) + local
+  // master_users re-hash (D-02) + server bcrypt (Cloud only).
+  const handleChangePasscode = async () => {
     const current = currentPasscodeInput.trim();
     const next = newPasscodeInput.trim();
     const confirm = confirmPasscodeInput.trim();
 
-    if (passcode && (!/^\d{4}$/.test(current) || current !== passcode)) {
-      setChangePasscodeError("Incorrect current PIN.");
-      return;
-    }
     if (!/^\d{4}$/.test(next)) {
       setChangePasscodeError("New PIN must be 4 digits.");
-      return;
-    }
-    if (passcode && next === current) {
-      setChangePasscodeError("New PIN must be different from current PIN.");
       return;
     }
     if (next !== confirm) {
       setChangePasscodeError("New PINs do not match.");
       return;
     }
+    if (current !== "" && next === current) {
+      setChangePasscodeError("New PIN must be different from current PIN.");
+      return;
+    }
+    if (!activeUserId) {
+      setChangePasscodeError("Please check your connection.");
+      return;
+    }
 
-    const isNewSetup = !passcode;
+    if (!isLocal) {
+      // Cloud: server is source of truth (DEC-05); fail-closed offline (CON-03).
+      if (!isOnline) {
+        setChangePasscodeError("Connect to change your Cloud PIN.");
+        return;
+      }
+      if (!/^\d{4}$/.test(current)) {
+        setChangePasscodeError("Enter your current 4-digit PIN.");
+        return;
+      }
+      try {
+        const result = await authFetch<{ token?: string }>("auth/change-passcode", {
+          method: "POST",
+          body: JSON.stringify({ currentPasscode: current, newPasscode: next }),
+        });
+        if (!result.ok) {
+          if (result.status === 401) {
+            setChangePasscodeError("Current PIN is incorrect");
+            setPinStep(1);
+            setCurrentPasscodeInput("");
+          } else if (result.status === 429) {
+            setChangePasscodeError("Too many attempts, try again later");
+          } else {
+            setChangePasscodeError(result.error || "Please check your connection.");
+          }
+          return;
+        }
+        const freshToken = result.data?.token;
+        await updateUserPasscode(activeUserId, next);
+        const isNewSetup = !isPasscodeEnabled;
+        setPasscode(next);
+        if (isNewSetup) setIsPasscodeEnabled(true);
+        // SPEC-API-02: store the fresh session-bound token so the changer stays in.
+        if (freshToken) await login(activeUserId, freshToken);
+        closeChangePasscodeDialog();
+        setMessageDialog({
+          visible: true,
+          type: "success",
+          title: "Passcode Changed",
+          message: "Passcode changed — other devices will be signed out when next online.",
+        });
+      } catch {
+        setChangePasscodeError("Please check your connection.");
+      }
+      return;
+    }
+
+    // Local: fully offline (CON-04) — lock verify + local re-hash only.
+    if (isPasscodeEnabled && !(await verifyPasscode(current))) {
+      setChangePasscodeError("Incorrect current PIN.");
+      return;
+    }
+    await updateUserPasscode(activeUserId, next);
+    const isNewSetup = !isPasscodeEnabled;
     setPasscode(next);
     if (isNewSetup) setIsPasscodeEnabled(true);
     closeChangePasscodeDialog();
@@ -1447,17 +1503,17 @@ if (!pinVerified) {
         </Dialog>
 
         <Dialog visible={showChangePasscodeDialog} onDismiss={closeChangePasscodeDialog} style={styles.dialog}>
-          {passcode ? (
+          {isPasscodeEnabled ? (
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
               <Dialog.Title>{pinStep === 1 ? "Change Passcode" : "Enter New Passcode"}</Dialog.Title>
               <IconButton icon="close" onPress={closeChangePasscodeDialog} />
             </View>
           ) : (
-            <Dialog.Title>Set Passcode</Dialog.Title>
+            <Dialog.Title>{isLocal ? "Set Passcode" : "Change Passcode"}</Dialog.Title>
           )}
           <Dialog.Content>
-            {passcode ? (
-              // Step 1: Verify current passcode when existing passcode exists
+            {isPasscodeEnabled ? (
+              // Step 1: Verify current passcode when a lock exists (CON-10: same source as entry button)
               pinStep === 1 ? (
                 <View>
                   <Text style={{ marginBottom: 16 }}>
@@ -1518,8 +1574,8 @@ if (!pinVerified) {
                   ) : null}
                 </View>
               )
-            ) : (
-              // No existing passcode: directly show new passcode fields
+            ) : isLocal ? (
+              // No lock yet (Local): directly show new passcode fields
               <View>
                 <Text style={{ marginBottom: 16 }}>
                   Choose a new 4-digit passcode.
@@ -1554,22 +1610,81 @@ if (!pinVerified) {
                   </Text>
                 ) : null}
               </View>
+            ) : (
+              // No app lock yet (Cloud): server owns the PIN, so current is required (DEC-05).
+              <View>
+                <Text style={{ marginBottom: 16 }}>
+                  Enter your current PIN and choose a new one.
+                </Text>
+                <TextInput
+                  label="Current Passcode"
+                  value={currentPasscodeInput}
+                  onChangeText={(t) => {
+                    setCurrentPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                    setChangePasscodeError("");
+                  }}
+                  secureTextEntry
+                  keyboardType="numeric"
+                  maxLength={4}
+                  style={{ marginBottom: 12 }}
+                />
+                <TextInput
+                  label="New Passcode"
+                  value={newPasscodeInput}
+                  onChangeText={(t) => {
+                    setNewPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                    setChangePasscodeError("");
+                  }}
+                  secureTextEntry
+                  keyboardType="numeric"
+                  maxLength={4}
+                  style={{ marginBottom: 12 }}
+                />
+                <TextInput
+                  label="Confirm New Passcode"
+                  value={confirmPasscodeInput}
+                  onChangeText={(t) => {
+                    setConfirmPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
+                    setChangePasscodeError("");
+                  }}
+                  secureTextEntry
+                  keyboardType="numeric"
+                  maxLength={4}
+                  style={{ marginBottom: 12 }}
+                />
+                {changePasscodeError ? (
+                  <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>
+                    {changePasscodeError}
+                  </Text>
+                ) : null}
+              </View>
             )}
+            {!isLocal && !isOnline ? (
+              <Text style={{ color: paperTheme.colors.error, marginTop: 8 }}>
+                Connect to change your Cloud PIN.
+              </Text>
+            ) : null}
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={closeChangePasscodeDialog}>Cancel</Button>
-            {passcode ? (
+            {isPasscodeEnabled ? (
               pinStep === 1 ? (
                 <Button
-                  onPress={() => {
+                  onPress={async () => {
                     const current = currentPasscodeInput.trim();
-                    if (current === passcode) {
-                      setPinStep(2);
-                      setPinError(null);
-                    } else {
+                    if (!/^\d{4}$/.test(current)) {
+                      setPinError("Enter your current 4-digit PIN.");
+                      return;
+                    }
+                    // Local verifies against the lock here; Cloud is
+                    // format-gated only — the server verdict wins at save (DEC-05).
+                    if (isLocal && !(await verifyPasscode(current))) {
                       setPinError("Incorrect Current PIN. Try again.");
                       setCurrentPasscodeInput("");
+                      return;
                     }
+                    setPinStep(2);
+                    setPinError(null);
                   }}
                   disabled={currentPasscodeInput.trim().length !== 4}
                 >
@@ -1578,7 +1693,7 @@ if (!pinVerified) {
               ) : (
                 <Button
                   onPress={handleChangePasscode}
-                  disabled={newPasscodeInput.length !== 4 || newPasscodeInput !== confirmPasscodeInput}
+                  disabled={newPasscodeInput.length !== 4 || newPasscodeInput !== confirmPasscodeInput || (currentPasscodeInput.trim() !== "" && newPasscodeInput.trim() === currentPasscodeInput.trim()) || (!isLocal && !isOnline)}
                 >
                   Set Passcode
                 </Button>
@@ -1586,7 +1701,7 @@ if (!pinVerified) {
             ) : (
               <Button
                 onPress={handleChangePasscode}
-                disabled={newPasscodeInput.length !== 4 || newPasscodeInput !== confirmPasscodeInput}
+                disabled={newPasscodeInput.length !== 4 || newPasscodeInput !== confirmPasscodeInput || (currentPasscodeInput.trim() !== "" && newPasscodeInput.trim() === currentPasscodeInput.trim()) || (!isLocal && !isOnline)}
               >
                 Set Passcode
               </Button>
