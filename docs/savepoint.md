@@ -731,3 +731,18 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Verified (user-run per slice): lint clean, jest green incl. new suites, tsc clean (9 "passed" confirmations). Open user-run: ACC-S01..S04 device matrix + D-04 Repair run.
 - Scope notes: N 7→8 (TxContext eval visit) →9 (ACC-03 repair) →10 (this journal); `useSavings` fetch + `base.storage` stamp fix deferred to follow-up specs (SPEC-45 Non-goals). No new deps, no routes, no storage-key renames, no server change. Rollback: revert slice files in reverse; orphaned mirror inert; server deletes (only via explicit Repair run) irreversible.
 
+---
+
+## 2026-10-06 -- SPEC-46 FINAL v1.0 + implemented (D-01..D-05)
+
+- `specs/46-transaction-category-persistence.md`: FINAL v1.0 per user call (v0.1 DRAFT → v0.2 amended +D-05 probe, hardened ACC-01/04 per Keep-A verification call → FINAL). Problem (user-reported): online adds always displayed 'Others' even with Salary/Freelance selected. Root cause: the client sent the right category as a NESTED object, which wallet-api drops (`categoryId: null`, HAR-proven savepoint:672/todo-specs:306); SPEC-45's replace-on-fetch then stamped every row via `addCategoryFallback`. Local unaffected (AsyncStorage round-trips nested); web correct until next fetch. SPEC-45 ACC-01..06 assert truth-mechanics only → could not authorize; §1.14 clean (same functions, different behavior).
+- Decisions: Option A (flat `categoryId` + rehydrate; B rejected vs SPEC-45 DEC-01; C parked). Verification Keep-A per user call: user-run contract probe over fold-into-S01 (deterministic evidence; script self-cleans).
+- D-05 `scripts/verify-category-roundtrip.mjs` (new, node zero-deps, app never imports): U1 gate run one-time-authorized 2026-10-06 — login ok, no sessionConflict; POST accepted, server minted id; GET echoed `categoryId` b0…b16 exact; nested absent as designed; DELETE confirmed, zero residue; temp runner self-deleted, token never printed. ACC-06 satisfied.
+- D-01 `context/TransactionsContext.tsx`: both online POST bodies `categoryId: uploaded.category?.id ?? null`; both PUT bodies conditional (`updates.category !== undefined`, never null-wipes on partial updates). Local/web-otherwise byte-identical.
+- D-02 read rehydrate: new pure `utils/transactionCategory.ts` (`resolveTransactionCategory`: echo wins → id lookup incl. b18/b19 → Others fallback, empty-list safe) wired into `refreshFromApi` via existing `catRepo` (no new context coupling); mirror stays verbatim (SPEC-45 DEC-03); web/local keep `addCategoryFallback`. Repair note: first wiring hunk matched the wrong same-text line (web branch) — `npm run lint` caught it (unnecessary+missing dep pair); reverted + re-applied in `refreshFromApi`, read-back verified :99-140.
+- D-03 `utils/transactionCategory.test.ts` (new, 30 tests): hardened ACC-01..04 × android/ios/web (derivation counts 2+2, web/native depth placement, total `categoryId` count = 4, echo/lookup/fallback/DEC-03 branches).
+- Verified (user-run): `npm run lint` clean; `npx jest` → **17 suites, 482 passed, 0 failed**; `npx tsc --noEmit` silent (worker teardown notice pre-existing, not a failure).
+- Open (user-run): ACC-S01 online add Salary → survives tab-switch refetch; ACC-S02 Others-custom-text; ACC-S03 local + web regression; ACC-S04 `expo export --platform web` clean.
+- Adjacent rot (own future spec, not this one): `app/edit-transaction.tsx` `DEFAULT_CATEGORIES` `"8"/"9"` IDs disagree with seeded UUIDs + raw unauthenticated categories fetch.
+- Rollback: revert the 4+3 context hunks; delete util/test/script/spec additions; probe left zero server residue.
+

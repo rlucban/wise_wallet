@@ -16,6 +16,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { getPrefixedKey, setItem } from "../utils/storage";
 import { updateLastSyncedAt } from "../utils/syncQueue";
 import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
+import { resolveTransactionCategory } from "../utils/transactionCategory";
 
 interface TransactionsData {
     transactions: Transaction[];
@@ -65,7 +66,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     const { activeUserId } = useAuth();
     const { profile } = useUserProfile();
     const isLocal = useIsLocalAccount();
-    const { transactions: txRepo } = useRepositories();
+    const { transactions: txRepo, categories: catRepo } = useRepositories();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -99,7 +100,8 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         if (!API_URL || !activeUserId) return;
         const { ok, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
         if (ok && Array.isArray(remoteData)) {
-            setTransactions(remoteData.map(addCategoryFallback));
+            const cats = await catRepo.getAll();
+            setTransactions(remoteData.map((t) => ({ ...t, category: resolveTransactionCategory(t, cats) })));
             const autoBackup = await getSetting('autoBackup');
             if (autoBackup !== 'false') {
                 const key = await getPrefixedKey('transactions');
@@ -107,7 +109,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 await updateLastSyncedAt();
             }
         }
-    }, [activeUserId]);
+    }, [activeUserId, catRepo]);
 
     const fetchTransactions = useCallback(async () => {
         setLoading(true);
@@ -170,7 +172,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 const uploaded = await uploadReceiptIfNeeded(newTransaction);
                 const { ok } = await authFetch('transactions', {
                     method: "POST",
-                    body: JSON.stringify({ ...uploaded, userId: activeUserId }),
+                    body: JSON.stringify({ ...uploaded, categoryId: uploaded.category?.id ?? null, userId: activeUserId }),
                 });
                 if (!ok) {
                     throw new Error("Failed to save transaction. Please check your connection.");
@@ -188,7 +190,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             const uploaded = await uploadReceiptIfNeeded(newTransaction);
             const { ok } = await authFetch('transactions', {
                 method: "POST",
-                body: JSON.stringify({ ...uploaded, userId: activeUserId }),
+                body: JSON.stringify({ ...uploaded, categoryId: uploaded.category?.id ?? null, userId: activeUserId }),
             });
             if (!ok) {
                 throw new Error("Failed to save transaction. Please check your connection.");
@@ -216,7 +218,9 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
-                const updateBody: Record<string, unknown> = { ...updates, userId: activeUserId };
+            const updateBody: Record<string, unknown> = { ...updates, userId: activeUserId };
+            if (updates.category !== undefined) updateBody.categoryId = updates.category ? updates.category.id : null;
+                if (updates.category !== undefined) updateBody.categoryId = updates.category ? updates.category.id : null;
                 const zUpdateDate = toZIso(updateBody.date);
                 if (zUpdateDate !== null) updateBody.date = zUpdateDate;
                 const { ok } = await authFetch(`transactions/${id}`, {
