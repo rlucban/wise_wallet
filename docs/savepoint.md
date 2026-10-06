@@ -675,6 +675,17 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
+## 2026-10-06 -- SPEC-44 amendment: EXPO_PUBLIC_ADMIN_TOGGLE gates the 401 warn
+
+- User call: the banner STILL appeared once per invalidation episode (dedupe allowed one pop); user wants it tied to an admin env toggle.
+- `specs/44-…`: added CON-06 + ACC-04 — warn ONLY when `EXPO_PUBLIC_ADMIN_TOGGLE === "true"`; `false`/unset/null/other = silent.
+- `utils/apiClient.ts`: 401 branch now `if (!authWarnLatched && process.env.EXPO_PUBLIC_ADMIN_TOGGLE === "true")` — latched warn stays dedupe-on-episode; side effects (clear creds + `onAuthFailure('session_ended')`) unchanged per call.
+- `utils/apiClient.test.ts`: beforeEach sets toggle `true` (+ afterEach deletes), block `removeSecureItem` mockClear retained, new ACC-04 rows (unset → no warn, `"false"` → no warn) × android/ios/web.
+- Verified (user-run): lint clean, `npx jest utils/apiClient.test.ts` → 25 passed, tsc silent.
+- Reminder: Expo Go needs reload and the var in `.env` (`EXPO_PUBLIC_ADMIN_TOGGLE=true`) to surface the warning; unset = silent.
+
+---
+
 ## 2026-10-06 -- SPEC-35 FINAL v1.0 + implemented (D-01..D-04)
 
 - `specs/35-pin-change-persistence-and-promotion-safety.md`: FINAL per user call (v1.0; content unchanged from v0.1 except status). Problem (user-confirmed repro): Settings → Change Passcode called `setPasscode(next)` in-memory only — new PIN unlocked the app this session while local `master_users` SHA256 + server bcrypt still expected the old PIN; `PasscodeContext` had no hydration at all, so the lock never survived restart.
