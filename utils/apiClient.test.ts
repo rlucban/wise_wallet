@@ -1,4 +1,4 @@
-import { authFetch } from "./apiClient";
+import { authFetch, resetAuthSessionWarningLatch, setAuthFailureCallback } from "./apiClient";
 
 const mockGetSecureItem = jest.fn<Promise<string | null>, []>();
 jest.mock("./secureStorage", () => ({
@@ -108,4 +108,58 @@ describe("SPEC-43 / T-05 error message fallback", () => {
         const res = await authFetch("/transactions/1");
         expect(res.error).toContain("Non-JSON response");
     });
+});
+
+describe("SPEC-44 / 401 warning dedupe", () => {
+    let warnSpy: jest.SpyInstance;
+    beforeEach(() => {
+        resetAuthSessionWarningLatch();
+        warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+        // Shared module-level mock — clear so ACC counts only this test's calls.
+        (jest.requireMock("./secureStorage") as { removeSecureItem: jest.Mock })
+            .removeSecureItem.mockClear();
+    });
+    afterEach(() => warnSpy.mockRestore());
+
+    it.each(["android", "ios", "web"])(
+        "ACC-01: first 401 warns, immediate second 401 stays silent (%s)",
+        async () => {
+            respondWith({ status: "error", message: "unauthorized" }, 401);
+            await authFetch("/a");
+            await authFetch("/b");
+            expect(warnSpy).toHaveBeenCalledTimes(1);
+            expect(warnSpy).toHaveBeenCalledWith(
+                "401 Unauthorized - clearing auth credentials"
+            );
+        }
+    );
+
+    it.each(["android", "ios", "web"])(
+        "ACC-02: after latch reset, the next 401 warns again (%s)",
+        async () => {
+            respondWith({ status: "error", message: "unauthorized" }, 401);
+            await authFetch("/a");
+            resetAuthSessionWarningLatch();
+            await authFetch("/b");
+            expect(warnSpy).toHaveBeenCalledTimes(2);
+        }
+    );
+
+    it.each(["android", "ios", "web"])(
+        "ACC-03: side effects (credential clear + auth failure) fire on every 401 (%s)",
+        async () => {
+            const onAuthFailure = jest.fn();
+            setAuthFailureCallback(onAuthFailure);
+            const secure = jest.requireMock("./secureStorage") as {
+                removeSecureItem: jest.Mock;
+            };
+            respondWith({ status: "error", message: "unauthorized" }, 401);
+            await authFetch("/a");
+            await authFetch("/b");
+            expect(onAuthFailure).toHaveBeenCalledTimes(2);
+            expect(onAuthFailure).toHaveBeenCalledWith("session_ended");
+            expect(secure.removeSecureItem).toHaveBeenCalledTimes(2);
+            setAuthFailureCallback(() => {});
+        }
+    );
 });
