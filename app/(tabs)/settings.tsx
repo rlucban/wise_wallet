@@ -20,6 +20,7 @@ import { authFetch } from "../../utils/apiClient";
 import { useSyncStatus } from "../../hooks/useSyncStatus";
 import { useNetwork } from "../../context/NetworkContext";
 import { useIsLocalAccount } from "../../utils/authMode";
+import { verifyLocalPin } from "../../utils/pinGate";
 import * as Crypto from 'expo-crypto';
 import { Transaction, Category, Due, SavingsItem, UserProfile } from "../../types";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -321,41 +322,70 @@ export default function SettingsScreen() {
    };
 
    const verifyPinForSync = async () => {
-     if (!pinVerificationInput.trim()) {
+     const pin = pinVerificationInput.trim();
+     if (!pin) {
        setVerificationError("PIN is required");
        return;
      }
      setIsSyncing(true);
      setVerificationError("");
+     // SPEC-51 D-51-01: converged server → local rule (DEC-51-01).
+     // Single login call; its outcome decides the branch — never re-fetched.
+     let unreachable = false;
      try {
        const response = await fetch(`${API_URL}/auth/login`, {
          method: "POST",
          headers: { "Content-Type": "application/json" },
          body: JSON.stringify({
            name: profile?.name || "",
-           passcode: pinVerificationInput.trim(),
+           passcode: pin,
            force: true
          }),
        });
 
        if (response.ok) {
-         setShowPinVerificationDialog(false);
-         setPinVerificationInput("");
          const data = (await response.json()).data;
          await login(data.user.id, data.token);
          await setSetting('autoBackup', 'true');
-         await proceedWithBackupEnable();
-       } else {
          setShowPinVerificationDialog(false);
          setPinVerificationInput("");
-         setShowNewAccountDialog(true);
+         await proceedWithBackupEnable();
+         return;
        }
+       // Reachable but rejected — fall through to local verify below.
      } catch (e) {
+       unreachable = true; // offline — fall through to local verify
        console.error("PIN verification failed:", e);
-       setVerificationError("Cannot reach server. Check your connection.");
-     } finally {
-       setIsSyncing(false);
      }
+
+     // Local fallback (DEC-51-01/02): same hash-or-plaintext rule as Delete.
+     let localOk = false;
+     if (activeUserId) {
+       try {
+         const users = await getUsers();
+         const user = users.find((u) => u.id === activeUserId);
+         if (user) localOk = await verifyLocalPin(pin, user.passcode);
+       } catch {
+         // local verify failed too
+       }
+     }
+
+     if (!localOk) {
+       setVerificationError("Incorrect PIN. Please try again.");
+       setIsSyncing(false);
+       return;
+     }
+     if (unreachable) {
+       // Backup needs the server — fail closed (CON-51-05, exact copy).
+       setVerificationError("Connect to enable cloud sync.");
+       setIsSyncing(false);
+       return;
+     }
+     // Device PIN confirmed, cloud disagrees — offer create-new with the
+     // PIN preserved for migrate (DEC-51-02/03, D-51-02).
+     setShowPinVerificationDialog(false);
+     setShowNewAccountDialog(true);
+     setIsSyncing(false);
    };
 
    const proceedWithBackupEnable = async () => {
@@ -767,42 +797,40 @@ export default function SettingsScreen() {
 
   const handleClearData = async () => {
     if (!pinInput.trim()) return;
+    const pin = pinInput.trim();
 
     setIsSyncing(true);
 
-    let pinVerified = false;
+    // SPEC-51 D-51-01: converged server → local rule (DEC-51-01).
+    let serverOk = false;
     try {
       const verifyRes = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: profile?.name || "",
-          passcode: pinInput.trim(),
+          passcode: pin,
           force: true,
         }),
       });
-      pinVerified = verifyRes.ok;
+      serverOk = verifyRes.ok;
     } catch {
       // server unreachable — fall through to local verify
     }
 
-    if (!pinVerified && activeUserId) {
+    // Local fallback with Delete parity: SHA256-or-plaintext (DEC-51-02).
+    let localOk = false;
+    if (!serverOk && activeUserId) {
       try {
         const users = await getUsers();
         const user = users.find((u) => u.id === activeUserId);
-        if (user) {
-          const inputHash = await Crypto.digestStringAsync(
-            Crypto.CryptoDigestAlgorithm.SHA256,
-            pinInput.trim()
-          );
-          pinVerified = user.passcode === inputHash;
-        }
+        if (user) localOk = await verifyLocalPin(pin, user.passcode);
       } catch {
         // local verify failed too
       }
     }
 
-if (!pinVerified) {
+if (!serverOk && !localOk) {
       showMessage("error", "Incorrect PIN", "Please try again.");
       setIsSyncing(false);
       return;
@@ -1538,7 +1566,7 @@ if (!pinVerified) {
             <Text style={{ marginBottom: 16 }}>
               {isLocal
                 ? "No cloud account found. This will create a new cloud account and migrate all your local data. This action cannot be reverted back to local-only."
-                : "The PIN you entered doesn't match the cloud account. Would you like to create a new cloud account with this PIN and migrate all your local data to it?"
+                : "Your PIN is correct on this device, but it doesn't match the cloud account. You can create a new cloud account with this PIN and migrate your local data to it."
               }
             </Text>
             <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>

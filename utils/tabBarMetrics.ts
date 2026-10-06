@@ -19,10 +19,13 @@
  * Height of the tab bar excluding the bottom safe-area inset.
  *
  * Sized so the stacked icon+label block clears `usableHeight` with real margin:
- * `usableHeight = 68 - 4 - (5 * 2) = 54` against `requiredHeight = 28 + 15 = 43` at the
- * default font scale (11px spare), and 50 at fontScale 1.5 (4px spare).
+ * `usableHeight = 78 - 4 - (5 * 2) = 64` against `requiredHeight = 28 + 15 = 43` at the
+ * default font scale (21px spare), and 50 at fontScale 1.5 (14px spare).
+ *
+ * SPEC-55 (CON-55-04): raised 68 → 78 so the floating pill reads as a larger,
+ * more prominent navbar. The fit invariant only gets safer (64 ≥ 43/50).
  */
-export const TAB_BAR_CONTENT_HEIGHT = 68;
+export const TAB_BAR_CONTENT_HEIGHT = 78;
 
 /** Space between the bar's top border and the tab item's own box. */
 export const TAB_BAR_PADDING_TOP = 4;

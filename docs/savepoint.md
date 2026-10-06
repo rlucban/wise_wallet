@@ -818,3 +818,55 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - `utils/dueTxLinks.test.ts`: platform-parameterized guards.
 - Verified user-run pending: lint/jest/tsc + Expo Go/web matrix.
 
+---
+
+## 2026-10-07 -- SPEC-53 FINAL + implemented (D-53-01..D-53-03; D-53-04 this entry)
+
+- Problem: Login/Register contained buttons painted indigo (`#3949ab`) with theme-default labels — hard to read.
+- `specs/53-auth-button-label-contrast.md` FINAL v0.1 per user call 2026-10-07 (fast-track spec-first; run `20261007-auth-buttons.md`).
+- D-53-01 `app/login.tsx`: shared `containedLabel: { color: "#fff" }` on Login primary + dialog contained/OK (cancel/text untouched).
+- D-53-02 `app/register.tsx`: same on Register primary + dialog contained/OK + active-only mode buttons (inactive outlined untouched).
+- D-53-03 `utils/authButtonLabels.test.ts`: ACC-01 guards × android/ios/web (1 investigated repair: expected counts 4→3 / 6→5 — the StyleSheet def line carries no `styles.` prefix; screens were correct).
+- Verified user-run: lint clean, jest 23 suites green, tsc clean. Open: ACC-S01..S03 visual matrix.
+
+---
+
+## 2026-10-07 -- SPEC-51 FINAL + implemented (D-51-01..D-51-05; D-51-06 this entry)
+
+- Problem: Clear All Data + Local Backup ON rejected the correct PIN (three gates, three rules; Backup server-only with no offline fallback; PIN cleared before migrate).
+- `specs/51-pin-gate-verification-parity.md` FINAL v0.1 per user call 2026-10-07 (run `20261007-session.md`, Track A Option A).
+- D-51-01/02/03 `app/(tabs)/settings.tsx` (4 hunks): converged server → `verifyLocalPin` rule, Backup offline fail-closed ("Connect to enable cloud sync."), PIN preserved for migrate, corrected mismatch copy; Change-PIN/migrate/execute byte-identical.
+- D-51-04 new `utils/pinGate.ts` (hash-or-plaintext, injectable digest); D-51-05 `utils/pinGate.test.ts` ACC-01..05 × android/ios/web (1 investigated repair: expo-crypto ESM virtual mock + default-digest case).
+- Verified user-run: lint clean, jest green, tsc clean. Open: device matrix (Clear/Backup/Delete/Change-PIN regression) + ACC-S01..S05.
+
+---
+
+## 2026-10-07 -- SPEC-52 FINAL + implemented (D-52-01..D-52-03; D-52-04 this entry)
+
+- Ask: iOS-like floating pill, still bottom-anchored.
+- `specs/52-floating-tab-bar.md` FINAL v0.1 per user call 2026-10-07 (Track B Option A; amends SPEC-32 CON-06 in 3 named values only).
+- D-52-01 `app/(tabs)/_layout.tsx` tabBarStyle-only: in-flow pill (margins 16/12, radius 24, no top border, platform shadow, web flat); SPEC-32 metrics/fits/labels untouched.
+- D-52-02 `utils/tabBarFloat.test.ts`: ACC-01/03 source-text + Platform.OS guards.
+- Verified user-run pending: lint/jest/tsc + ACC-S01..S04 (Expo Go + web export).
+
+---
+
+## 2026-10-07 -- SPEC-52 v1.1 FINAL + implemented (D-52-11..D-52-13; auto-pilot)
+
+- Ask: floating navbar should be more prominent and elegant (user call 2026-10-07).
+- `specs/52-floating-tab-bar.md` v1.1 amendment FINAL: deeper shadow + eased press + dark-mode tonal lift + true capsule.
+- D-52-11 `app/(tabs)/_layout.tsx`: shadow iOS 0.25/16/h6 + Android elevation 8 (web still flat); `backgroundColor: theme.dark ? theme.colors.surfaceContainerHigh : theme.colors.surface` (dark was `surface` `#161B22` on `background` `#0D1117` — a 1.06:1 lift, visually flat); `borderRadius: height / 2` replaces the constant 24 (34/46/51 at insets 0/24/34); inline `AnimatedTabButton` via `tabBarButton` scales 1 → 0.85 in 120ms and eases back in 180ms (`Easing.out(Easing.quad)`, `useNativeDriver: false` to avoid the SPEC-06 web WARN class). Accessibility props, `testID`, tints, labels, order, metrics untouched; `ThemeContext.tsx` not edited (MD3 base already ships `surfaceContainerHigh`).
+- D-52-12 `utils/tabBarFloat.test.ts`: ACC-11 (press/a11y/driver), ACC-12 (dark lift + theme untouched), ACC-13 (capsule math 34/46/51) × android/ios/web.
+- Verified user-run pending: lint/jest/tsc + ACC-S11..S14 (Expo Go + web export).
+
+---
+
+## 2026-10-07 -- SPEC-54 FINAL + implemented (D-54-01..D-54-02; D-54-03 user-run, D-54-04 this entry)
+
+- Ask: blurred edges on the floating navbar + float a bit higher + static and sticky (user calls 2026-10-07; option A = gradient veil, no new dep).
+- `specs/54-tab-bar-soft-edge-and-float.md` FINAL v0.1.
+- D-54-01 `app/(tabs)/_layout.tsx`: new `TabBarVeil` wired via `tabBarBackground` — `LinearGradient` `["transparent","transparent",surface]` at `locations [0,0.45,1]` + three `blur`/`blur-off` glyphs at `opacity 0.18`, `pointerEvents="none"`, pill-clipped (`borderRadius: height / 2`, `overflow: hidden`); `marginBottom` 12 → 20. Zero new dependencies (`expo-linear-gradient` already direct; `expo-blur` deliberately not added).
+- **Deviation from CON-54-05/04 (disclosed, evidence-based):** the library renders `tabBarBackground` inside `StyleSheet.absoluteFill` + `styles.pointerEventsNone` (`BottomTabBar.js`), so the veil fills exactly the pill's box; bleeding outside the rounded ends would require `overflow: "visible"`, which Android clips → platform-only behavior barred by §1.10. The soft edge is therefore rendered *inside* the pill face (transparent top → surface bottom) instead of around it. Icon glyphs reuse the file's existing `MaterialCommunityIcons` import rather than adding `@expo/vector-icons` (same glyph set, smaller diff; ACC-03 allow-list still satisfied).
+- D-54-02 `utils/tabBarVeil.test.ts`: ACC-01..03 × android/ios/web (veil wiring + gradient spec, higher float with v1.1 values intact, no `expo-blur`/`backdropFilter`/`boxShadow` + import allow-list).
+- Verified user-run pending: lint/jest/tsc + ACC-S01..S04 (Expo Go + web export).
+
