@@ -8,10 +8,14 @@ export function SmartInsights() {
   const [dismissedIds, setDismissedIds] = React.useState<string[]>([]);
   const [showDismissed, setShowDismissed] = React.useState(false);
 
-  if (insights.length === 0) return null;
+  const lastGoodRef = React.useRef<Insight[]>([]);
+  if (insights.length > 0) lastGoodRef.current = insights;
 
-  const activeInsights = insights.filter(i => !dismissedIds.includes(i.id));
-  const displayInsights = showDismissed ? insights : activeInsights;
+  const effectiveInsights = insights.length > 0 ? insights : lastGoodRef.current;
+  if (effectiveInsights.length === 0) return null;
+
+  const activeInsights = effectiveInsights.filter((i) => !dismissedIds.includes(i.id));
+  const displayInsights = (showDismissed ? effectiveInsights : activeInsights).slice(0, 1);
 
   if (displayInsights.length === 0 && !showDismissed) {
     if (dismissedIds.length > 0) {

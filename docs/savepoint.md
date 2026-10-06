@@ -795,3 +795,15 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Edit-screen "8"/"9" rot: closed per user report 2026-10-06 (Edit uses the correct category; Others issue gone — consistent with correct IDs now flowing end-to-end).
 - Still parked (own spec, deferred per user call 2026-10-06): pre-fix "" rows on promotion (migration swallow).
 
+---
+
+## 2026-10-06 -- SPEC-50 implemented (Highlights stability + Recent-five by updatedAt)
+
+- Problem: Highlights flickered on navigation/refresh; Recent showed 6 by transaction date.
+- User decisions (plan-fix run 20261006-2031-spec50.md): Highlights update only after a transaction persisted, lenient; Recent limited to top 5 by updatedAt with date fallback; both apply.
+- D-01 `hooks/useInsights.ts`: useMemo on txKey; savings/dues via refs to avoid focus-refetch recompute.
+- D-02 `components/SmartInsights.tsx`: last-good ref, no null-flash, latest 1 card.
+- D-03 `utils/selectRecentTransactions.ts`: pure helper, updatedAt desc, date fallback, top 5; wired in `app/(tabs)/index.tsx`.
+- D-04 `utils/selectRecentTransactions.test.ts`: platform-parameterized ACC-03 cases.
+- Verified user-run pending: lint/jest/tsc + Expo Go/web matrix.
+

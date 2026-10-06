@@ -14,6 +14,7 @@ import { useSystemAlerts } from "../../context/SystemAlertsContext";
 import { useCurrencyActions } from "../../context/CurrencyContext";
 import { useUserProfile } from "../../context/UserProfileContext";
 import { SummaryCard } from "../../components/SummaryCard";
+import { selectRecentTransactions } from "../../utils/selectRecentTransactions";
 import { DashboardSkeleton } from "../../components/SkeletonLoader";
 import { CloudLinkBanner } from "../../components/CloudLinkBanner";
 import { SmartInsights } from "../../components/SmartInsights";
@@ -105,10 +106,7 @@ export default function Dashboard() {
     [upcomingDues]
   );
 
-  const transactionData = useMemo(() => {
-    const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return sorted.slice(0, 6);
-  }, [transactions]);
+  const transactionData = useMemo(() => selectRecentTransactions(transactions), [transactions]);
 
   const renderTransactionItem = useCallback(
     ({ item }: { item: Transaction }) => (
