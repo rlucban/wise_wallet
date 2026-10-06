@@ -245,7 +245,7 @@ export default function Dashboard() {
 
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12, marginTop: 16, paddingHorizontal: 20 }}>
         <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onBackground }}>Recent Activity</Text>
-        <TouchableOpacity onPress={() => router.push("/reports")}>
+        <TouchableOpacity onPress={() => router.push("/transactions")}>
           <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: "600" }}>See All</Text>
         </TouchableOpacity>
       </View>
