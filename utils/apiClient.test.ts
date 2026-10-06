@@ -115,6 +115,9 @@ describe("SPEC-44 / 401 warning dedupe", () => {
     beforeEach(() => {
         resetAuthSessionWarningLatch();
         warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+        // Shared module-level mock — clear so ACC counts only this test's calls.
+        (jest.requireMock("./secureStorage") as { removeSecureItem: jest.Mock })
+            .removeSecureItem.mockClear();
     });
     afterEach(() => warnSpy.mockRestore());
 
