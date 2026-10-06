@@ -8,6 +8,14 @@ export const setAuthFailureCallback = (callback: (reason?: string) => void) => {
     onAuthFailure = callback;
 };
 
+// SPEC-44 CON-01/CON-02: latch so only the first rejected call in an
+// invalidation episode logs; reset on every fresh login/logout.
+let authWarnLatched = false;
+
+export const resetAuthSessionWarningLatch = () => {
+    authWarnLatched = false;
+};
+
 const clearAuthStorage = async () => {
     await removeSecureItem('authToken');
     await AsyncStorage.removeItem('activeUserId');
@@ -77,7 +85,10 @@ export async function authFetch<T = unknown>(
     });
 
     if (response.status === 401) {
-      console.warn('401 Unauthorized - clearing auth credentials');
+      if (!authWarnLatched) {
+        console.warn('401 Unauthorized - clearing auth credentials');
+        authWarnLatched = true;
+      }
       await clearAuthStorage();
       if (onAuthFailure) {
         onAuthFailure('session_ended');

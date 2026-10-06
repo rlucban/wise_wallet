@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { setAuthFailureCallback } from "../utils/apiClient";
+import { resetAuthSessionWarningLatch, setAuthFailureCallback } from "../utils/apiClient";
 import { setCachedUserId } from "../utils/cache";
 import { setSecureItem, getSecureItem, removeSecureItem } from "../utils/secureStorage";
 
@@ -62,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveUserId(String(userId));
     setCachedUserId(String(userId));
     setToken(token);
+    resetAuthSessionWarningLatch();
   }, []);
 
   const logout = useCallback(async () => {
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setActiveUserId(null);
     setCachedUserId(null);
     setToken(null);
+    resetAuthSessionWarningLatch();
   }, []);
 
   const clearAuthFailureReason = useCallback(() => {
