@@ -685,3 +685,15 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Verified (user-run): `npm run lint` clean; `npx jest` → **15 suites, 425 passed, 0 failed** (404 + 21 new); `npx tsc --noEmit` clean.
 - Open: D-05 device matrix ACC-S01..S04 (runbook handed over: Local restart/re-login, Cloud online/offline, multi-device 401 → Session Ended); SPEC-API-03 fixed-8h JWT window discussed (recommendation: fixed, not sliding — per-request sliding breaks stateless §1.5), draft deferred per user call until implementation lands. No new deps, no routes, no other storage/API/contract change. Rollback: D-01 key removal + revert order D-03→D-02→D-01.
 
+---
+
+## 2026-10-06 -- SPEC-44 FINAL v1.0 + implemented (D-01..D-04)
+
+- **Problem:** device B (Expo Go) showed a flashing pattern after device A changed the passcode. Root cause traced to `console.warn('401 Unauthorized - clearing auth credentials')` (`utils/apiClient.ts`) firing on EVERY rejected call; with a stale session, sync retries / refetches / web-direct loads re-issued protected calls, so the Expo LogBox yellow box kept popping. Not a page-render bug.
+- **Decision (user call):** `final` → dedupe in the client (no `LogBox` global toggle; fix at the source).
+- D-01 `utils/apiClient.ts`: module-scope `authWarnLatched` gates the warn; exported `resetAuthSessionWarningLatch()`. Credentials + `onAuthFailure('session_ended')` still fire on every 401 (logging-only).
+- D-02 `context/AuthContext.tsx`: `login` and `logout` both call `resetAuthSessionWarningLatch()`.
+- D-03 `utils/apiClient.test.ts`: SPEC-44 block — ACC-01 (one warn per 401-pair), ACC-02 (latch re-arms after reset), ACC-03 (side effects still per-call), each across `android`/`ios`/`web`; fixed a mock-accumulator false positive (`removeSecureItem` now `mockClear`ed in block `beforeEach`).
+- Verified (user-run): `npm run lint` clean; `npm test` → **15 suites, 434 passed, 0 failed**; `npx tsc --noEmit` silent.
+- No dependency, route, storage-key, or native-behavior change. Rollback: revert apiClient + AuthContext + test block.
+
