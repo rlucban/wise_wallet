@@ -173,12 +173,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct — no local repo, no flag gate, no queue.
                 const uploaded = await uploadReceiptIfNeeded(newTransaction);
-                const { ok } = await authFetch('transactions', {
+                const { ok, status, error } = await authFetch('transactions', {
                     method: "POST",
                     body: JSON.stringify({ ...uploaded, categoryId: uploaded.category?.id ?? null, userId: activeUserId }),
                 });
                 if (!ok) {
-                    throw new Error("Failed to save transaction. Please check your connection.");
+                    throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
                 }
                 setTransactions((prev) => [...prev, uploaded]);
                 return;
@@ -191,12 +191,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             }
             // Online native: API first (SPEC-45 DEC-02). No local repo, no queue.
             const uploaded = await uploadReceiptIfNeeded(newTransaction);
-            const { ok } = await authFetch('transactions', {
+            const { ok, status, error } = await authFetch('transactions', {
                 method: "POST",
                 body: JSON.stringify({ ...uploaded, categoryId: uploaded.category?.id ?? null, userId: activeUserId }),
             });
             if (!ok) {
-                throw new Error("Failed to save transaction. Please check your connection.");
+                throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
             }
             await refreshFromApi();
             return;
@@ -226,12 +226,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 if (updates.category !== undefined) updateBody.categoryId = updates.category ? updates.category.id : null;
                 const zUpdateDate = toZIso(updateBody.date);
                 if (zUpdateDate !== null) updateBody.date = zUpdateDate;
-                const { ok } = await authFetch(`transactions/${id}`, {
+                const { ok, status, error } = await authFetch(`transactions/${id}`, {
                     method: "PUT",
                     body: JSON.stringify(updateBody),
                 });
                 if (!ok) {
-                    throw new Error("Failed to save changes. Please check your connection.");
+                    throw new Error(status !== 0 && error ? error : "Failed to save changes. Please check your connection.");
                 }
                 setTransactions((prev) => prev.map(t =>
                     t.id === id ? { ...t, ...updates } : t
@@ -243,12 +243,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             const updateBody: Record<string, unknown> = { ...updates, userId: activeUserId };
             const zUpdateDate = toZIso(updateBody.date);
             if (zUpdateDate !== null) updateBody.date = zUpdateDate;
-            const { ok } = await authFetch(`transactions/${id}`, {
+            const { ok, status, error } = await authFetch(`transactions/${id}`, {
                 method: "PUT",
                 body: JSON.stringify(updateBody),
             });
             if (!ok) {
-                throw new Error("Failed to save changes. Please check your connection.");
+                throw new Error(status !== 0 && error ? error : "Failed to save changes. Please check your connection.");
             }
             await refreshFromApi();
             return;

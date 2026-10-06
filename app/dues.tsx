@@ -10,7 +10,7 @@ import { useDues } from "../hooks/useDues";
 import { useTransactions, useTransactionsActions } from "../hooks/useTransactions";
 import { useUserProfile } from "../context/UserProfileContext";
 import { useCategoriesData } from "../context/CategoriesContext";
-import { Due, DueFrequency } from "../types";
+import { Due, DueFrequency, PaymentMethodInfo } from "../types";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import EmptyState from "../components/EmptyState";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -19,6 +19,7 @@ import { getTimeOfMonthTip, getRecurringProjectionMessage, isOverdue } from "../
 import { ensureOthersOption } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
 import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
+import { authFetch } from "../utils/apiClient";
 import { useSavings } from "../hooks/useSavings";
 
 const FREQUENCY_LABELS: Record<DueFrequency, string> = {
@@ -28,6 +29,13 @@ const FREQUENCY_LABELS: Record<DueFrequency, string> = {
   monthly: "Monthly",
   yearly: "Yearly",
 };
+
+// SPEC-47 fallback: used when the paymentMethods API is unreachable (Local/offline).
+// "Unknown" is the honest sentinel — it passes non-empty validation without asserting a false method.
+const FALLBACK_PAY_METHODS: PaymentMethodInfo[] = [
+  { id: "cash", name: "Cash", type: "cash" },
+  { id: "unknown", name: "Unknown", type: "other" },
+];
 
 type ListItem =
   | { kind: "upcoming-header" }
@@ -63,6 +71,9 @@ export default function DuesScreen() {
     title: "",
     message: "",
   });
+  const [payTarget, setPayTarget] = useState<Due | null>(null);
+  const [payMethods, setPayMethods] = useState<PaymentMethodInfo[]>(FALLBACK_PAY_METHODS);
+  const [payMethod, setPayMethod] = useState("Cash");
 
   useFocusEffect(
     useCallback(() => {
@@ -226,7 +237,23 @@ export default function DuesScreen() {
     }
   };
 
-  const recordTransaction = useCallback(async (item: Due) => {
+  const openPayDialog = useCallback(async (due: Due) => {
+    setPayTarget(due);
+    setPayMethod("Cash");
+    try {
+      const { ok, data } = await authFetch<PaymentMethodInfo[]>("paymentMethods");
+      if (ok && Array.isArray(data) && data.length > 0) {
+        setPayMethods(data);
+        setPayMethod(data[0].name);
+      } else {
+        setPayMethods(FALLBACK_PAY_METHODS);
+      }
+    } catch {
+      setPayMethods(FALLBACK_PAY_METHODS);
+    }
+  }, []);
+
+  const recordTransaction = useCallback(async (item: Due, method: string) => {
     try {
       // Balance validation for expense transactions
       if (item.type !== "income") {
@@ -263,6 +290,7 @@ export default function DuesScreen() {
         type: item.type || "expense",
         date: new Date().toISOString(),
         category: dueCategory,
+        paymentMethod: method,
         updatedAt: Date.now(),
         dueId: item.id,
       });
@@ -295,14 +323,14 @@ export default function DuesScreen() {
          title: "Transaction Recorded",
          message: `${item.title} (${formatAmount(item.amount)}) has been recorded successfully.`,
        });
-     } catch (error) {
-       console.error("Failed to record transaction:", error);
-       setAlertDialog({
-         visible: true,
-         title: "Error",
-         message: "Failed to record transaction.",
-       });
-     }
+      } catch (error) {
+        console.error("Failed to record transaction:", error);
+        setAlertDialog({
+          visible: true,
+          title: "Error",
+          message: error instanceof Error && error.message ? error.message : "Failed to record transaction.",
+        });
+      }
    }, [addTransaction, addDue, updateDue, categories, transactions, initialBalance, savingsItems, formatAmount]);
 
    const confirmDelete = useCallback(async () => {
@@ -404,7 +432,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
               <Button
                 mode="outlined"
                 compact
-                onPress={() => recordTransaction(due)}
+                onPress={() => openPayDialog(due)}
                 theme={{ colors: { primary: theme.colors.primary, outline: theme.colors.primary } }}
               >
                 {due.type === "income" ? "Receive" : "Pay"}
@@ -434,7 +462,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         </Card.Content>
       </Card>
     );
-  }, [theme, formatAmount, recordTransaction, handleEdit]);
+  }, [theme, formatAmount, openPayDialog, handleEdit]);
 
   const ListHeader = useCallback(() => (
     <View>
@@ -590,19 +618,56 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
       </Portal>
 
        <Portal>
-         <ConfirmDialog
-           visible={!!deleteTarget}
-           title="Delete Scheduled Item?"
-           message={
-             deleteTarget
-               ? `Are you sure you want to delete "${deleteTarget.title}" (${formatAmount(deleteTarget.amount)})? This action cannot be undone.`
-               : ""
-           }
-           confirmLabel="Delete"
-           onConfirm={confirmDelete}
-           onCancel={() => setDeleteTarget(null)}
-         />
-       </Portal>
+          <ConfirmDialog
+            visible={!!deleteTarget}
+            title="Delete Scheduled Item?"
+            message={
+              deleteTarget
+                ? `Are you sure you want to delete "${deleteTarget.title}" (${formatAmount(deleteTarget.amount)})? This action cannot be undone.`
+                : ""
+            }
+            confirmLabel="Delete"
+            onConfirm={confirmDelete}
+            onCancel={() => setDeleteTarget(null)}
+          />
+        </Portal>
+
+        <Portal>
+          <Dialog visible={!!payTarget} onDismiss={() => setPayTarget(null)}>
+            <Dialog.Title style={{ textAlign: "center" }}>
+              {payTarget?.type === "income" ? `Receive "${payTarget?.title}"?` : `Pay "${payTarget?.title}"?`}
+            </Dialog.Title>
+            <Dialog.Content>
+              <Text variant="bodyMedium" style={{ textAlign: "center", marginBottom: 12 }}>
+                {payTarget ? `${payTarget.title} (${formatAmount(payTarget.amount)})` : ""}
+              </Text>
+              <Text variant="labelLarge" style={{ marginBottom: 8 }}>Payment Method</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
+                {payMethods.map((m) => (
+                  <Chip key={m.id} selected={payMethod === m.name} onPress={() => setPayMethod(m.name)} mode="outlined">
+                    {m.name}
+                  </Chip>
+                ))}
+              </View>
+            </Dialog.Content>
+            <Dialog.Actions style={{ justifyContent: "center" }}>
+              <Button mode="text" onPress={() => setPayTarget(null)}>Cancel</Button>
+              <Button
+                mode="contained"
+                disabled={!payTarget}
+                onPress={() => {
+                  if (!payTarget) return;
+                  const due = payTarget;
+                  const method = payMethod;
+                  setPayTarget(null);
+                  recordTransaction(due, method);
+                }}
+              >
+                Confirm
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
 
        <Portal>
          <Dialog visible={alertDialog.visible} onDismiss={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
