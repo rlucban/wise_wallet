@@ -113,6 +113,26 @@ function runSuite(os: "android" | "ios" | "web") {
                 updatedAt: 0,
             });
         });
+
+        it("ACC-07a: web fetch resolves through Categories state, native through catRepo", () => {
+            const src = readRepo("context/TransactionsContext.tsx");
+            expect(src).toContain("resolveTransactionCategory(t, categories)");
+            expect(src).toContain("resolveTransactionCategory(t, cats)");
+            expect(src).toContain("\n                        setTransactions(remoteData.map((t)");
+        });
+
+        it("ACC-07b: useCategoriesData consumed once; catRepo uses stay at 4 (none in web branch)", () => {
+            const src = readRepo("context/TransactionsContext.tsx");
+            expect(src).toContain('import { useCategoriesData } from "./CategoriesContext";');
+            expect(src).toContain("const { categories } = useCategoriesData();");
+            const catRepoUses = src.match(/catRepo/g) || [];
+            expect(catRepoUses).toHaveLength(4);
+        });
+
+        it("ACC-07c: fetch deps include categories (re-fetch on categories load)", () => {
+            const src = readRepo("context/TransactionsContext.tsx");
+            expect(src).toContain("[activeUserId, txRepo, isLocal, refreshFromApi, categories]");
+        });
     });
 }
 

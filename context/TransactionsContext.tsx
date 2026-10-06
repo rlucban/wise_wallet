@@ -7,6 +7,7 @@ import {
 } from "../utils/db";
 import { authFetch } from "../utils/apiClient";
 import { useAuth } from "./AuthContext";
+import { useCategoriesData } from "./CategoriesContext";
 import { useUserProfile } from "./UserProfileContext";
 import { useSystemAlerts } from "./SystemAlertsContext";
 import { useRepositories } from "./RepositoryContext";
@@ -67,6 +68,8 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     const { profile } = useUserProfile();
     const isLocal = useIsLocalAccount();
     const { transactions: txRepo, categories: catRepo } = useRepositories();
+    // Web rehydrate source is context state, NOT catRepo (SPEC-36: web does no local reads).
+    const { categories } = useCategoriesData();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -119,7 +122,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 if (API_URL && activeUserId) {
                     const { ok, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
                     if (ok && Array.isArray(remoteData)) {
-                        setTransactions(remoteData.map(addCategoryFallback));
+                        setTransactions(remoteData.map((t) => ({ ...t, category: resolveTransactionCategory(t, categories) })));
                     }
                 }
                 return;
@@ -137,7 +140,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         } finally {
             setLoading(false);
         }
-    }, [activeUserId, txRepo, isLocal, refreshFromApi]);
+    }, [activeUserId, txRepo, isLocal, refreshFromApi, categories]);
 
     const { checkNegativeBalance } = useSystemAlerts();
 

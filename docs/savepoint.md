@@ -746,3 +746,15 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Adjacent rot (own future spec, not this one): `app/edit-transaction.tsx` `DEFAULT_CATEGORIES` `"8"/"9"` IDs disagree with seeded UUIDs + raw unauthenticated categories fetch.
 - Rollback: revert the 4+3 context hunks; delete util/test/script/spec additions; probe left zero server residue.
 
+---
+
+## 2026-10-06 -- SPEC-46 v1.1 FINAL + implemented (web read rehydrate)
+
+- Re-opened per user call: v1.0 scoped the web read path out (CON-03 byte-identical), but the user reported BOTH surfaces wrong — correct at submit, "Others" after refetch. localhost.har (fresh bundle) proved D-01 live (Salary ₱90 POST carried flat `categoryId` b16 → 201 echoed it); the earlier wise.har ran stale (hot=false, 0/3 POSTs with the key) and re-proved the bug instead. Web display needed the same rehydrate.
+- `specs/46-…`: v1.1 DRAFT (13 spot-edits) → FINAL per user call. Web resolves via CategoriesContext state — ancestry verified (ProviderComposer reduceRight nests Categories outside Transactions; no tree change, no import cycle); `catRepo` deliberately NOT used on web (SPEC-36: no local reads). CON-03 exception normed; +ACC-07/ACC-S05; no new files.
+- Slice A `context/TransactionsContext.tsx` (4 hunks, read-back verified): Categories import + state + web READ map + fetch deps. Native/local/mirror untouched.
+- Slice B `utils/transactionCategory.test.ts` (+9 tests, 30 → 39): ACC-07a web-vs-native resolve sources, ACC-07b consumption + `catRepo` count pinned at 4, ACC-07c deps; ACC-03 `categoryId ×4` still holds.
+- Verified (user-run): lint clean, jest green (39/39 in-file), tsc silent.
+- Open (user-run): ACC-S05 web Salary survives refresh; ACC-S01 native re-confirmation on fresh bundle (new rows only — pre-fix rows can never heal); ACC-S02..S04.
+- Rollback v1.1: revert the 4 web hunks + 3 its; v1.0 behavior (native-only rehydrate) restored.
+
