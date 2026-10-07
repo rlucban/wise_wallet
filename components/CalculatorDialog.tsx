@@ -1,13 +1,13 @@
 import React, { useState } from "react";
-import { View } from "react-native";
-import { Button, Dialog, Text, useTheme } from "react-native-paper";
+import { Pressable, View } from "react-native";
+import { Button, Modal, Portal, Text, useTheme } from "react-native-paper";
 import { evaluateCalculatorExpression } from "../utils/calculator";
 
 const ROWS: { label: string; value: string; variant?: "number" | "operator" | "action" }[][] = [
   [
     { label: "C", value: "clear", variant: "action" },
-    { label: "(", value: "(", variant: "operator" },
-    { label: ")", value: ")", variant: "operator" },
+    { label: "(", value: "(", variant: "action" },
+    { label: ")", value: ")", variant: "action" },
     { label: "÷", value: "/", variant: "operator" },
   ],
   [
@@ -68,84 +68,90 @@ export function CalculatorDialog({ visible, onDismiss }: { visible: boolean; onD
   };
 
   return (
-    <Dialog
-      visible={visible}
-      onDismiss={onDismiss}
-      style={{
-        borderRadius: 28,
-        backgroundColor: theme.colors.surface,
-        maxWidth: 380,
-        alignSelf: "center",
-        margin: 20,
-      }}
-    >
-      <Dialog.Title style={{ textAlign: "center", fontWeight: "700", paddingBottom: 0 }}>
-        Calculator
-      </Dialog.Title>
-      <Dialog.Content>
+    <Portal>
+      <Modal
+        visible={visible}
+        onDismiss={onDismiss}
+        contentContainerStyle={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "rgba(0, 0, 0, 0.28)",
+        }}
+      >
         <View
           style={{
-            minHeight: 76,
-            alignItems: "flex-end",
-            justifyContent: "center",
-            marginBottom: 16,
-            paddingHorizontal: 8,
+            width: "88%",
+            maxWidth: 340,
+            borderRadius: 28,
+            backgroundColor: theme.colors.background,
+            padding: 18,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.18,
+            shadowRadius: 16,
+            elevation: 8,
           }}
         >
-          <Text
-            variant="displaySmall"
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            style={{ color: theme.colors.onSurface, fontWeight: "300", textAlign: "right" }}
-          >
-            {expression || "0"}
-          </Text>
-        </View>
+          <Pressable onPress={onDismiss} style={{ alignSelf: "flex-end", marginBottom: 4 }}>
+            <Text variant="labelLarge" style={{ color: theme.colors.outline }}>
+              Close
+            </Text>
+          </Pressable>
 
-        {error ? (
-          <Text variant="bodySmall" style={{ color: theme.colors.error, textAlign: "right", marginBottom: 12 }}>
-            {error}
-          </Text>
-        ) : null}
-
-        {ROWS.map((row, rowIndex) => (
-          <View key={rowIndex} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
-            {row.map((key) => {
-              const isOperator = key.variant === "operator";
-              const isAction = key.variant === "action";
-
-              return (
-                <Button
-                  key={key.value}
-                  mode={isOperator ? "contained" : "contained-tonal"}
-                  compact
-                  onPress={() => pressKey(key)}
-                  style={{
-                    width: "22%",
-                    borderRadius: 18,
-                    backgroundColor: isOperator
-                      ? theme.colors.primary
-                      : isAction
-                        ? theme.colors.secondaryContainer
-                        : theme.colors.surfaceVariant,
-                  }}
-                  contentStyle={{ height: 52 }}
-                  labelStyle={{
-                    fontSize: 20,
-                    fontWeight: "600",
-                    color: isOperator ? theme.colors.onPrimary : theme.colors.onSurface,
-                  }}
-                >
-                  {key.label}
-                </Button>
-              );
-            })}
+          <View style={{ minHeight: 78, justifyContent: "center", marginBottom: 12, paddingHorizontal: 4 }}>
+            {error ? (
+              <Text variant="bodySmall" style={{ color: theme.colors.error, textAlign: "right", marginBottom: 4 }}>
+                {error}
+              </Text>
+            ) : null}
+            <Text
+              variant="displaySmall"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={{ textAlign: "right", fontWeight: "300", color: theme.colors.onBackground }}
+            >
+              {expression || "0"}
+            </Text>
           </View>
-        ))}
-      </Dialog.Content>
-      <Dialog.Actions style={{ justifyContent: "center", paddingTop: 0 }}>
-        <Button onPress={onDismiss}>Close</Button>
-      </Dialog.Actions>
-    </Dialog>
+
+          {ROWS.map((row, rowIndex) => (
+            <View key={rowIndex} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
+              {row.map((key) => {
+                const isOperator = key.variant === "operator";
+                const isAction = key.variant === "action";
+
+                return (
+                  <Button
+                    key={`${key.label}-${key.value}`}
+                    mode="contained"
+                    compact
+                    onPress={() => pressKey(key)}
+                    style={{
+                      width: "22%",
+                      minWidth: 64,
+                      borderRadius: 18,
+                      backgroundColor: isOperator
+                        ? theme.colors.primary
+                        : isAction
+                          ? theme.colors.secondaryContainer
+                          : theme.colors.surfaceVariant,
+                    }}
+                    contentStyle={{ height: 54 }}
+                    labelStyle={{
+                      fontSize: 19,
+                      fontWeight: "600",
+                      color: isOperator ? theme.colors.onPrimary : theme.colors.onSurfaceVariant,
+                    }}
+                  >
+                    {key.label}
+                  </Button>
+                );
+              })}
+            </View>
+          ))}
+        </View>
+      </Modal>
+    </Portal>
   );
 }
