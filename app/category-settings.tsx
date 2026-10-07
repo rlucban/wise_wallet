@@ -25,7 +25,11 @@ export default function CategorySettings() {
     setDeleteTarget(null);
   };
 
-  const filteredCategories = sortCategories(categories.filter((c) => c.type === type), sortBy);
+  const normalizedCategories = categories.map((c) => ({
+    ...c,
+    type: String(c.type).toLowerCase().trim() as TransactionType,
+  }));
+  const filteredCategories = sortCategories(normalizedCategories.filter((c) => c.type === type), sortBy);
 
   const handleAdd = async () => {
     if (newCatName.trim()) {
@@ -63,7 +67,6 @@ export default function CategorySettings() {
             buttons={[
               { value: "name", label: "Name" },
               { value: "type", label: "Type" },
-              { value: "recent", label: "Recent" },
             ]}
           />
         </View>
