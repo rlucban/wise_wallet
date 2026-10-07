@@ -7,6 +7,7 @@ import { useAuthActions } from '../context/AuthContext';
 import { addUser, saveUserProfile, API_URL, initDb, setSetting, getUsers } from '../utils/db';
 import { validateRegisterInput } from '../utils/registerValidation';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AccountMode = "online" | "offline";
 
@@ -52,6 +53,8 @@ export default function RegisterScreen() {
         }
 
         await addUser(offlineId, emailAddr, pin);
+        // SPEC-59 D-59-04: persist the login identity for the Settings gates.
+        await AsyncStorage.setItem('authName', emailAddr.trim());
         await saveUserProfile({ name: emailAddr, isFirstRun: true, initialBalance: 0 }, offlineId);
         await initDb(offlineId);
         await setSetting('autoBackup', 'false');
@@ -87,6 +90,9 @@ export default function RegisterScreen() {
                     await initDb(responseData.data.user.id);
                     await setSetting('autoBackup', 'true');
                 }
+                // SPEC-59 D-59-04 (DEC-59-02): all platforms, web included —
+                // the gates need this even where SPEC-36 forbids auth rows.
+                await AsyncStorage.setItem('authName', emailAddr.trim());
                 await login(responseData.data.user.id, responseData.data.token);
                 return true;
             } else {

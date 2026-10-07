@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
-import { View, ScrollView, Platform, StyleSheet } from "react-native";
+import { View, ScrollView, Platform, StyleSheet, KeyboardAvoidingView } from "react-native";
 import { Appbar, List, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRepositories } from "../../context/RepositoryContext";
 
 import { setSetting, clearAllLocalData, exportData, importData, deleteUser, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers, updateUserPasscode } from "../../utils/db";
@@ -330,17 +331,20 @@ export default function SettingsScreen() {
      setIsSyncing(true);
      setVerificationError("");
      // SPEC-51 D-51-01: converged server → local rule (DEC-51-01).
-     // Single login call; its outcome decides the branch — never re-fetched.
-     let unreachable = false;
+      // Single login call; its outcome decides the branch — never re-fetched.
+      // SPEC-59 D-59-04 (DEC-59-02): verify against the login identity, not
+      // the display name. Absent → "" → existing 401 → leg-2/fail-closed.
+      const gateName = (await AsyncStorage.getItem("authName")) || "";
+      let unreachable = false;
      try {
        const response = await fetch(`${API_URL}/auth/login`, {
          method: "POST",
          headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({
-           name: profile?.name || "",
-           passcode: pin,
-           force: true
-         }),
+          body: JSON.stringify({
+            name: gateName,
+            passcode: pin,
+            force: true
+          }),
        });
 
        if (response.ok) {
@@ -470,7 +474,9 @@ export default function SettingsScreen() {
        }
 
        await logout();
-       await addUser(newUserId, profile?.name || "", pinVerificationInput);
+        await addUser(newUserId, profile?.name || "", pinVerificationInput);
+        // SPEC-59 D-59-04: the new cloud identity is the migrated profile name.
+        await AsyncStorage.setItem("authName", profile?.name || "");
        await saveUserProfile({ name: profile?.name || "", isFirstRun: false, initialBalance: 0 }, newUserId);
        await initDb(newUserId);
        await setSetting('autoBackup', 'true');
@@ -802,18 +808,39 @@ export default function SettingsScreen() {
     setIsSyncing(true);
 
     // SPEC-51 D-51-01: converged server → local rule (DEC-51-01).
+    // SPEC-59 D-59-02 (DEC-59-01): consume the fresh session-bound token on
+    // success — leg-1 rotates the server sid (authService.js:92), so the
+    // stored token would die under protect.js:28. The settings.tsx:212
+    // Change pattern. No conflict branch: without deviceId the server never
+    // returns sessionConflict.
+    // SPEC-59 D-59-04 (DEC-59-02): verify against the login identity, not
+    // the display name. Absent → "" → existing 401 → leg-2/fail-closed.
+    const gateName = (await AsyncStorage.getItem("authName")) || "";
     let serverOk = false;
     try {
       const verifyRes = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: profile?.name || "",
+          name: gateName,
           passcode: pin,
           force: true,
         }),
       });
       serverOk = verifyRes.ok;
+      if (serverOk) {
+        try {
+          const payload = (await verifyRes.json()) as { data?: { user?: { id: string }; token?: string } };
+          const fresh = payload?.data;
+          if (fresh?.token && fresh?.user?.id) {
+            await login(fresh.user.id, fresh.token);
+          } else {
+            serverOk = false;
+          }
+        } catch {
+          serverOk = false; // ok but unreadable → fall through to local verify
+        }
+      }
     } catch {
       // server unreachable — fall through to local verify
     }
@@ -1027,19 +1054,37 @@ if (!serverOk && !localOk) {
   };
 
   const verifyAccountPin = async (pin: string): Promise<boolean> => {
+    // SPEC-59 D-59-04 (DEC-59-02): verify against the login identity, not
+    // the display name. Absent → "" → existing 401 → leg-2/fail-closed.
+    const gateName = (await AsyncStorage.getItem("authName")) || "";
     let verified = false;
     if (API_URL) {
+      // SPEC-59 D-59-03 (DEC-59-01): consume the fresh session-bound token
+      // on success — same S1 rationale (authService.js:92 rotates the sid).
       try {
         const res = await fetch(`${API_URL}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: profile?.name || "",
+            name: gateName,
             passcode: pin.trim(),
             force: true,
           }),
         });
         verified = res.ok;
+        if (verified) {
+          try {
+            const payload = (await res.json()) as { data?: { user?: { id: string }; token?: string } };
+            const fresh = payload?.data;
+            if (fresh?.token && fresh?.user?.id) {
+              await login(fresh.user.id, fresh.token);
+            } else {
+              verified = false;
+            }
+          } catch {
+            verified = false; // ok but unreadable → fall through to local
+          }
+        }
       } catch {
         // server unreachable — fall through to local verification
       }
@@ -1492,21 +1537,7 @@ if (!serverOk && !localOk) {
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={messageDialog.visible} onDismiss={closeMessage} style={styles.dialog}>
-          <Dialog.Icon
-            icon={messageDialog.type === "success" ? "check-circle-outline" : "alert-circle-outline"}
-            color={messageDialog.type === "success" ? paperTheme.colors.tertiary : paperTheme.colors.error}
-          />
-          <Dialog.Title style={{ textAlign: "center" }}>{messageDialog.title}</Dialog.Title>
-          <Dialog.Content>
-            <Text style={{ textAlign: "center" }}>{messageDialog.message}</Text>
-          </Dialog.Content>
-          <Dialog.Actions style={{ justifyContent: "center" }}>
-            <Button mode="contained" onPress={closeMessage}>OK</Button>
-          </Dialog.Actions>
-        </Dialog>
-
-            <ConfirmDialog
+        <ConfirmDialog
               visible={showRepairConfirm}
               title="Repair Duplicates?"
               message={
@@ -1609,6 +1640,13 @@ if (!serverOk && !localOk) {
             </Dialog.Actions>
          </Dialog>
 
+        {/* SPEC-57: conditional mount — an always-mounted KeyboardAvoidingView
+            renders a full-height flex layer on web and swallows scroll/taps. */}
+        {showPinPrompt && (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
         <Dialog visible={showPinPrompt} onDismiss={() => setShowPinPrompt(false)} style={styles.dialog}>
           <Dialog.Title style={{ textAlign: "center" }}>Enter PIN to Clear Data</Dialog.Title>
           <Dialog.Content>
@@ -1627,6 +1665,8 @@ if (!serverOk && !localOk) {
             <Button mode="contained" buttonColor={paperTheme.colors.error} textColor="#fff" onPress={handleClearData} loading={isSyncing} disabled={isSyncing}>Clear Data</Button>
           </Dialog.Actions>
         </Dialog>
+        </KeyboardAvoidingView>
+        )}
 
         <Dialog visible={showDeleteConfirmation} onDismiss={() => setShowDeleteConfirmation(false)} style={styles.dialog}>
           <Dialog.Title style={{ textAlign: "center" }}>Are you absolutely sure?</Dialog.Title>
@@ -1854,6 +1894,22 @@ if (!serverOk && !localOk) {
                 Set Passcode
               </Button>
             )}
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* SPEC-58 D-58-03: last Portal child, so this shared success/error
+            dialog always paints above whichever dialog raised it. */}
+        <Dialog visible={messageDialog.visible} onDismiss={closeMessage} style={styles.dialog}>
+          <Dialog.Icon
+            icon={messageDialog.type === "success" ? "check-circle-outline" : "alert-circle-outline"}
+            color={messageDialog.type === "success" ? paperTheme.colors.tertiary : paperTheme.colors.error}
+          />
+          <Dialog.Title style={{ textAlign: "center" }}>{messageDialog.title}</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ textAlign: "center" }}>{messageDialog.message}</Text>
+          </Dialog.Content>
+          <Dialog.Actions style={{ justifyContent: "center" }}>
+            <Button mode="contained" onPress={closeMessage}>OK</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
