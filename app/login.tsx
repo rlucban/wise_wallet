@@ -100,6 +100,8 @@ export default function LoginScreen() {
                             }
 
                             await addUser(offlineId, name.trim(), passcode.trim());
+                            // SPEC-59 D-59-04: same identity persistence for offline accounts.
+                            await AsyncStorage.setItem('authName', name.trim());
                             await saveUserProfile({ name: name.trim(), isFirstRun: true, initialBalance: 0 }, offlineId);
                             await initDb(offlineId);
                             await setSetting('autoBackup', 'false');
@@ -201,6 +203,9 @@ export default function LoginScreen() {
             }
 
             if (inner?.user && inner?.token) {
+                // SPEC-59 D-59-04 (DEC-59-02): persist the login identity for
+                // the Settings gates. All platforms, web included.
+                await AsyncStorage.setItem('authName', name.trim());
                 if (Platform.OS !== "web") {
                     // SPEC-36 CON-W-03 (v1.2): no local seeding on web — server owns the account.
                     await addUser(inner.user.id, name.trim(), passcode.trim());

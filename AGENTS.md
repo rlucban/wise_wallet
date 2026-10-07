@@ -475,6 +475,10 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-07 — Spec 56 FINAL + implemented.** `specs/56-overlay-tab-bar-and-clearance.md`: absolute overlay kills the white rectangle (in-flow margins showed the un-themed root bg; content can now scroll behind the pill). D-56-01 one key `position: "absolute"` (reverses SPEC-52 CON-52-03, declared); D-56-02 `paddingBottom: 160` on all five tab tails + Home FAB `bottom: 160` (static worst-case 112+32+16; dues/savings untouched). D-56-03 guards × android/ios/web. Open: lint/jest/tsc + ACC-S01..S03. See `docs/savepoint.md`.
 
+- **2026-10-07 — Spec 58 FINAL + implemented.** `specs/58-web-lock-store-and-dialog-order.md`: web app-lock store + Settings dialog paint order. D-58-01 `utils/secureStorage.ts` explicit web branch (empty-module SecureStore probe was throwing → accidental AsyncStorage fallback; `verifyPasscode` false-when-empty rejected every PIN after web refresh); D-58-02 `utils/secureStoreWeb.test.ts` round-trip guard; D-58-03 settings.tsx messageDialog → last Portal child; D-58-04 paint-order guard. SPEC-36 CON-W-03 amended with second exception (`user_{id}_passcode` lock hash MAY persist on web; unlock gate only, real auth = API JWT). Open: lint/jest/tsc + ACC-S01..S03. See `docs/savepoint.md`.
+
+- **2026-10-07 — Spec 59 FINAL + implemented.** `specs/59-clear-gate-token-consume-and-login-identity.md`: Clear/Delete gates consume the fresh token on verify success (leg-1 rotates server sid, discarded token guaranteed post-gate 401); all three gates send persisted `authName` login identity instead of display name (web leg-2 unseeded by SPEC-36, so any leg-1 failure rejected). D-59-02/03 settings.tsx consume; D-59-04 identity persistence (login/register/Make-Online) + gates; D-59-05 `utils/clearGateWeb.test.ts` guards × android/ios/web. No wallet-api change; Change + Sync-success byte-identical. Open: lint/jest/tsc + ACC-S01/S02. See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

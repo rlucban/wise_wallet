@@ -895,6 +895,20 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
+## 2026-10-07 -- SPEC-58 FINAL + implemented (D-58-01..D-58-04; D-58-05 this entry)
+
+- Two user-confirmed defects: web app-lock PIN never verified; Settings error dialog painted behind its caller.
+- Root cause #1: `expo-secure-store`'s web build is `export default {}` — every call throws, so the availability probe silently fell through to AsyncStorage on all three helpers (accidental, untestable). `verifyPasscode` returns false when both session plaintext and storedHash are null, so after a web refresh every PIN was rejected. Login/Change-PIN unaffected (server bcrypt).
+- Root cause #2: single `<Portal>` in settings.tsx; `messageDialog` mounted before later sibling dialogs → painted behind.
+- SPEC-36 CON-W-03 amended (user call): second exception — `user_{id}_passcode` lock hash MAY persist on web via the existing secureStorage fallback; it is an unlock gate only, real auth stays the API JWT on every POST/GET (user's rationale).
+- D-58-01 `utils/secureStorage.ts`: explicit `Platform.OS === 'web'` short-circuit in all three helpers; native path byte-identical.
+- D-58-02 `utils/secureStoreWeb.test.ts`: round-trip + never-touches-SecureStore × android/ios/web (empty-module mock).
+- D-58-03 `app/(tabs)/settings.tsx`: messageDialog moved to last Portal child (verbatim).
+- D-58-04 `utils/clearDataKeyboard.test.ts`: ACC-03 paint-order guard.
+- Verified user-run pending: lint/jest/tsc + ACC-S01..S03.
+
+---
+
 ## 2026-10-07 -- SPEC-52 v1.1 repair (button retype + bg literal + ACC-05)
 
 - Chain failures, all three root-caused (user-pasted jest + tsc output):
@@ -902,4 +916,24 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
   (2) ACC-05 pinned pre-amendment CON-06 values — updated to the amended values (dark literal, `borderTopWidth: 0`, no `borderTopColor`/`elevation: 0`).
   (3) tsc, two real defects: invented `accessibilityRole/State` props the fork never sends (it sends `role`/`testID`/`aria-label`/`style`/`href` — verified `BottomTabBar.js:99-135` + `types.d.ts:321-326`) → component retyped to the fork's `BottomTabBarButtonProps` shape with the library's own `style` applied (item layout stays SPEC-32-exact); `surfaceContainerHigh` absent from paper 5.15 types AND runtime (`DarkTheme.js` has zero `surfaceContainer*` keys — the pill would have rendered `undefined`) → M3-baseline literal `#2B2930` pinned (same normative color; CON-52-15/ACC-12 wording corrected, disclosed here).
 - Uncommitted per standing user instruction.
+
+---
+
+## 2026-10-07 -- SPEC-57 slice 1 + web-freeze repair (D-57-01, D-57-02, D-57-04)
+
+- D-57-01 `app/(tabs)/settings.tsx`: `showPinPrompt` dialog wrapped in `KeyboardAvoidingView` (`padding` iOS / `height` Android, `flex: 1`) so the mobile keypad no longer covers the PIN field and the Cancel/Clear Data buttons.
+- **Web freeze (my bug, reported same day):** the first attempt mounted the wrapper unconditionally. `visible` is on the inner `Dialog`, so the `flex: 1` wrapper stayed mounted inside the `Portal` — a permanent full-height layer that swallowed scroll and taps on web ("settings not scrollable or clickable"). Invisible on native, fatal on web. Fixed by conditionally mounting `{showPinPrompt && (…)}`; CON-57-02/ACC-01 corrected in the spec (same intent, honest shape) and the reason recorded there.
+- D-57-02 `utils/clearDataKeyboard.test.ts`: ACC-01/02 × android/ios/web — asserts the conditional gate, exactly one wrapper, and that the dialog + `handleClearData` sit inside it. This is the guard that would have caught the freeze.
+- D-57-04 journal. Uncommitted per standing user instruction.
+
+---
+
+## 2026-10-07 -- SPEC-59 FINAL + implemented (D-59-01..D-59-06)
+
+- Settings PIN gates rejected a correct PIN on web while accepting it on mobile. Traced, not assumed: web never seeds `master_users` (SPEC-36, `login.tsx:206`/`register.tsx:85` native-only) so leg 2 is dead on web; all three gates sent `profile?.name` while the server matches `users.name`; and every successful `auth/login` rotates the server sid (`authService.js:92`) while Clear/Delete discarded the token — guaranteed post-gate 401 under `protect.js:28`.
+- D-59-01 `specs/59-clear-gate-token-consume-and-login-identity.md` (FINAL user-marked 2026-10-07; amends SPEC-51 D-51-01 only).
+- D-59-02/03 `app/(tabs)/settings.tsx`: `handleClearData` + `verifyAccountPin` consume the fresh token via `login()` on leg-1 success (the `:212` Change pattern); unreadable-ok falls through to leg 2.
+- D-59-04 login identity: `authName` persisted at login/register/Make-Online on all platforms (new additive key, non-secret); all three gates send it, fallback `""`.
+- D-59-05 `utils/clearGateWeb.test.ts` ACC-59-01/02 × android/ios/web.
+- Verified user-run pending: lint/jest/tsc + ACC-S01/S02 device matrix. Uncommitted per standing instruction.
 
