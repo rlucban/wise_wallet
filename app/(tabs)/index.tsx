@@ -14,6 +14,7 @@ import { useSystemAlerts } from "../../context/SystemAlertsContext";
 import { useCurrencyActions } from "../../context/CurrencyContext";
 import { useUserProfile } from "../../context/UserProfileContext";
 import { SummaryCard } from "../../components/SummaryCard";
+import { selectRecentTransactions } from "../../utils/selectRecentTransactions";
 import { DashboardSkeleton } from "../../components/SkeletonLoader";
 import { CloudLinkBanner } from "../../components/CloudLinkBanner";
 import { SmartInsights } from "../../components/SmartInsights";
@@ -108,10 +109,7 @@ export default function Dashboard() {
     [upcomingDues]
   );
 
-  const transactionData = useMemo(() => {
-    const sorted = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return sorted.slice(0, 6);
-  }, [transactions]);
+  const transactionData = useMemo(() => selectRecentTransactions(transactions), [transactions]);
 
   const renderTransactionItem = useCallback(
     ({ item }: { item: Transaction }) => (
@@ -336,10 +334,18 @@ export default function Dashboard() {
         keyExtractor={(item: Transaction) => item.id}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={<EmptyState icon="receipt" title="No transactions yet" subtitle="Tap + to add your first transaction" />}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 160 }}
         showsVerticalScrollIndicator={false}
       />
       <CalculatorModal visible={calcVisible} onDismiss={() => setCalcVisible(false)} />
+
+      <FAB
+        icon="plus"
+        label="Transaction"
+        style={{ position: "absolute", margin: 20, right: 0, bottom: 160, borderRadius: 20, backgroundColor: theme.colors.primary }}
+        color="#fff"
+        onPress={() => router.push("/add-transaction")}
+      />
     </View>
   );
 }

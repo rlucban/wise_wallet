@@ -344,7 +344,7 @@ export default function LearningScreen() {
 
 const styles = StyleSheet.create({
     screen: { flex: 1 },
-    scrollContent: { paddingBottom: 40, width: "100%" },
+    scrollContent: { paddingBottom: 160, width: "100%" },
     container: {
         width: "100%",
         flex: 1,

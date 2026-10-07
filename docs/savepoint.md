@@ -1271,4 +1271,143 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 - User reran full Jest after shell-guard fixes: 38 suites passed, 1 failed; all 3 failures were `utils/themeColors.test.js` identifying the two hardcoded `rgba(...)` scrims in `app/dues.tsx` across Android/iOS/Web.
 - Replaced both modal scrims with `theme.colors.backdrop`. No modal layout or behavior changed. Editor diagnostics clean; full Jest/lint/tsc rerun remains user-run.
+## 2026-10-06 -- SPEC-50 implemented (Highlights stability + Recent-five by updatedAt)
+
+- Problem: Highlights flickered on navigation/refresh; Recent showed 6 by transaction date.
+- User decisions (plan-fix run 20261006-2031-spec50.md): Highlights update only after a transaction persisted, lenient; Recent limited to top 5 by updatedAt with date fallback; both apply.
+- D-01 `hooks/useInsights.ts`: useMemo on txKey; savings/dues via refs to avoid focus-refetch recompute.
+- D-02 `components/SmartInsights.tsx`: last-good ref, no null-flash, latest 1 card.
+- D-03 `utils/selectRecentTransactions.ts`: pure helper, updatedAt desc, date fallback, top 5; wired in `app/(tabs)/index.tsx`.
+- D-04 `utils/selectRecentTransactions.test.ts`: platform-parameterized ACC-03 cases.
+- Verified user-run pending: lint/jest/tsc + Expo Go/web matrix.
+
+---
+
+## 2026-10-06 -- SPEC-49 implemented (Option A: client-side due-link map)
+
+- Problem: online refetch dropped `dueId`, re-enabling Delete on due-generated transactions.
+- Option chosen: A (client-side link map). Server-side persist parked.
+- `context/TransactionsContext.tsx`: attach links on web/native/local reads; record on POST success; prune on delete.
+- `utils/dueTxLinks.ts`: recordDueLink, pruneDueLinks, pruneDueLinksByDue, attachDueLinks (echo-wins).
+- `utils/dueTxLinks.test.ts`: platform-parameterized guards.
+- Verified user-run pending: lint/jest/tsc + Expo Go/web matrix.
+
+---
+
+## 2026-10-07 -- SPEC-53 FINAL + implemented (D-53-01..D-53-03; D-53-04 this entry)
+
+- Problem: Login/Register contained buttons painted indigo (`#3949ab`) with theme-default labels — hard to read.
+- `specs/53-auth-button-label-contrast.md` FINAL v0.1 per user call 2026-10-07 (fast-track spec-first; run `20261007-auth-buttons.md`).
+- D-53-01 `app/login.tsx`: shared `containedLabel: { color: "#fff" }` on Login primary + dialog contained/OK (cancel/text untouched).
+- D-53-02 `app/register.tsx`: same on Register primary + dialog contained/OK + active-only mode buttons (inactive outlined untouched).
+- D-53-03 `utils/authButtonLabels.test.ts`: ACC-01 guards × android/ios/web (1 investigated repair: expected counts 4→3 / 6→5 — the StyleSheet def line carries no `styles.` prefix; screens were correct).
+- Verified user-run: lint clean, jest 23 suites green, tsc clean. Open: ACC-S01..S03 visual matrix.
+
+---
+
+## 2026-10-07 -- SPEC-51 FINAL + implemented (D-51-01..D-51-05; D-51-06 this entry)
+
+- Problem: Clear All Data + Local Backup ON rejected the correct PIN (three gates, three rules; Backup server-only with no offline fallback; PIN cleared before migrate).
+- `specs/51-pin-gate-verification-parity.md` FINAL v0.1 per user call 2026-10-07 (run `20261007-session.md`, Track A Option A).
+- D-51-01/02/03 `app/(tabs)/settings.tsx` (4 hunks): converged server → `verifyLocalPin` rule, Backup offline fail-closed ("Connect to enable cloud sync."), PIN preserved for migrate, corrected mismatch copy; Change-PIN/migrate/execute byte-identical.
+- D-51-04 new `utils/pinGate.ts` (hash-or-plaintext, injectable digest); D-51-05 `utils/pinGate.test.ts` ACC-01..05 × android/ios/web (1 investigated repair: expo-crypto ESM virtual mock + default-digest case).
+- Verified user-run: lint clean, jest green, tsc clean. Open: device matrix (Clear/Backup/Delete/Change-PIN regression) + ACC-S01..S05.
+
+---
+
+## 2026-10-07 -- SPEC-52 FINAL + implemented (D-52-01..D-52-03; D-52-04 this entry)
+
+- Ask: iOS-like floating pill, still bottom-anchored.
+- `specs/52-floating-tab-bar.md` FINAL v0.1 per user call 2026-10-07 (Track B Option A; amends SPEC-32 CON-06 in 3 named values only).
+- D-52-01 `app/(tabs)/_layout.tsx` tabBarStyle-only: in-flow pill (margins 16/12, radius 24, no top border, platform shadow, web flat); SPEC-32 metrics/fits/labels untouched.
+- D-52-02 `utils/tabBarFloat.test.ts`: ACC-01/03 source-text + Platform.OS guards.
+- Verified user-run pending: lint/jest/tsc + ACC-S01..S04 (Expo Go + web export).
+
+---
+
+## 2026-10-07 -- SPEC-52 v1.1 FINAL + implemented (D-52-11..D-52-13; auto-pilot)
+
+- Ask: floating navbar should be more prominent and elegant (user call 2026-10-07).
+- `specs/52-floating-tab-bar.md` v1.1 amendment FINAL: deeper shadow + eased press + dark-mode tonal lift + true capsule.
+- D-52-11 `app/(tabs)/_layout.tsx`: shadow iOS 0.25/16/h6 + Android elevation 8 (web still flat); `backgroundColor: theme.dark ? theme.colors.surfaceContainerHigh : theme.colors.surface` (dark was `surface` `#161B22` on `background` `#0D1117` — a 1.06:1 lift, visually flat); `borderRadius: height / 2` replaces the constant 24 (34/46/51 at insets 0/24/34); inline `AnimatedTabButton` via `tabBarButton` scales 1 → 0.85 in 120ms and eases back in 180ms (`Easing.out(Easing.quad)`, `useNativeDriver: false` to avoid the SPEC-06 web WARN class). Accessibility props, `testID`, tints, labels, order, metrics untouched; `ThemeContext.tsx` not edited (MD3 base already ships `surfaceContainerHigh`).
+- D-52-12 `utils/tabBarFloat.test.ts`: ACC-11 (press/a11y/driver), ACC-12 (dark lift + theme untouched), ACC-13 (capsule math 34/46/51) × android/ios/web.
+- Verified user-run pending: lint/jest/tsc + ACC-S11..S14 (Expo Go + web export).
+
+---
+
+## 2026-10-07 -- SPEC-54 FINAL + implemented (D-54-01..D-54-02; D-54-03 user-run, D-54-04 this entry)
+
+- Ask: blurred edges on the floating navbar + float a bit higher + static and sticky (user calls 2026-10-07; option A = gradient veil, no new dep).
+- `specs/54-tab-bar-soft-edge-and-float.md` FINAL v0.1.
+- D-54-01 `app/(tabs)/_layout.tsx`: new `TabBarVeil` wired via `tabBarBackground` — `LinearGradient` `["transparent","transparent",surface]` at `locations [0,0.45,1]` + three `blur`/`blur-off` glyphs at `opacity 0.18`, `pointerEvents="none"`, pill-clipped (`borderRadius: height / 2`, `overflow: hidden`); `marginBottom` 12 → 20. Zero new dependencies (`expo-linear-gradient` already direct; `expo-blur` deliberately not added).
+- **Deviation from CON-54-05/04 (disclosed, evidence-based):** the library renders `tabBarBackground` inside `StyleSheet.absoluteFill` + `styles.pointerEventsNone` (`BottomTabBar.js`), so the veil fills exactly the pill's box; bleeding outside the rounded ends would require `overflow: "visible"`, which Android clips → platform-only behavior barred by §1.10. The soft edge is therefore rendered *inside* the pill face (transparent top → surface bottom) instead of around it. Icon glyphs reuse the file's existing `MaterialCommunityIcons` import rather than adding `@expo/vector-icons` (same glyph set, smaller diff; ACC-03 allow-list still satisfied).
+- D-54-02 `utils/tabBarVeil.test.ts`: ACC-01..03 × android/ios/web (veil wiring + gradient spec, higher float with v1.1 values intact, no `expo-blur`/`backdropFilter`/`boxShadow` + import allow-list).
+- Verified user-run pending: lint/jest/tsc + ACC-S01..S04 (Expo Go + web export).
+
+---
+
+## 2026-10-07 -- SPEC-55 FINAL + implemented (D-55-01..D-55-03; D-55-04 this entry; auto-pilot)
+
+- Ask: remove the glassy veil ("footer") + raise + enlarge the pill (user call 2026-10-07; option B).
+- `specs/55-remove-veil-raise-enlarge-tab-bar.md` FINAL v0.1.
+- D-55-01 `app/(tabs)/_layout.tsx`: deleted `TabBarVeil`, `tabBarBackground`, the `expo-linear-gradient` import (kept by login/register), unused `StyleSheet`/`View` imports; `marginBottom` 20 → 32.
+- D-55-02 `utils/tabBarMetrics.ts`: `TAB_BAR_CONTENT_HEIGHT` 68 → 78 (SPEC-32 amended in that one value; usable 54 → 64, capsule 39/51/56).
+- D-55-03 tests: `tabBarMetrics.test.ts` literals updated + `fits=false` boundary re-pinned 2.0 → 3.0 (at 78, 2.0 fits: 57 ≤ 64); `tabBarFloat.test.ts` capsule 39/51/56; `utils/tabBarVeil.test.ts` deleted by user via `Remove-Item` (no delete tool in agent toolbox) with its surviving guards folded into `tabBarFloat.test.ts`.
+- Verified user-run pending: lint/jest/tsc + ACC-S01..S03 (Expo Go + web export).
+
+---
+
+## 2026-10-07 -- SPEC-56 FINAL + implemented (D-56-01..D-56-03; D-56-04 this entry; auto-pilot)
+
+- Ask: kill the white rectangle behind the pill so it truly floats with parallax (user calls 2026-10-07; "make up your mind" — all decisions taken in-spec).
+- Root cause (verified in the installed fork): `styles.bottom` (`BottomTabBar.js:314-317`) carries no `position`, so the bar was in-flow — margin gaps showed the un-themed root background (white rectangle) and content could never pass behind it.
+- `specs/56-overlay-tab-bar-and-clearance.md` FINAL v0.1. Reverses SPEC-52 CON-52-03/DEC-52-01 (declared overlap; SPEC-56 governs positioning).
+- D-56-01 `app/(tabs)/_layout.tsx`: exactly one new key `position: "absolute"` (library `left`/`right`/`bottom: 0` + margins do the floating).
+- D-56-02 clearance `paddingBottom: 160` (= 112 worst-case bar + 32 float + 16) on all five tab scroll tails (index FlashList 100→160, reports 32→160, learning 40→160, learning-detail + settings added); Home FAB `bottom: 20 → 160`. dues/savings FABs untouched (stack screens, no bar). Static worst-case per DEC-56-02 — no hook wiring.
+- D-56-03 `utils/tabBarFloat.test.ts`: overlay + clearance + no-stray-anchor guards × android/ios/web.
+- Verified user-run pending: lint/jest/tsc + ACC-S01..S03 (Expo Go + web export).
+
+---
+
+## 2026-10-07 -- SPEC-58 FINAL + implemented (D-58-01..D-58-04; D-58-05 this entry)
+
+- Two user-confirmed defects: web app-lock PIN never verified; Settings error dialog painted behind its caller.
+- Root cause #1: `expo-secure-store`'s web build is `export default {}` — every call throws, so the availability probe silently fell through to AsyncStorage on all three helpers (accidental, untestable). `verifyPasscode` returns false when both session plaintext and storedHash are null, so after a web refresh every PIN was rejected. Login/Change-PIN unaffected (server bcrypt).
+- Root cause #2: single `<Portal>` in settings.tsx; `messageDialog` mounted before later sibling dialogs → painted behind.
+- SPEC-36 CON-W-03 amended (user call): second exception — `user_{id}_passcode` lock hash MAY persist on web via the existing secureStorage fallback; it is an unlock gate only, real auth stays the API JWT on every POST/GET (user's rationale).
+- D-58-01 `utils/secureStorage.ts`: explicit `Platform.OS === 'web'` short-circuit in all three helpers; native path byte-identical.
+- D-58-02 `utils/secureStoreWeb.test.ts`: round-trip + never-touches-SecureStore × android/ios/web (empty-module mock).
+- D-58-03 `app/(tabs)/settings.tsx`: messageDialog moved to last Portal child (verbatim).
+- D-58-04 `utils/clearDataKeyboard.test.ts`: ACC-03 paint-order guard.
+- Verified user-run pending: lint/jest/tsc + ACC-S01..S03.
+
+---
+
+## 2026-10-07 -- SPEC-52 v1.1 repair (button retype + bg literal + ACC-05)
+
+- Chain failures, all three root-caused (user-pasted jest + tsc output):
+  (1) `tabBarVeil.test.ts` never deleted — asserts the removed veil by design; user deletes via `Remove-Item` (no delete tool in agent toolbox).
+  (2) ACC-05 pinned pre-amendment CON-06 values — updated to the amended values (dark literal, `borderTopWidth: 0`, no `borderTopColor`/`elevation: 0`).
+  (3) tsc, two real defects: invented `accessibilityRole/State` props the fork never sends (it sends `role`/`testID`/`aria-label`/`style`/`href` — verified `BottomTabBar.js:99-135` + `types.d.ts:321-326`) → component retyped to the fork's `BottomTabBarButtonProps` shape with the library's own `style` applied (item layout stays SPEC-32-exact); `surfaceContainerHigh` absent from paper 5.15 types AND runtime (`DarkTheme.js` has zero `surfaceContainer*` keys — the pill would have rendered `undefined`) → M3-baseline literal `#2B2930` pinned (same normative color; CON-52-15/ACC-12 wording corrected, disclosed here).
+- Uncommitted per standing user instruction.
+
+---
+
+## 2026-10-07 -- SPEC-57 slice 1 + web-freeze repair (D-57-01, D-57-02, D-57-04)
+
+- D-57-01 `app/(tabs)/settings.tsx`: `showPinPrompt` dialog wrapped in `KeyboardAvoidingView` (`padding` iOS / `height` Android, `flex: 1`) so the mobile keypad no longer covers the PIN field and the Cancel/Clear Data buttons.
+- **Web freeze (my bug, reported same day):** the first attempt mounted the wrapper unconditionally. `visible` is on the inner `Dialog`, so the `flex: 1` wrapper stayed mounted inside the `Portal` — a permanent full-height layer that swallowed scroll and taps on web ("settings not scrollable or clickable"). Invisible on native, fatal on web. Fixed by conditionally mounting `{showPinPrompt && (…)}`; CON-57-02/ACC-01 corrected in the spec (same intent, honest shape) and the reason recorded there.
+- D-57-02 `utils/clearDataKeyboard.test.ts`: ACC-01/02 × android/ios/web — asserts the conditional gate, exactly one wrapper, and that the dialog + `handleClearData` sit inside it. This is the guard that would have caught the freeze.
+- D-57-04 journal. Uncommitted per standing user instruction.
+
+---
+
+## 2026-10-07 -- SPEC-59 FINAL + implemented (D-59-01..D-59-06)
+
+- Settings PIN gates rejected a correct PIN on web while accepting it on mobile. Traced, not assumed: web never seeds `master_users` (SPEC-36, `login.tsx:206`/`register.tsx:85` native-only) so leg 2 is dead on web; all three gates sent `profile?.name` while the server matches `users.name`; and every successful `auth/login` rotates the server sid (`authService.js:92`) while Clear/Delete discarded the token — guaranteed post-gate 401 under `protect.js:28`.
+- D-59-01 `specs/59-clear-gate-token-consume-and-login-identity.md` (FINAL user-marked 2026-10-07; amends SPEC-51 D-51-01 only).
+- D-59-02/03 `app/(tabs)/settings.tsx`: `handleClearData` + `verifyAccountPin` consume the fresh token via `login()` on leg-1 success (the `:212` Change pattern); unreadable-ok falls through to leg 2.
+- D-59-04 login identity: `authName` persisted at login/register/Make-Online on all platforms (new additive key, non-secret); all three gates send it, fallback `""`.
+- D-59-05 `utils/clearGateWeb.test.ts` ACC-59-01/02 × android/ios/web.
+- Verified user-run pending: lint/jest/tsc + ACC-S01/S02 device matrix. Uncommitted per standing instruction.
 

@@ -100,6 +100,8 @@ export default function LoginScreen() {
                             }
 
                             await addUser(offlineId, name.trim(), passcode.trim());
+                            // SPEC-59 D-59-04: same identity persistence for offline accounts.
+                            await AsyncStorage.setItem('authName', name.trim());
                             await saveUserProfile({ name: name.trim(), isFirstRun: true, initialBalance: 0 }, offlineId);
                             await initDb(offlineId);
                             await setSetting('autoBackup', 'false');
@@ -201,6 +203,9 @@ export default function LoginScreen() {
             }
 
             if (inner?.user && inner?.token) {
+                // SPEC-59 D-59-04 (DEC-59-02): persist the login identity for
+                // the Settings gates. All platforms, web included.
+                await AsyncStorage.setItem('authName', name.trim());
                 if (Platform.OS !== "web") {
                     // SPEC-36 CON-W-03 (v1.2): no local seeding on web — server owns the account.
                     await addUser(inner.user.id, name.trim(), passcode.trim());
@@ -265,6 +270,7 @@ export default function LoginScreen() {
                                 <Button
                                     key={i}
                                     mode={btn.style === "cancel" ? "text" : "contained"}
+                                    labelStyle={btn.style === "cancel" ? undefined : styles.containedLabel}
                                     onPress={() => {
                                         setDialog({ ...dialog, visible: false });
                                         btn.onPress?.();
@@ -275,7 +281,7 @@ export default function LoginScreen() {
                                 </Button>
                             ))
                         ) : (
-                            <Button mode="contained" onPress={() => setDialog({ ...dialog, visible: false })}>
+                            <Button mode="contained" labelStyle={styles.containedLabel} onPress={() => setDialog({ ...dialog, visible: false })}>
                                 OK
                             </Button>
                         )}
@@ -355,6 +361,7 @@ export default function LoginScreen() {
                                             loading={loading}
                                             disabled={loading}
                                             style={styles.primaryBtn}
+                                            labelStyle={styles.containedLabel}
                                         >
                                             Login
                                         </Button>
@@ -496,5 +503,6 @@ const styles = StyleSheet.create({
     },
     switchPrompt: { color: '#666', fontSize: 14 },
     switchLink: { margin: 0 },
-    switchLinkLabel: { color: '#3949ab', fontWeight: '600', fontSize: 14 }
+    switchLinkLabel: { color: '#3949ab', fontWeight: '600', fontSize: 14 },
+    containedLabel: { color: "#fff" },
 });

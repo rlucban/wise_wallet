@@ -1,10 +1,12 @@
 import { useState, useRef } from "react";
 import { View, ScrollView, Platform, StyleSheet, Modal, Pressable } from "react-native";
+import { View, ScrollView, Platform, StyleSheet, KeyboardAvoidingView } from "react-native";
 import { Appbar, List, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRepositories } from "../../context/RepositoryContext";
 
 import { setSetting, clearAllLocalData, exportData, importData, deleteUser, mergeLWW, API_URL, addUser, saveUserProfile, initDb, getUsers, updateUserPasscode } from "../../utils/db";
@@ -20,6 +22,7 @@ import { authFetch } from "../../utils/apiClient";
 import { useSyncStatus } from "../../hooks/useSyncStatus";
 import { useNetwork } from "../../context/NetworkContext";
 import { useIsLocalAccount } from "../../utils/authMode";
+import { verifyLocalPin } from "../../utils/pinGate";
 import * as Crypto from 'expo-crypto';
 import { Transaction, Category, Due, SavingsItem, UserProfile } from "../../types";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -329,40 +332,74 @@ export default function SettingsScreen() {
 
     const verifyPinForSync = async () => {
      if (!pinVerificationInput.trim()) {
+   const verifyPinForSync = async () => {
+     const pin = pinVerificationInput.trim();
+     if (!pin) {
        setVerificationError("PIN is required");
        return;
      }
      setIsSyncing(true);
      setVerificationError("");
+     // SPEC-51 D-51-01: converged server → local rule (DEC-51-01).
+      // Single login call; its outcome decides the branch — never re-fetched.
+      // SPEC-59 D-59-04 (DEC-59-02): verify against the login identity, not
+      // the display name. Absent → "" → existing 401 → leg-2/fail-closed.
+      const gateName = (await AsyncStorage.getItem("authName")) || "";
+      let unreachable = false;
      try {
        const response = await fetch(`${API_URL}/auth/login`, {
          method: "POST",
          headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({
-           name: profile?.name || "",
-           passcode: pinVerificationInput.trim(),
-           force: true
-         }),
+          body: JSON.stringify({
+            name: gateName,
+            passcode: pin,
+            force: true
+          }),
        });
 
        if (response.ok) {
-         setShowPinVerificationDialog(false);
-         setPinVerificationInput("");
          const data = (await response.json()).data;
          await login(data.user.id, data.token);
          await setSetting('autoBackup', 'true');
-         await proceedWithBackupEnable();
-       } else {
          setShowPinVerificationDialog(false);
          setPinVerificationInput("");
-         setShowNewAccountDialog(true);
+         await proceedWithBackupEnable();
+         return;
        }
+       // Reachable but rejected — fall through to local verify below.
      } catch (e) {
+       unreachable = true; // offline — fall through to local verify
        console.error("PIN verification failed:", e);
-       setVerificationError("Cannot reach server. Check your connection.");
-     } finally {
-       setIsSyncing(false);
      }
+
+     // Local fallback (DEC-51-01/02): same hash-or-plaintext rule as Delete.
+     let localOk = false;
+     if (activeUserId) {
+       try {
+         const users = await getUsers();
+         const user = users.find((u) => u.id === activeUserId);
+         if (user) localOk = await verifyLocalPin(pin, user.passcode);
+       } catch {
+         // local verify failed too
+       }
+     }
+
+     if (!localOk) {
+       setVerificationError("Incorrect PIN. Please try again.");
+       setIsSyncing(false);
+       return;
+     }
+     if (unreachable) {
+       // Backup needs the server — fail closed (CON-51-05, exact copy).
+       setVerificationError("Connect to enable cloud sync.");
+       setIsSyncing(false);
+       return;
+     }
+     // Device PIN confirmed, cloud disagrees — offer create-new with the
+     // PIN preserved for migrate (DEC-51-02/03, D-51-02).
+     setShowPinVerificationDialog(false);
+     setShowNewAccountDialog(true);
+     setIsSyncing(false);
    };
 
    const proceedWithBackupEnable = async () => {
@@ -447,7 +484,9 @@ export default function SettingsScreen() {
        }
 
        await logout();
-       await addUser(newUserId, profile?.name || "", pinVerificationInput);
+        await addUser(newUserId, profile?.name || "", pinVerificationInput);
+        // SPEC-59 D-59-04: the new cloud identity is the migrated profile name.
+        await AsyncStorage.setItem("authName", profile?.name || "");
        await saveUserProfile({ name: profile?.name || "", isFirstRun: false, initialBalance: 0 }, newUserId);
        await initDb(newUserId);
        await setSetting('autoBackup', 'true');
@@ -780,36 +819,55 @@ export default function SettingsScreen() {
 
   const handleClearData = async () => {
     if (!pinInput.trim()) return;
+    const pin = pinInput.trim();
 
     setIsSyncing(true);
 
-    let pinVerified = false;
+    // SPEC-51 D-51-01: converged server → local rule (DEC-51-01).
+    // SPEC-59 D-59-02 (DEC-59-01): consume the fresh session-bound token on
+    // success — leg-1 rotates the server sid (authService.js:92), so the
+    // stored token would die under protect.js:28. The settings.tsx:212
+    // Change pattern. No conflict branch: without deviceId the server never
+    // returns sessionConflict.
+    // SPEC-59 D-59-04 (DEC-59-02): verify against the login identity, not
+    // the display name. Absent → "" → existing 401 → leg-2/fail-closed.
+    const gateName = (await AsyncStorage.getItem("authName")) || "";
+    let serverOk = false;
     try {
       const verifyRes = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: profile?.name || "",
-          passcode: pinInput.trim(),
+          name: gateName,
+          passcode: pin,
           force: true,
         }),
       });
-      pinVerified = verifyRes.ok;
+      serverOk = verifyRes.ok;
+      if (serverOk) {
+        try {
+          const payload = (await verifyRes.json()) as { data?: { user?: { id: string }; token?: string } };
+          const fresh = payload?.data;
+          if (fresh?.token && fresh?.user?.id) {
+            await login(fresh.user.id, fresh.token);
+          } else {
+            serverOk = false;
+          }
+        } catch {
+          serverOk = false; // ok but unreadable → fall through to local verify
+        }
+      }
     } catch {
       // server unreachable — fall through to local verify
     }
 
-    if (!pinVerified && activeUserId) {
+    // Local fallback with Delete parity: SHA256-or-plaintext (DEC-51-02).
+    let localOk = false;
+    if (!serverOk && activeUserId) {
       try {
         const users = await getUsers();
         const user = users.find((u) => u.id === activeUserId);
-        if (user) {
-          const inputHash = await Crypto.digestStringAsync(
-            Crypto.CryptoDigestAlgorithm.SHA256,
-            pinInput.trim()
-          );
-          pinVerified = user.passcode === inputHash;
-        }
+        if (user) localOk = await verifyLocalPin(pin, user.passcode);
       } catch {
         // local verify failed too
       }
@@ -818,6 +876,8 @@ export default function SettingsScreen() {
 if (!pinVerified) {
       setPinClearError("Incorrect PIN. Please try again.");
       setPinInput("");
+if (!serverOk && !localOk) {
+      showMessage("error", "Incorrect PIN", "Please try again.");
       setIsSyncing(false);
       return;
     }
@@ -1014,19 +1074,37 @@ if (!pinVerified) {
   };
 
   const verifyAccountPin = async (pin: string): Promise<boolean> => {
+    // SPEC-59 D-59-04 (DEC-59-02): verify against the login identity, not
+    // the display name. Absent → "" → existing 401 → leg-2/fail-closed.
+    const gateName = (await AsyncStorage.getItem("authName")) || "";
     let verified = false;
     if (API_URL) {
+      // SPEC-59 D-59-03 (DEC-59-01): consume the fresh session-bound token
+      // on success — same S1 rationale (authService.js:92 rotates the sid).
       try {
         const res = await fetch(`${API_URL}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: profile?.name || "",
+            name: gateName,
             passcode: pin.trim(),
             force: true,
           }),
         });
         verified = res.ok;
+        if (verified) {
+          try {
+            const payload = (await res.json()) as { data?: { user?: { id: string }; token?: string } };
+            const fresh = payload?.data;
+            if (fresh?.token && fresh?.user?.id) {
+              await login(fresh.user.id, fresh.token);
+            } else {
+              verified = false;
+            }
+          } catch {
+            verified = false; // ok but unreadable → fall through to local
+          }
+        }
       } catch {
         // server unreachable — fall through to local verification
       }
@@ -1207,7 +1285,7 @@ if (!pinVerified) {
         <Appbar.Content title="Settings" titleStyle={{ fontWeight: "700" }} />
       </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 160 }}>
         {/* User Profile Section */}
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
@@ -1489,21 +1567,7 @@ if (!pinVerified) {
           </Pressable>
         </Modal>
 
-        <Dialog visible={messageDialog.visible} onDismiss={closeMessage} style={styles.dialog}>
-          <Dialog.Icon
-            icon={messageDialog.type === "success" ? "check-circle-outline" : "alert-circle-outline"}
-            color={messageDialog.type === "success" ? paperTheme.colors.tertiary : paperTheme.colors.error}
-          />
-          <Dialog.Title style={{ textAlign: "center" }}>{messageDialog.title}</Dialog.Title>
-          <Dialog.Content>
-            <Text style={{ textAlign: "center" }}>{messageDialog.message}</Text>
-          </Dialog.Content>
-          <Dialog.Actions style={{ justifyContent: "center" }}>
-            <Button mode="contained" onPress={closeMessage}>OK</Button>
-          </Dialog.Actions>
-        </Dialog>
-
-            <ConfirmDialog
+        <ConfirmDialog
               visible={showRepairConfirm}
               title="Repair Duplicates?"
               message={
@@ -1631,6 +1695,52 @@ if (!pinVerified) {
             </Pressable>
           </Pressable>
         </Modal>
+        <Dialog visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)} style={styles.dialog}>
+          <Dialog.Title>{isLocal ? "Make Online" : "Verify Account PIN"}</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ marginBottom: 16 }}>
+              {isLocal
+                ? `This will convert your account to an online account. Auto-backup will be enabled and this action cannot be reverted back to local-only.\n\nEnter your PIN for "${profile?.name || "your account"}" to proceed.`
+                : `To enable cloud sync, please enter the PIN for "${profile?.name || "your account"}".`
+              }
+            </Text>
+            <TextInput
+              label="Current PIN"
+              value={pinVerificationInput}
+              onChangeText={(t) => { setPinVerificationInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setVerificationError(""); }}
+              secureTextEntry
+              keyboardType="numeric"
+              maxLength={4}
+              error={!!verificationError}
+            />
+            {verificationError ? (
+              <Text style={{ color: paperTheme.colors.error, marginTop: 4 }}>{verificationError}</Text>
+            ) : null}
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => { setShowPinVerificationDialog(false); setPinVerificationInput(""); setVerificationError(""); }}>Cancel</Button>
+            <Button onPress={verifyPinForSync} loading={isSyncing} disabled={isSyncing}>Verify & Sync</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showNewAccountDialog} onDismiss={() => setShowNewAccountDialog(false)} style={styles.dialog}>
+          <Dialog.Title>{isLocal ? "Create Cloud Account" : "PIN Doesn't Match"}</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ marginBottom: 16 }}>
+              {isLocal
+                ? "No cloud account found. This will create a new cloud account and migrate all your local data. This action cannot be reverted back to local-only."
+                : "Your PIN is correct on this device, but it doesn't match the cloud account. You can create a new cloud account with this PIN and migrate your local data to it."
+              }
+            </Text>
+            <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
+              Your existing cloud data won't be affected. This will create a separate account.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowNewAccountDialog(false)}>Cancel</Button>
+            <Button onPress={createNewAccountAndMigrate} loading={isSyncing} disabled={isSyncing}>Create New & Migrate</Button>
+          </Dialog.Actions>
+        </Dialog>
 
         <Dialog visible={showBackupDialog} onDismiss={() => setShowBackupDialog(false)} style={styles.dialog}>
           <Dialog.Title>Enable Auto-save</Dialog.Title>
@@ -1671,6 +1781,14 @@ if (!pinVerified) {
               onPress={() => {}}
               style={{ backgroundColor: paperTheme.colors.surface, borderRadius: 24, width: "90%", maxWidth: 480, alignSelf: "center" }}
             >
+        {/* SPEC-57: conditional mount — an always-mounted KeyboardAvoidingView
+            renders a full-height flex layer on web and swallows scroll/taps. */}
+        {showPinPrompt && (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+        <Dialog visible={showPinPrompt} onDismiss={() => setShowPinPrompt(false)} style={styles.dialog}>
           <Dialog.Title style={{ textAlign: "center" }}>Enter PIN to Clear Data</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16, textAlign: "center" }}>This action cannot be undone. All local data will be permanently deleted.</Text>
@@ -1693,6 +1811,9 @@ if (!pinVerified) {
             </Pressable>
           </Pressable>
         </Modal>
+        </Dialog>
+        </KeyboardAvoidingView>
+        )}
 
         <Dialog visible={showDeleteConfirmation} onDismiss={() => setShowDeleteConfirmation(false)} style={styles.dialog}>
           <Dialog.Title style={{ textAlign: "center" }}>Are you absolutely sure?</Dialog.Title>
@@ -1932,6 +2053,23 @@ if (!pinVerified) {
             </Pressable>
           </Pressable>
         </Modal>
+        </Dialog>
+
+        {/* SPEC-58 D-58-03: last Portal child, so this shared success/error
+            dialog always paints above whichever dialog raised it. */}
+        <Dialog visible={messageDialog.visible} onDismiss={closeMessage} style={styles.dialog}>
+          <Dialog.Icon
+            icon={messageDialog.type === "success" ? "check-circle-outline" : "alert-circle-outline"}
+            color={messageDialog.type === "success" ? paperTheme.colors.tertiary : paperTheme.colors.error}
+          />
+          <Dialog.Title style={{ textAlign: "center" }}>{messageDialog.title}</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ textAlign: "center" }}>{messageDialog.message}</Text>
+          </Dialog.Content>
+          <Dialog.Actions style={{ justifyContent: "center" }}>
+            <Button mode="contained" onPress={closeMessage}>OK</Button>
+          </Dialog.Actions>
+        </Dialog>
       </Portal>
     </View>
   );

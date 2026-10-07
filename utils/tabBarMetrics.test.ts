@@ -33,10 +33,10 @@ const FONT_SCALES = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5];
 describe("getTabBarMetrics (ACC-01)", () => {
     it("returns the documented shape for insets.bottom=0", () => {
         expect(getTabBarMetrics(0)).toEqual({
-            height: 68,
+            height: 78,
             paddingTop: 4,
             paddingBottom: 0,
-            usableHeight: 54,
+            usableHeight: 64,
             requiredHeight: 43,
             fits: true,
         });
@@ -44,10 +44,10 @@ describe("getTabBarMetrics (ACC-01)", () => {
 
     it("adds a 24px inset to the height and the padding, leaving usableHeight alone", () => {
         expect(getTabBarMetrics(24)).toEqual({
-            height: 92,
+            height: 102,
             paddingTop: 4,
             paddingBottom: 24,
-            usableHeight: 54,
+            usableHeight: 64,
             requiredHeight: 43,
             fits: true,
         });
@@ -55,10 +55,10 @@ describe("getTabBarMetrics (ACC-01)", () => {
 
     it("adds a 34px home-indicator inset to the height and the padding", () => {
         expect(getTabBarMetrics(34)).toEqual({
-            height: 102,
+            height: 112,
             paddingTop: 4,
             paddingBottom: 34,
-            usableHeight: 54,
+            usableHeight: 64,
             requiredHeight: 43,
             fits: true,
         });
@@ -83,7 +83,7 @@ describe("getTabBarMetrics (ACC-01)", () => {
     });
 
     it("exposes the library-derived constants it sizes against", () => {
-        expect(TAB_BAR_CONTENT_HEIGHT).toBe(68);
+        expect(TAB_BAR_CONTENT_HEIGHT).toBe(78);
         expect(TAB_BAR_PADDING_TOP).toBe(4);
         expect(ICON_HEIGHT).toBe(28);
         expect(TAB_ITEM_PADDING).toBe(5);
@@ -125,8 +125,10 @@ describe("getTabBarMetrics (ACC-02)", () => {
 
     it("reports fits=false rather than silently resizing when the bar is too short", () => {
         // DEC-07: the failure mode is a failing test, not a bar that jumps with the font
-        // size. 2.0 is outside the CON-01 range precisely so this boundary stays pinned.
-        const m = getTabBarMetrics(0, 2.0);
+        // size. 3.0 is outside the CON-01 range precisely so this boundary stays pinned.
+        // (SPEC-55 CON-55-05: at height 78, fontScale 2.0 now fits — 57 ≤ 64 — so the
+        // boundary moved from 2.0 to 3.0, where required = 72 > 64.)
+        const m = getTabBarMetrics(0, 3.0);
         expect(m.fits).toBe(false);
         expect(m.height).toBe(TAB_BAR_CONTENT_HEIGHT);
     });
@@ -137,10 +139,10 @@ describe("getTabBarMetrics (ACC-02)", () => {
 // mismatch rather than as three agreeing copies of a bug.
 describe("getTabBarMetrics (ACC-03)", () => {
     const EXPECTED_AT_1_5 = {
-        height: 102,
+        height: 112,
         paddingTop: 4,
         paddingBottom: 34,
-        usableHeight: 54,
+        usableHeight: 64,
         requiredHeight: 50,
         fits: true,
     };
@@ -153,10 +155,10 @@ describe("getTabBarMetrics (ACC-03)", () => {
 
             it("matches the same literal metrics at fontScale 1", () => {
                 expect(getTabBarMetrics(34)).toEqual({
-                    height: 102,
+                    height: 112,
                     paddingTop: 4,
                     paddingBottom: 34,
-                    usableHeight: 54,
+                    usableHeight: 64,
                     requiredHeight: 43,
                     fits: true,
                 });
@@ -236,13 +238,13 @@ describe("app/(tabs)/_layout.tsx source (ACC-05)", () => {
         expect(fields).toEqual(["height", "paddingBottom", "paddingTop"]);
     });
 
-    it("keeps the tab bar theme values (CON-06)", () => {
+    it("keeps the tab bar theme values (CON-06 as amended by SPEC-52/55/56)", () => {
         expect(source).toContain("tabBarActiveTintColor: theme.colors.primary");
         expect(source).toContain("tabBarInactiveTintColor: theme.colors.outline");
-        expect(source).toContain("backgroundColor: theme.colors.surface");
-        expect(source).toContain("borderTopWidth: 1");
-        expect(source).toContain("borderTopColor: theme.colors.surfaceVariant");
-        expect(source).toContain("elevation: 0");
+        expect(source).toContain('theme.dark ? "#2B2930" : theme.colors.surface');
+        expect(source).toContain("borderTopWidth: 0");
+        expect(source).not.toContain("borderTopColor");
+        expect(source).not.toContain("elevation: 0");
     });
 
     it("keeps the label typography (CON-07)", () => {

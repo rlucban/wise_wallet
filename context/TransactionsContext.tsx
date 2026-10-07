@@ -18,6 +18,7 @@ import { getPrefixedKey, setItem } from "../utils/storage";
 import { updateLastSyncedAt } from "../utils/syncQueue";
 import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 import { resolveTransactionCategory } from "../utils/transactionCategory";
+import { attachDueLinks, recordDueLink, pruneDueLinks } from "../utils/dueTxLinks";
 
 interface TransactionsData {
     transactions: Transaction[];
@@ -104,7 +105,8 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         const { ok, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
         if (ok && Array.isArray(remoteData)) {
             const cats = await catRepo.getAll();
-            setTransactions(remoteData.map((t) => ({ ...t, category: resolveTransactionCategory(t, cats) })));
+            const rows = remoteData.map((t) => ({ ...t, category: resolveTransactionCategory(t, cats) }));
+            setTransactions(await attachDueLinks(rows, activeUserId));
             const autoBackup = await getSetting('autoBackup');
             if (autoBackup !== 'false') {
                 const key = await getPrefixedKey('transactions');
@@ -114,15 +116,20 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         }
     }, [activeUserId, catRepo]);
 
-    const fetchTransactions = useCallback(async () => {
-        setLoading(true);
-        try {
+        const fetchTransactions = useCallback(async () => {
+            setLoading(true);
+            if (!activeUserId) {
+                setLoading(false);
+                return;
+            }
+            try {
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web loads API-direct — no local reads, no merge, no queue.
                 if (API_URL && activeUserId) {
                     const { ok, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
                     if (ok && Array.isArray(remoteData)) {
-                        setTransactions(remoteData.map((t) => ({ ...t, category: resolveTransactionCategory(t, categories) })));
+                        const rows = remoteData.map((t) => ({ ...t, category: resolveTransactionCategory(t, categories) }));
+                        setTransactions(await attachDueLinks(rows, activeUserId));
                     }
                 }
                 return;
@@ -130,7 +137,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             if (isLocal) {
                 // Local accounts: AsyncStorage only, zero API calls (SPEC-04, SPEC-45 CON-04).
                 const localData = (await txRepo.getAll()).map(addCategoryFallback);
-                setTransactions(localData);
+                setTransactions(await attachDueLinks(localData, activeUserId));
                 return;
             }
             // Online native: API is truth (SPEC-45 DEC-01/DEC-03). Replace, never merge.
@@ -163,9 +170,10 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         checkNegativeBalance(balance);
     }, [activeUserId, profile, transactions, loading, checkNegativeBalance]);
 
-    const addTransaction = useCallback(async (transaction: Omit<Transaction, "id">) => {
-        try {
-            const newTransaction: Transaction = sanitizeTransaction({
+        const addTransaction = useCallback(async (transaction: Omit<Transaction, "id">) => {
+            try {
+                if (!activeUserId) throw new Error("Not authenticated");
+                const newTransaction: Transaction = sanitizeTransaction({
                 ...transaction,
                 id: generateUUID()
             });
@@ -192,6 +200,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                         return;
                     }
                 }
+                if (transaction.dueId) await recordDueLink(uploaded.id, transaction.dueId, activeUserId);
                 setTransactions((prev) => [...prev, uploaded]);
                 return;
             }
@@ -212,6 +221,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             if (!ok) {
                 throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
             }
+            if (transaction.dueId) await recordDueLink(newTransaction.id, transaction.dueId, activeUserId);
             await refreshFromApi();
             return;
         } catch (error) {
@@ -279,10 +289,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         }
     }, [txRepo, activeUserId, isLocal, refreshFromApi]);
 
-    const deleteTransaction = useCallback(async (id: string) => {
-        try {
-            if (isLocal) {
+        const deleteTransaction = useCallback(async (id: string) => {
+            try {
+                if (!activeUserId) throw new Error("Not authenticated");
+                if (isLocal) {
                 await txRepo.deleteById(id);
+                await pruneDueLinks(id, activeUserId);
                 setTransactions((prev) => prev.filter(t => t.id !== id));
                 return;
             }
@@ -299,6 +311,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 if (!ok) {
                     throw new Error(status !== 0 && error ? error : "Failed to delete transaction. Please check your connection.");
                 }
+                await pruneDueLinks(id, activeUserId);
                 setTransactions((prev) => prev.filter(t => t.id !== id));
                 return;
             }
@@ -309,12 +322,13 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 throw new Error(status !== 0 && error ? error : "Failed to delete transaction. Please check your connection.");
             }
             await refreshFromApi();
+            await pruneDueLinks(id, activeUserId);
             return;
         } catch (error) {
             console.error("Error deleting transaction:", error);
             throw error;
         }
-    }, [txRepo, isLocal, refreshFromApi]);
+    }, [txRepo, isLocal, refreshFromApi, activeUserId]);
 
     const dataValue = useMemo(() => ({
         transactions,

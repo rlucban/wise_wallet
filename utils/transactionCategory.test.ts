@@ -128,7 +128,7 @@ function runSuite(os: "android" | "ios" | "web") {
             const src = readRepo("context/TransactionsContext.tsx");
             expect(src).toContain("resolveTransactionCategory(t, categories)");
             expect(src).toContain("resolveTransactionCategory(t, cats)");
-            expect(src).toContain("\n                        setTransactions(remoteData.map((t)");
+            expect(src).toContain("setTransactions(await attachDueLinks(rows, activeUserId));");
         });
 
         it("ACC-07b: useCategoriesData consumed once; catRepo uses stay at 4 (none in web branch)", () => {

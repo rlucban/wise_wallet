@@ -221,7 +221,7 @@ export default function LearningDetail() {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    content: { padding: 16, width: "100%", maxWidth: 800, alignSelf: "center" },
+    content: { padding: 16, paddingBottom: 160, width: "100%", maxWidth: 800, alignSelf: "center" },
     card: { borderRadius: 20 },
     title: { fontWeight: "bold", marginBottom: 12 },
     audioBar: {
