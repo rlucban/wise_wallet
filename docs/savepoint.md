@@ -987,6 +987,7 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - 2026-10-07 follow-up 2: `app/dues.tsx` and `app/savings.tsx` FABs now match the shared add-transaction style—icon-only circle, primary background, `onPrimary` plus, and wider 24px edge margin. No commit.
 - 2026-10-07 follow-up 3: shared `+` FAB shifted right to `right: 8`, producing an 8px gap from the tab pill's 72px right margin. No commit.
 - 2026-10-07 follow-up 4: bottom tab button labels got `paddingHorizontal: 8` for more spacing. No commit.
+- 2026-10-07 follow-up 5: calculator dialog redesigned iOS-like—large thin display, rounded 18px keys, primary operator column, tonal action keys, clear backspace; tests/lint/tsc clean. See SPEC-63 v1.1. No commit.
 - 2026-10-07 follow-up all-order: `utils/calculator.ts` + calculator tests and `components/CalculatorDialog.tsx` added, wired from dashboard header calculator icon; transaction rows got themed border/icon boxes; scheduled edit/delete verified already present; Reports `calendar-year` remains fixed; dark dashboard `surfaceVariant` aligned. `specs/63...` amended as v1.1. No commit.
 - Verified user-run pending: lint/jest/tsc + manual matrix. Uncommitted per standing instruction; no git commit performed.
 
