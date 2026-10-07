@@ -45,7 +45,7 @@ export default function DuesScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { formatAmount } = useCurrencyActions();
-  const { dues, addDue, updateDue, deleteDue, refetch } = useDues();
+  const { dues, loading, addDue, updateDue, deleteDue, refetch } = useDues();
   const { addTransaction } = useTransactionsActions();
   const { transactions } = useTransactions();
   const { categories } = useCategoriesData();
@@ -526,6 +526,8 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         }
         contentContainerStyle={{ padding: 16 }}
         showsVerticalScrollIndicator={false}
+        refreshing={loading}
+        onRefresh={refetch}
       />
 
       <Portal>

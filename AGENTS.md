@@ -479,6 +479,8 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-07 — Spec 59 FINAL + implemented.** `specs/59-clear-gate-token-consume-and-login-identity.md`: Clear/Delete gates consume the fresh token on verify success (leg-1 rotates server sid, discarded token guaranteed post-gate 401); all three gates send persisted `authName` login identity instead of display name (web leg-2 unseeded by SPEC-36, so any leg-1 failure rejected). D-59-02/03 settings.tsx consume; D-59-04 identity persistence (login/register/Make-Online) + gates; D-59-05 `utils/clearGateWeb.test.ts` guards × android/ios/web. No wallet-api change; Change + Sync-success byte-identical. Open: lint/jest/tsc + ACC-S01/S02. See `docs/savepoint.md`.
 
+- **2026-10-07 — Spec 60 FINAL + implemented.** `specs/60-dues-savings-aware-highlights.md`: dues/savings-aware insights memo + dues pull-to-refresh. D-60-02 `useInsights.ts` fingerprints join memo gate (SPEC-50 D-01 amended, last-good/no-flash/latest-1 kept); D-60-04 `dues.tsx` pull-to-refresh (focus wiring verified, FlashList, no new dep); SmartInsights + useDues untouched; D-60-05 `utils/insightsDuesSavings.test.ts` × android/ios/web. No wallet-api change. Open: lint/jest/tsc + ACC-S01/S02 (incl. no-flicker re-proof). See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

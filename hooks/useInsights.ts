@@ -28,8 +28,23 @@ export function useInsights() {
     [transactions]
   );
 
+  // SPEC-60 D-60-02 (DEC-60-01): dues/savings fingerprints join the memo gate
+  // (same join pattern as txKey) so their changes recompute insights. Reads
+  // stay on the refs; deps are strings, never object identity (CON-60-03).
+  const duesKey = useMemo(
+    () => dues.map((d) => `${d.id}:${d.updatedAt}:${d.amount}:${d.completed}`).join("|"),
+    [dues]
+  );
+
+  const savingsKey = useMemo(
+    () => savingsItems.map((s) => `${s.id}:${s.updatedAt}:${s.balance}`).join("|"),
+    [savingsItems]
+  );
+
   const insights: Insight[] = useMemo(() => {
     void txKey;
+    void duesKey;
+    void savingsKey;
     const savings = savingsRef.current;
     const list = duesRef.current;
     const insights: Insight[] = [];
@@ -69,7 +84,7 @@ export function useInsights() {
     });
 
     return insights;
-  }, [txKey, formatAmount]);
+  }, [txKey, duesKey, savingsKey, formatAmount]);
 
   return { insights };
 }

@@ -937,3 +937,15 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - D-59-05 `utils/clearGateWeb.test.ts` ACC-59-01/02 × android/ios/web.
 - Verified user-run pending: lint/jest/tsc + ACC-S01/S02 device matrix. Uncommitted per standing instruction.
 
+---
+
+## 2026-10-07 -- SPEC-60 FINAL + implemented (D-60-01..D-60-06)
+
+- Dues showed late on web and Highlights lagged them further. Traced: web is fetch-on-mount/focus with no push channel (SPEC-36), cold-start latency on top; `useInsights` memo gated on `txKey` only (SPEC-50 D-01), so dues/savings changes never recomputed insights on any platform.
+- D-60-01 `specs/60-dues-savings-aware-highlights.md` (FINAL user-marked 2026-10-07; amends SPEC-50 D-01 only — flicker guarantees kept).
+- D-60-02 `hooks/useInsights.ts`: `duesKey` + `savingsKey` join the memo deps (same join pattern; string deps, refs reads kept).
+- D-60-03 `components/SmartInsights.tsx`: untouched (contingency unneeded — last-good interplay unchanged).
+- D-60-04 `app/dues.tsx`: focus-refetch verified firing; pull-to-refresh added (`refreshing`/`onRefresh`, FlashList, no new dep). `hooks/useDues.ts` untouched.
+- D-60-05 `utils/insightsDuesSavings.test.ts` ACC-60-01/02 × android/ios/web.
+- Verified user-run pending: lint/jest/tsc + ACC-S01/S02 device matrix (incl. no-flicker re-proof). Uncommitted per standing instruction.
+
