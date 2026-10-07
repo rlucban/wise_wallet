@@ -181,3 +181,37 @@ describe("SPEC-44 / 401 warning dedupe", () => {
         }
     );
 });
+
+describe("SPEC-36 v1.5 / 204-as-success", () => {
+    function respondEmpty(status: number) {
+        mockFetch.mockResolvedValue({
+            ok: status >= 200 && status < 300,
+            status,
+            json: async (): Promise<any> => { throw new Error("empty body"); },
+            text: async (): Promise<string> => "",
+        });
+    }
+
+    it.each(["android", "ios", "web"])(
+        "ACC-W-13: 204 empty body is success with no payload (%s)",
+        async () => {
+            respondEmpty(204);
+            const res = await authFetch("/transactions/abc");
+            expect(res.ok).toBe(true);
+            expect(res.status).toBe(204);
+            expect(res.data).toBeUndefined();
+            expect(res.error).toBeUndefined();
+        }
+    );
+
+    it.each(["android", "ios", "web"])(
+        "ACC-W-13: empty 4xx still fails loudly (%s)",
+        async () => {
+            respondEmpty(404);
+            const res = await authFetch("/transactions/abc");
+            expect(res.ok).toBe(false);
+            expect(res.status).toBe(404);
+            expect(res.error).toBe("HTTP 404 (empty body)");
+        }
+    );
+});

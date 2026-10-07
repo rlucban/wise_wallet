@@ -173,6 +173,13 @@ export async function authFetch<T = unknown>(
     try {
       body = await response.json();
     } catch {
+      // SPEC-36 v1.5 DEC-W8(a): the server answers DELETE with 204 + empty body.
+      // Empty/unparseable body on a 2xx is success with no payload (data stays
+      // undefined) — not a failure. Non-2xx keeps failing loudly below. The 401
+      // session path above and the envelope unwrap below are untouched.
+      if (response.ok) {
+        return { ok: true, status: response.status };
+      }
       const text = await response.text().catch(() => '');
       return {
         ok: false,

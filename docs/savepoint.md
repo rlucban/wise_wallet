@@ -797,6 +797,480 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
+## 2026-10-06 -- SPEC-51 FINAL v1.0 + implemented (D-01)
+
+- `specs/51-category-settings-alphabetical-sorting.md`: FINAL per user call 2026-10-06 (PROPOSED -> FINAL, no content change; user declined `accessibilityLabel` addition — spec-only).
+- Problem: Manage Categories rendered in DB retrieval order, no A-Z / Z-A way to locate categories.
+- D-01 `app/category-settings.tsx` only: `sortOrder` state (`"asc"` default) + `toggleSortOrder` + `sortedCategories` via `[...filteredCategories].sort` with `localeCompare(..., { sensitivity: "base" })` (non-destructive copy, CON-03) + `<Appbar.Action>` right side of `Appbar.Header` (`sort-alphabetical-ascending` / `sort-alphabetical-descending`, CON-01/CON-02) + `ScrollView` maps `sortedCategories`. Tab parity preserved (derives from `filteredCategories`, CON-04); pure JS sorting, no native import (CON-05).
+- No storage/API/route/dep change. No jest tests (no D-* names them; §1.10 matrix is user-run ACC-01..05).
+- Open (user-run): `npm run lint`, `npx jest`, `npx tsc --noEmit`, plus ACC-01..05 matrix (Web/Android/iOS toggle ordering, tab persistence, icon-arrow reviewer check) + `expo export --platform web` clean.
+- Rollback: revert 4 hunks in `app/category-settings.tsx`; spec status back to PROPOSED.
+
+---
+
+## 2026-10-06 -- SPEC-52 FINAL v1.0 + implemented (D-01..D-03)
+
+- `specs/52-reports-yearly-icon-validity.md`: FINAL per user call 2026-10-06 (DRAFT v0.1 -> FINAL v1.0, no content change).
+- Problem: Reports period menu Yearly row used `leadingIcon="calendar-year"` (invalid MaterialCommunityIcons glyph) -> blank icon; Weekly (`calendar-week`) / Monthly (`calendar-month`) unaffected.
+- D-01 `app/(tabs)/reports.tsx:230` only: `calendar-year` -> `calendar-outline` (existing MCI import reused, no Ionicons, no `periodOptions` refactor, nothing else touched).
+- D-02 `utils/reportsPeriodIcon.test.ts` (new, 9 tests): ACC-01 zero `calendar-year`, ACC-02 Yearly carries `calendar-outline`, ACC-03 Weekly/Monthly unchanged, all x android/ios/web (source-text guards; jest cannot render glyphs).
+- Open (user-run): `npm run lint`, `npx jest`, `npx tsc --noEmit`, plus ACC-S01..S03 matrix (Expo Go Android/iOS rows show icons, web export no new warning, no other visual change).
+- Rollback: revert 1 line in `app/(tabs)/reports.tsx`; delete test/spec additions.
+
+---
+
+## 2026-10-06 -- SPEC-54 FINAL v1.0 + implemented (D-01..D-05)
+
+- `specs/54-learning-app-guide-sections.md`: FINAL per user call 2026-10-06 (DRAFT v0.1 -> FINAL v1.0, OD-01..OD-04 approved as drafted; guide copy is v1 in-tree, user-editable).
+- Problem: Learning screen had one `Recommended Reading` list mixing app-usage guidance with financial tips; zero guide rows existed (`ArticleTopic` lacked an app-guide member).
+- D-01 `utils/learningData.ts`: `ArticleTopic` += `"App Guide"` + 3 rows (`app_overview`/`how_to_log_dues`/`managing_savings_goals`, MCI icons `information-outline`/`calendar-plus-outline`/`target`); 6 literacy rows byte-identical; badge fallback unchanged (CON-08).
+- D-02 `app/(tabs)/learning.tsx`: `filteredResources` split into `filteredGuides` (topic match; ignores Budgeting/Savings/Debt chips, respects search + Students/Workers) + `filteredLiteracy` (existing predicate + guide exclusion); two stacked sections (`WiseWallet App Guide` first with own count + `No app guides match your filters.` empty card, `Recommended Reading` second unchanged); card/TTS/bookmark JSX reused by copy, no helper added.
+- D-03 `app/(tabs)/learning-detail.tsx`: 3 guide bodies (in-app flows only: tabs tour, dues add/pay/complete-lock, allocations progress/archive/restore); unknown-id path unchanged.
+- D-04 `utils/learningSections.test.ts` (new, 12 tests): ACC-01 rows, ACC-02 header order, ACC-03 split predicates + zero `filteredResources`, ACC-04 bodies + unknown-id path, all x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest`, `npx tsc --noEmit`, plus ACC-S01..S03 matrix (Expo Go sections/counts/filters/search, web mobile+desktop grids, guide detail + TTS/bookmark parity) + `expo export --platform web` clean.
+- Rollback: revert learning.tsx/learning-detail.tsx/learningData.ts hunks; delete test/spec additions.
+
+---
+
+## 2026-10-06 -- SPEC-55 FINAL v1.0 + implemented (D-01..D-03)
+
+- `specs/55-hide-app-guide-audience-chip.md`: FINAL per user call 2026-10-06 (written directly as FINAL; display-only, filtering frozen).
+- Problem: guide cards showed a misleading secondary Students/Workers chip (reused JSX rendered `{item.audience && (...)}` unconditionally in both copies).
+- D-01 `app/(tabs)/learning.tsx` (2 lines via replaceAll): both chip conditions → `{item.topic !== "App Guide" && item.audience && (`; guides show `App Guide` tag alone, literacy cards unchanged, predicates/rows/detail untouched.
+- D-02 `utils/learningSections.test.ts` (+9 tests): SPEC-55 ACC-01 gate count 2 + zero bare `{item.audience && (`, ACC-02 chip JSX intact, ACC-03 predicates unchanged, all x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest utils/learningSections.test.ts`, `npx tsc --noEmit`, plus ACC-S01..S02 matrix (Expo Go + web export: guides tag-only, literacy dual-chip, chips still filter guides) .
+- Rollback: revert 2 lines in `app/(tabs)/learning.tsx`; drop SPEC-55 tests.
+
+---
+
+## 2026-10-06 -- SPEC-56 FINAL v1.0 + implemented (D-01..D-05)
+
+- `specs/56-transaction-history-screen.md`: FINAL per user call 2026-10-06 (OD-01 title + OD-02 complete unfiltered list per original request).
+- Problem: Home See All pushed `/reports` (charts); no `/transactions` route existed, so the full history had no home.
+- D-01 `app/(tabs)/index.tsx:250`: `router.push("/reports")` → `router.push("/transactions")` (sole `/reports` push in tabs; verified zero remain).
+- D-02 `app/transactions.tsx` (new): `Appbar.Header` (`Transaction History` + `BackAction` → `safeGoBack(router)`, fallback `/`) over full history newest-first (Home comparator, no `slice`), row JSX copied from Home (icon/category/amount/date → `/transaction-details?id=`), `EmptyState` preserved, `useFocusEffect` refetch.
+- D-03 `app/_layout.tsx:225`: `<Stack.Screen name="transactions" />` added; existing screens untouched.
+- D-04 `utils/transactionHistory.test.ts` (new, 12 tests): ACC-01 retarget, ACC-02 header + safeGoBack + no raw back, ACC-03 full sort + details nav, ACC-04 registration, all x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest utils/transactionHistory.test.ts`, `npx tsc --noEmit`, plus ACC-S01..S02 matrix (Expo Go See All → history → back → Home, row → details, empty state; web direct-load + back with no GO_BACK warning) + `expo export --platform web` clean.
+- Rollback: revert index line + _layout line; delete screen/spec/test additions.
+
+---
+
+## 2026-10-06 -- SPEC-56 FINAL v1.1 + implemented (D-06..D-09)
+
+- `specs/56-transaction-history-screen.md` v1.0 → v1.1 per user call (GCash-style statement folded in; `specs/57-gcash-statement-history.md` retired to a pointer, one home §1.14).
+- OD-03 month groups (newest month first, `October 2026` headers) / OD-04 modal mapping (full `id`, `Others`/`—` fallbacks) / OD-05 Home rows still push details.
+- D-06 `utils/transactionGroups.ts` (new): pure `groupTransactionsByMonth` (no `react-native` import).
+- D-07 `app/transactions.tsx` (rebuild): month card containers + statement rows (icon, Category, method badge with `—` fallback, Date/Time, signed colored amount); tap opens Paper `Dialog` receipt (Ref ID/Category/Method/Date/Notes + single Close); zero Edit/Delete/Share and zero details navigation (verified by scoped grep: sole `Close` hit); header/refetch/empty state reused.
+- D-08 `utils/transactionGroups.test.ts` (new, 15 tests): ACC-06a/b grouping behavior + ACC-07/08/09 source guards, all x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest utils/transactionGroups.test.ts`, `npx tsc --noEmit`, plus ACC-S03..S04 matrix (Expo Go + web mobile/desktop: month cards, row fields, receipt modal Close-only, backdrop/Escape dismiss) + `expo export --platform web` clean.
+- Rollback: revert transactions.tsx rebuild; delete util/spec-delta/test additions (v1.0 screen remains).
+
+---
+
+## 2026-10-06 -- SPEC-56 FINAL v1.2 + implemented (D-10..D-12)
+
+- `specs/56-transaction-history-screen.md` §5 FINAL per user call (modal deleted, rows static; v1.0/v1.1 text untouched). ACC-10 clarified mid-slice: header `BackAction` `onPress` is the allowed sole exception.
+- D-10 `app/transactions.tsx`: deleted receipt `Dialog` block + `ReceiptRow` + `selected` state; rows `TouchableOpacity` → `View` (no `onPress`/`activeOpacity`); pruned `Dialog`/`Button`/`TouchableOpacity`/`useState` imports. Verified by scoped grep: zero `Dialog|Modal|TouchableOpacity|Pressable|setSelected|Receipt`, sole `onPress` is header back.
+- D-11 `utils/transactionGroups.test.ts`: ACC-07 reworded (static rows), ACC-08 rewritten as absence guards (6 tokens + single-`onPress` count + `BackAction` present) × android/ios/web; ACC-06 behavior untouched.
+- Open (user-run): `npm run lint`, `npx jest utils/transactionGroups.test.ts`, `npx tsc --noEmit`, plus ACC-S05 matrix (Expo Go + web: static rows with no press feedback, no modal, month cards/fields/back/empty unchanged) + `expo export --platform web` clean.
+- Rollback: revert D-10/D-11 hunks (v1.1 modal screen returns).
+
+---
+
+## 2026-10-06 -- SPEC-53 FINAL v1.0 + implemented (D-01..D-05)
+
+- `specs/53-floating-pill-tab-bar.md`: v0.1 DRAFT → v0.2 amendment (OD-01 called, Home FAB removal folded in) → FINAL v1.0 per user `final + code this for me`. OD-02..OD-05 closed on proposed defaults DD-01..DD-05 per owner waiver (no Vercel token sheet supplied — token fidelity, not screenshot parity, governs per ACC-S03). DEC-05 error fallback deleted as over-engineering (single custom-bar path).
+- D-01 `components/FloatingTabBar.tsx` (new): absolute floating row — pill container (`surface`, r28, p8, DD-01 shadows, web `maxWidth: 560` centered) with 4 key-matched tabs (active pill `primaryContainer` r20, icon+label `primary`/`outline`, labels 12/600, `learning-detail` filtered) + contained circular `plus` (`primary`/`onPrimary`) → `router.push("/add-transaction")`; bottom offset via reused `getTabBarMetrics` (DD-04).
+- D-02 `app/(tabs)/_layout.tsx`: added `tabBar` prop + import; SPEC-32 screenOptions/test wiring retained untouched (DD-04, zero SPEC-32 churn).
+- D-04 `app/(tabs)/index.tsx`: deleted Home `FAB` block + import (verified zero `FAB`/`add-transaction` remain); tab-bar `+` is now the sole trigger.
+- D-03 `utils/floatingTabBar.test.ts` (new, 18 tests): ACC-01 prop wiring, ACC-02 key-matched focus, ACC-03 single `+` wire, ACC-04 icons, ACC-05 no-dep/no-native, ACC-07 FAB absence, all x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest utils/floatingTabBar.test.ts`, `npx tsc --noEmit`, plus ACC-S01..S03 matrix (Expo Go floats/pill/`+` on all tabs incl. learning-detail; web mobile+desktop + keyboard reachability; token-fidelity review) + `expo export --platform web` clean.
+- Watch item: `tabBar` prop structural typing vs expo-router's `BottomTabBarProps` is asserted blind (agent runs no CLI) — `tsc` verdict pending user run.
+- Repair 2026-10-06 (user-pasted tsc TS2353/TS7006): `tabBar` is a navigator-level prop (`BottomTabNavigationConfig.tabBar`), NOT a per-screen option — moved to `<Tabs tabBar={FloatingTabBar}>`; component props retyped to fork shapes (`NavigationHelpers<ParamListBase>` from direct-dep `@react-navigation/native`, navigator-supplied `insets` instead of the safe-area hook). Follow-up: ACC-01 guard corrected to `tabBar={FloatingTabBar}` (2 suites failed on the stale `tabBar:` literal). Re-run requested: `npx tsc --noEmit` + `npx jest utils/floatingTabBar.test.ts`.
+- Repair 2 2026-10-06 (user-pasted tsc TS2322 ×1 + TS2322/TS2339 emit-never ×2): fork vendors its own core types (nominal `PrivateValueStore` mismatch vs `@react-navigation/native`) and core's default event map resolves `emit` to `never` — props now use the fork's exact `BottomTabBarProps` via type-only deep import (erased at runtime; no `exports`-map block, no bundle impact). Re-run requested: `npx tsc --noEmit`.
+- Repair 3 2026-10-06 (user-pasted invalid-hook-call at `useTheme`, fork `BottomTabView.js:154` calls `tabBar({...})` as a plain function, not a mounted element): default export is now a hook-free shell returning `<FloatingTabBarThemed/>`, which React mounts as a real fiber holding all hooks; ACC-02 extended with the shell guard. Re-run requested: Expo Go tab render + `npx jest utils/floatingTabBar.test.ts` + `npx tsc --noEmit`.
+- Rollback: revert _layout/index hunks; delete component/spec/test additions (standard bar returns).
+
+---
+
+## 2026-10-07 -- SPEC-58 FINAL v1.0 + implemented (D-01..D-03)
+
+- `specs/58-floating-tab-bar-centering.md`: user report (wide web left-docked, "wala sa gitna ... dapat flexible"). Root cause: outer absolute shell `left: 16 / right: 16` + dead `alignSelf: "center"` (no-op on absolute) + `width: 100%` conflict — `maxWidth: 560` capped width but stayed left-anchored. Owner call: Option A two-layer.
+- D-01 `components/FloatingTabBar.tsx` only — outer shell → `position: absolute, left: 0, right: 0, bottom: metrics.paddingBottom + 12, alignItems: center` (no row, no gutters, no width); inner row → `flexDirection: row, alignItems: center, width: 100%, maxWidth: 560, paddingHorizontal: 16` wrapping unchanged pill (`flex: 1`) + `+` (`marginLeft: 12`). Tokens, icons, routes, SPEC-32 offset untouched.
+- D-02 `utils/floatingTabBar.test.ts` +9 guards (SPEC-58 ACC-01 shell `left: 0/right: 0/alignItems center` + zero `left: 16/right: 16/alignSelf`; ACC-02 row `width 100%/maxWidth 560/paddingHorizontal 16/row`; ACC-03 `flex: 1` + `getTabBarMetrics` + single `+` wire) x android/ios/web.
+- Open (user-run): `npm run lint`, `npx jest utils/floatingTabBar.test.ts`, `npx tsc --noEmit`, plus ACC-S01..S03 matrix (web wide centered ~560, web narrow + Expo Go phones fluid 16 gutters, no token change) + `expo export --platform web` clean.
+- Rollback: revert D-01/D-02 hunks (single-shell `left: 16/right: 16` returns, left-docked bug returns).
+
+---
+
+## 2026-10-07 -- SPEC-60 FINAL v1.0 + implemented (D-01..D-02)
+
+- `specs/60-transaction-history-test-sync.md`: stale ACC-03 expected the v1.1 receipt modal (`"Transaction Receipt"`); SPEC-56 v1.2 DEC-08 deleted the `Dialog`/`ReceiptRow`/`selected` state and made rows static `View` — app code correct, guard stale (3 failing x android/ios/web, 638 passing). Sibling suite `transactionGroups.test.ts` D-11 had been synced (ACC-10), this file had not.
+- D-01 `utils/transactionHistory.test.ts` ACC-03 rewritten as the ACC-10 mirror: keeps `toContain("groupTransactionsByMonth")` + retained `slice(0, 6)` / `/transaction-details?id=` absence; replaces modal presence with 7 absence checks (`Transaction Receipt`, `Receipt`, `Dialog`, `Modal`, `TouchableOpacity`, `Pressable`, `setSelected`). Title cites v1.2.
+- App code untouched (zero UI/behavior change on any platform).
+- Open (user-run): `npx jest utils/transactionHistory.test.ts`, `npm run lint`, `npx tsc --noEmit` (expect 0 failed) + ACC-S01 reviewer no-visual-change confirm.
+- Rollback: revert D-01 hunk (stale `toContain("Transaction Receipt")` returns, 3 fail again).
+
+---
+
+## 2026-10-07 -- SPEC-59 FINAL v1.0 + implemented (D-01..D-03)
+
+- `specs/59-docked-tab-bar.md`: user verdict on floating look ("pangit parang naka lutang") + call A (docked); OD-01 b (separate circular `+` docked right), OD-02 a (soft pill kept), OD-03 full-bleed (surface + top border, SPEC-32 height). SPEC-53/58 SUPERSEDED for bar layout only.
+- D-01 `components/FloatingTabBar.tsx` in-place rewrite (file kept, `_layout.tsx` untouched): outer → `absolute, left: 0, right: 0, bottom: 0, surface, borderTopWidth: 1 / surfaceVariant, height/paddings from getTabBarMetrics`; middle row `flex: 1 + row + paddingLeft: 8`; tab row flat (surface, no CONTAINER_RADIUS, no shadow — const + `Platform` import removed); pill tabs + `+` single wire byte-identical except `marginRight: 8` gutter.
+- D-02 `utils/floatingTabBar.test.ts`: SPEC-58 centering guards replaced with SPEC-59 ACC-01 (docked keys + zero `maxWidth`/`CONTAINER_RADIUS`/`alignSelf`/`boxShadow`) / ACC-02 (single `+` + `marginRight`) / ACC-03 (icons, no native imports, `metrics.height`, `PILL_RADIUS`) x android/ios/web; SPEC-53 guards retained.
+- Open (user-run): `npm run lint`, `npx jest utils/floatingTabBar.test.ts`, `npx tsc --noEmit`, plus ACC-S01..S02 matrix (docked full-width phones + web desktop, tabs + `+` on every route, labels at default + large text) + `expo export --platform web` clean.
+- Rollback: revert D-01/D-02 hunks (floating centered bar returns).
+
+---
+
+## 2026-10-07 -- SPEC-61 FINAL v1.0 + implemented (D-01..D-03)
+
+- `specs/61-docked-tab-bar-in-flow.md`: SPEC-59 build kept `position: absolute` — bar overlaid content (rows slid under it, end-of-list hidden; user "dapat di natatakpan content"). Amends SPEC-59 positioning only (visuals untouched).
+- D-01 `components/FloatingTabBar.tsx` outer shell drops `position/left/right/bottom` (in-flow; navigator reserves bar space); surface, top border, SPEC-32 height/paddings, inner rows, pill, `+` byte-identical.
+- D-02 `utils/floatingTabBar.test.ts`: SPEC-59 ACC-01 swapped for SPEC-61 ACC-01 (zero `position:`/`"absolute"`/`bottom:`, retains `borderTopWidth: 1` + `metrics.height` + single `+` wire) x android/ios/web; all other guards retained.
+- Open (user-run): `npm run lint`, `npx jest utils/floatingTabBar.test.ts`, `npx tsc --noEmit` + ACC-S01/S02 (scroll-to-end fully visible, no scroll-under; all tabs + short screens) + `expo export --platform web` clean.
+- Rollback: revert D-01/D-02 hunks (absolute overlay returns).
+
+---
+
+## 2026-10-07 -- SPEC-32 v1.1 FINAL + implemented (D-06..D-09)
+
+- `specs/32-completed-dues-screen-and-transaction-deletion-lock.md` §6 v1.1: user order — `/completed-dues` MUST look like `/transactions` month history; week/month/all segments removed. OD-01 called (a): TOTAL COMPLETED card deleted too (pure history mirror).
+- D-07 `utils/groupDuesByMonth.ts` (new, pure, no RN import) mirrors `groupTransactionsByMonth` (`{key, label, items}`, newest-first months/items).
+- D-06 `app/completed-dues.tsx` rebuild: `filter` state + `SegmentedButtons` + week/month memos + total card + `ListHeaderComponent` deleted; `FlashList` over month cards (surface r16 p16 mb12, history-identical shadows) with month header + count; existing due rows moved inside as plain `View` (content byte-identical); header + `safeGoBack` + refetch + `EmptyState` untouched. Removed now-unused `useState`/`Card`/`SegmentedButtons` imports; added `Platform` (shadows) + helper import.
+- D-08 `utils/groupDuesByMonth.test.ts` (new, 12 tests): ACC-08a/b grouping behavior + ACC-08c (grouped, zero segments/total) + ACC-09 (read-only, header back, empty state, sole onPress) x android/ios/web.
+- Open (user-run): `npx jest utils/groupDuesByMonth.test.ts`, `npm run lint`, `npx tsc --noEmit` + ACC-S03/S04 (visual parity with history; empty state) + Expo Go + web export.
+- Rollback: revert D-06 (flat filtered list returns); delete D-07/D-08 additions.
+- Note (2026-10-07 correction): SPEC-53 v1.1 is FINAL + implemented (see entry below) — the "still open" line from the v1.1 slice is superseded.
+
+---
+
+## 2026-10-07 -- SPEC-32 v1.2 FINAL + implemented (D-10..D-12)
+
+- `specs/32-completed-dues-screen-and-transaction-deletion-lock.md` §7 v1.2: row titles carried a middle line (`textDecorationLine: line-through`, pre-v1.1 leftover) — history rows have none. No OD (delete-only change).
+- D-10 `app/completed-dues.tsx`: deleted the one `textDecorationLine` key; weight 600 + `onSurfaceVariant` + layout/cards/header/empty untouched.
+- D-11 `utils/groupDuesByMonth.test.ts`: ACC-10 (zero `line-through`/`textDecorationLine`, weight retained) × android/ios/web; placement verified inside the suite.
+- Open (user-run): `npx jest utils/groupDuesByMonth.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S05 (clean titles like history) + Expo Go + web export.
+- Rollback: revert D-10 (strikethrough returns).
+
+---
+
+## 2026-10-07 -- SPEC-36 v1.3 FINAL + implemented (D-W-07..D-W-09)
+
+- `specs/36-web-platform-invariants.md` §7 v1.3: web same-session-added rows 404'd on edit/delete (user-pasted 404 + masked delete copy). Root cause: web add appended the client-UUID object with no re-pull (native repulls via `refreshFromApi`); server mints ids (SPEC-43 HAR-proven). User confirmed same-session pattern; OD-W4 called (a) re-GET; OD-W5 deferred (no letter → status-quo (b), delete copy byte-identical, still open).
+- D-W-07 `context/TransactionsContext.tsx` web add only: after POST ok, GET `transactions?userId=` and replace state via context categories (zero local writes, no loading flash); repull failure falls back to the old optimistic append; POST !ok copy unchanged. Deps array gains `categories` (exhaustive-deps).
+- D-W-08 `utils/webTransactionRepull.test.ts` (new, 6 tests): ACC-W-07 re-GET count ≥ 3 + rehydrate count = 2 + fallback retained + v1.3 marker + delete copy intact, x android/ios/web.
+- Open (user-run): `npx jest utils/webTransactionRepull.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-W-09 (web: add → edit → delete one session, no errors; reload identical) + Expo Go + web export.
+- Rollback: revert D-W-07 (client-UUID append returns, same-session 404 returns); delete D-W-08 addition.
+
+---
+
+## 2026-10-07 -- SPEC-36 v1.4 FINAL + implemented (D-W-10..D-W-12)
+
+- `specs/36-web-platform-invariants.md` §8 v1.4: OD-W6 (a) + OD-W7 (a) per user call. F5 result recorded (new rows OK, old rows still fail) — v1.3 heals forward only; old-row root cause (pre-fix client rows never stored server-side, or server-protected e.g. opening-balance) still open; the surfaced message below will identify it.
+- D-W-10 `context/TransactionsContext.tsx` delete (web + native, same one-line pattern for message parity): `const { ok, status, error }` + `status !== 0 && error ? error : <generic>`. `app/transaction-details.tsx` `handleDelete` try/catch via root-mounted `useToast` (precedent: add-allocation): success → `showToast("Transaction deleted successfully.")` + `safeGoBack`; failure → error toast, dialog closed, stays on screen, zero red box. Confirm dialog untouched; SPEC-32 lock untouched.
+- D-W-11 `utils/transactionDeleteFeedback.test.ts` (new, 6 tests): ACC-W-10 (toast wiring + try/catch + confirm intact; delete server-message preference ×2 branches) x android/ios/web.
+- Open (user-run): `npx jest utils/transactionDeleteFeedback.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-W-12 (delete → confirm → success toast → back; failing delete → error toast, stay, no red box) + Expo Go + web export. Next diagnostic: paste the newly-surfaced delete error text for the old row.
+- Rollback: revert D-W-10 (silent back-nav + red-box failure return); delete D-W-11 addition.
+
+---
+
+## 2026-10-07 -- SPEC-36 v1.5 FINAL + implemented (D-W-13..D-W-16)
+
+- `specs/36-web-platform-invariants.md` §9 v1.5: pasted logs proved two distinct defects. (1) DELETE 204 misread — server answers 204-empty (success) but `authFetch` JSON-parses every body, so success threw, error toasted, row kept (reload proved it gone). (2) Old-row PUT 404 identity still open (title not supplied → OD-W10 open, no code). OD-W8 (a) + OD-W9 (a) per user call.
+- D-W-13 `utils/apiClient.ts` only: empty/unparseable body + `response.ok` → `{ok: true, status}` (data undefined); 401 path, envelope unwrap, non-2xx untouched. Fixes web + native delete identically (shared client).
+- D-W-14 `app/edit-transaction.tsx` only: `useToast` wiring (root provider already mounted) — success → `showToast("Transaction updated successfully.")` + back; failure → `Alert` with resolved `e.message` (context already prefers server text, no context change needed). Validators untouched.
+- D-W-15 tests: `apiClient.test.ts` +6 (204-empty ok:true/undefined, 404-empty loud, ×3 OS — zero pre-existing 204 cover); new `utils/transactionEditFeedback.test.ts` (3 guards ×3 OS).
+- Open (user-run): `npx jest utils/apiClient.test.ts utils/transactionEditFeedback.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-W-15 (delete → toast, gone after reload, zero error; failing edit → resolved message, no red box) + Expo Go + web export. Next diagnostic: title of the old row that 404s on edit (OD-W10).
+- Rollback: revert D-W-13 (204 throws again); revert D-W-14 (silent save + generic alert return); delete edit-feedback test addition (apiClient additions revert with file).
+
+---
+
+## 2026-10-07 -- SPEC-46 v1.2 FINAL + implemented (D-06..D-08)
+
+- `specs/46-transaction-category-persistence.md` v1.2: Pay-due → Confirm 500'd (`invalid input syntax for type uuid: "scheduled"`). Root: dues `recordTransaction` fallback `{id: "scheduled"}` (SPEC-09 label) flowed verbatim through D-01's flat `categoryId` into the server UUID cast — every synthetic id (`"scheduled"`, edit `"8"/"9"`) 500s on every online write, web + native. OD-46A (a) per user call.
+- D-06 `context/TransactionsContext.tsx` only: the 3 online derivations gate on SPEC-45 `isUUID` (`categoryId = isUUID ? id : null`, reads back as Others per DEC-02); nested object kept (DEC-01); local/read untouched. Collapsed the pre-existing duplicated web-PUT line into the single gated line (same D, disclosed). Explicitly supersedes CON-03's web-write-identical clause for these expressions.
+- D-07 `utils/transactionCategory.test.ts`: ACC-01/01b rewritten to the gated forms (PUT now ×1 post-collapse); ACC-03 count 4→3 (duplicate collapse); new ACC-08 (zero bare passthrough, 2 POST + 1 PUT gates) × android/ios/web. Incidentally heals the D-04 `"8"/"9"` edit write path — recorded, no separate spec.
+- Open (user-run): `npx jest utils/transactionCategory.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S06 (pay category-less due web + native → Others row, due completes) + Expo Go + web export.
+- Rollback: revert D-06 (synthetic-id 500s return); D-07 rewrites revert with it.
+
+---
+
+## 2026-10-07 -- SPEC-26 v1.4 FINAL + implemented (D-04..D-05)
+
+- `specs/26-responsive-dialogs-and-clear-data-flow.md` §6 v1.4: dues Pay + alert dialogs spanned full desktop width (no responsive cap — same defect class as §1.1 problem 1). OD none (tokens verbatim CON-01).
+- D-04 `app/dues.tsx` only: `StyleSheet` import + `styles.dialog` (`maxWidth: 480, width: "90%", alignSelf: "center"`) + `style` props on the Pay (`:643`) and alert (`:680`) Dialogs. Chips (wrap), pay logic, alert copy/buttons, FAB, list untouched.
+- Open (user-run): `npm run lint`, `npx tsc --noEmit`, `npx jest` + ACC-S07 (capped centered cards phone + web desktop; chips wrap narrow) + Expo Go + web export. Pay → Confirm flow itself is SPEC-46 v1.2 (awaiting user ACC-S06 verification).
+- Rollback: revert D-04 (full-bleed dues dialogs return).
+
+---
+
+## 2026-10-07 -- SPEC-63 FINAL v1.0 + implemented (D-01..D-04)
+
+- `specs/63-dashboard-quick-calculator.md`: calculator left of the bell + one floating pill (new number justified: no existing home owns the dashboard header or a calculator). OD-01 (a) standalone modal + OD-02 (a) floating-bar pill tokens per user call.
+- D-02 `utils/calculator.ts` (new, pure: `calculate` + `formatResult`, ÷-by-zero → NaN/"Error", FP-trim) + `components/CalculatorModal.tsx` (new: Paper Modal, responsive card 90%/360, display + 3×5 key grid `C ⌫ ÷ 7 8 9 × 4 5 6 − 1 2 3 + 0 . =`, immediate-execution, Close).
+- D-01 `app/(tabs)/index.tsx` header row only: `useState` import, `CalculatorModal` import, `calcVisible` state, pill (`surface`, r20, p4, DD-01 shadows) with `calculator` IconButton (glyph verified in installed MCI map — `calculator-outline` does not exist) + untouched bell/badge block, modal render. Date/list untouched.
+- D-03 `utils/calculator.test.ts` (new, 16 tests): ACC-03 arithmetic + ACC-01/ACC-02 guards × android/ios/web (one guard self-corrected pre-journal: `maxWidth: 560` belongs to the tab bar, replaced with the pill's `borderRadius: 20`).
+- Open (user-run): `npx jest utils/calculator.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01/S02 (pill top-right phone + web; hand-checked arithmetic; unchanged Home on dismiss) + Expo Go + web export.
+- Rollback: revert D-01 (plain bell row returns); delete D-02/D-03 additions.
+
+---
+
+## 2026-10-07 -- SPEC-63 v1.1 FINAL + implemented (D-05..D-07)
+
+- `specs/63-dashboard-quick-calculator.md` §5 v1.1: modal opened but `5 + 3 =` never computed — `inputDigit`'s fresh branch called `resetEntry`, wiping the pending `acc`/`op` (flag conflated new-entry with full-reset); plus keys/display read tiny. No OD (fix + proposed tokens verbatim).
+- D-05 `components/CalculatorModal.tsx` only: DEC-03 fresh branch replaces display only (full reset solely from `Error`/C); DEC-04 card 360→400 (90% retained), display `displaySmall`/56, keys height 56/label 18. Chain/`=`/÷0/backspace/decimal/cap traced unchanged.
+- D-06 `utils/calculator.test.ts`: ACC-05 (sliced `inputDigit` has zero `setAcc`/`setOp`) + ACC-06 (size tokens) × android/ios/web.
+- Open (user-run): `npx jest utils/calculator.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S03 (`5+3=→8`, chain, ÷0→Error, digit recovers; comfortable keys phone + desktop) + Expo Go + web export.
+- Rollback: revert D-05 (no-compute + small keys return).
+
+---
+
+## 2026-10-07 -- SPEC-53 v1.2 FINAL + implemented (D-17..D-19)
+
+- `specs/53-floating-pill-tab-bar.md` §6 v1.2: phone bar height too small vs reference mock (tall pill + separate `+`). No OD (padding-only fix, structure already matched).
+- D-17 `components/FloatingTabBar.tsx`: pill container + tab buttons `paddingVertical` 8 → 12 (≈ +8px); icons/labels/colors/radii/shadows/`+`/centering/in-flow untouched.
+- D-18 `utils/floatingTabBar.test.ts`: ACC-12 (2× `paddingVertical: 12`, zero `: 8`, tokens intact) × android/ios/web.
+- Open (user-run): `npx jest utils/floatingTabBar.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S07 (taller bar phone + desktop, no crowding/overlap) + Expo Go + web export.
+- Rollback: revert D-17 (short bar returns).
+
+---
+
+## 2026-10-07 -- SPEC-53 v1.3 FINAL + implemented (D-20..D-22)
+
+- `specs/53-floating-pill-tab-bar.md` §7 v1.3: dark-mode bar went near-black (`surface`), light white — user wants one non-white brand color in both modes (navy, toast direction). No OD (read confirmed at FINAL).
+- D-20 `components/FloatingTabBar.tsx`: bar `surface → primary`; inactive icon/label `outline → onPrimary` (theme pairs both modes); active pill, `+`, padding, centering, in-flow untouched (verified zero `surface`/`outline` remain in file).
+- D-21 `utils/floatingTabBar.test.ts`: ACC-14 (navy shell, theme-pair inactive, active retained) × android/ios/web.
+- Open (user-run): `npx jest utils/floatingTabBar.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S08 (identical navy pill light + dark, phone + web) + Expo Go + web export.
+- Rollback: revert D-20 (mode-following bar returns).
+
+---
+
+## 2026-10-07 -- SPEC-05 §5 + SPEC-45 §7 FINAL + implemented (toast legibility + "9"-row quarantine)
+
+- Reports: success toast invisible (white on `elevation.level3` near-white, bottom-docked behind nav) + edit 404 `invalid input syntax for type uuid: "9"`. Evidence: Paper 5.13 defaults are inverseSurface/inverseOnSurface (verified `Snackbar.tsx:260-262`); `wrapperStyle` verified supported (`:82`, applied after base wrapper `:297`); row id `"9"` served by GET = server-side legacy id, unaddressable by UUID-cast routes (no client repull heals; true heal = wallet-api repair, out of tree, Export-first). OD-MD-5/6 (a), OD-45A/B (a) per user call.
+- D-MD-03 `context/ToastContext.tsx` only: `wrapperStyle={{top: 0, bottom: 0, justifyContent: "center"}}` (full-height wrapper, pointerEvents box-none → non-blocking preserved) + `style={{inverseSurface, maxWidth: 480, width: "90%", alignSelf: "center"}}`; `elevation.level3` override dropped (Paper default text/action colors now pair correctly). Timing/action/callers untouched.
+- D-45A `utils/uuid.ts` + `utils/uuid.test.ts` (new): pure `isUUID` (v4 regex) + `LEGACY_NON_UUID_MESSAGE` (OD-45B a verbatim, co-located anti-drift); tests mock `uuid` + `react-native-get-random-values` (uuid v14 ESM + RN NativeModules hazards verified in-tree) + RN Platform mock; ACC-45A verdicts + ACC-45B guards × android/ios/web.
+- D-45B `context/TransactionsContext.tsx`: `!isUUID(id)` short-circuit (explainer error, zero API call) in update + delete after the isLocal branches; UUID rows byte-identical.
+- D-45C `app/transaction-details.tsx` + `app/edit-transaction.tsx`: `isLegacyId` gating — pencil/trash/Save hidden, explainer line shown; normal rows untouched; SPEC-32 lock untouched.
+- Open (user-run): `npx jest utils/uuid.test.ts utils/toastLegibility.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-MD-07 (centered legible toast light+dark, phone+web) + ACC-45D ("9" row readable, no writers, explainer; normal rows unchanged) + Expo Go + web export. Server-side repair of legacy ids tracked open (user-run backend, Export-first).
+- Rollback: revert D-MD-03 (bottom washed-out toast returns); revert D-45A-C (dead 500s on legacy rows return); delete uuid/toast test additions.
+
+---
+
+## 2026-10-07 -- SPEC-05 §6 FINAL + implemented (D-MD-06..D-MD-08)
+
+- `specs/05-multi-device-behavior.md` §6: §5 toast centered + legible but generic black — user order "tugma sa system". OD-MD-7 (a) per user call.
+- D-MD-06 `context/ToastContext.tsx` container only: `primary` bg + `borderRadius: 16` (card language); text/action stay Paper defaults (`inverseOnSurface`/`inversePrimary`, verified pairing in `Snackbar.tsx:260-262` for both modes); centering/maxWidth/timing/action/callers untouched.
+- D-MD-07 `utils/toastLegibility.test.ts`: guards → ACC-MD-08 (navy skin + retained wiring) × android/ios/web.
+- Open (user-run): `npx jest utils/toastLegibility.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-MD-10 (navy centered toast, phone + web, light + dark) + Expo Go + web export.
+- Rollback: revert D-MD-06 (black toast returns).
+
+---
+
+## 2026-10-07 -- SPEC-53 v1.1 FINAL + implemented (D-13..D-16)
+
+- `specs/53-floating-pill-tab-bar.md` §5 v1.1: canonical home restored per owner order + §1.14 (no new numbers). Floating pill + centered `maxWidth 560` + in-flow; SPEC-58 folded in, SPEC-59/61 superseded for layout, SPEC-62 DRAFT retired.
+- D-13 `components/FloatingTabBar.tsx`: removed leftover `+` `marginRight: 8` (wrapper/row/pill already matched DEC-10..12 from the stopped run); verified byte-alignment by read-back.
+- D-14 `utils/floatingTabBar.test.ts`: shell guards rewritten to ACC-11 (floating keys present, overlay keys absent) x android/ios/web; consequential one-line fixes inside the same D (stale `marginRight: 8` + `metrics.height` assertions from superseded SPEC-59/61); all other guards retained.
+- D-15 `specs/62-floating-tab-bar-in-flow.md` deleted (user-ordered early; verified zero `specs/62*` remain).
+- D-16 journal (`docs/savepoint.md` + `AGENTS.md` §3).
+- Open (user-run): `npm run lint`, `npx jest utils/floatingTabBar.test.ts`, `npx jest`, `npx tsc --noEmit` + ACC-S05/S06 (floating centered look; scroll-to-end visible, no coverage) + Expo Go + `expo export --platform web` clean.
+- Rollback: revert D-13/D-14 hunks (docked `+` gutter + stale guards return; SPEC-62 file stays deleted).
+
+---
+
+## 2026-10-07 -- SPEC-53 v1.4 FINAL + implemented (D-23..D-25)
+
+- `specs/53-floating-pill-tab-bar.md` §8 v1.4: v1.3 navy reverted per user screenshots + 3-way confirm (surface White/Dark; transparent + colored icon; `+` keep primary). No OD (read confirmed at FINAL per question answers).
+- D-23 `components/FloatingTabBar.tsx` only (4 lines): container `primary → surface`; pill `focused ? primaryContainer : transparent → transparent`; inactive icon + label `onPrimary → onSurfaceVariant` (×2); focused `primary` + `+` (`containerColor primary`/`iconColor onPrimary`) + padding/radius/shadow/centering/in-flow/SPEC-32 untouched (read-back verified).
+- D-24 `utils/floatingTabBar.test.ts`: v1.3 ACC-14 replaced by ACC-16 (surface shell, zero `backgroundColor: primary`, transparent pill, zero `primaryContainer`, `onSurfaceVariant` inactive, `primary` focused retained, `+` pair retained) × android/ios/web.
+- Open (user-run): `npx jest utils/floatingTabBar.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S09 (light white bar/navy active/gray inactive; dark dark-bar/light-blue active/gray inactive; no pill fill; `+` unchanged; phone + web) + Expo Go + `expo export --platform web` clean.
+- Rollback: revert D-23/D-24 (navy bar + pill fill return).
+
+---
+
+## 2026-10-07 -- SPEC-63 v1.2 FINAL + implemented (D-08..D-10)
+
+- `specs/63-dashboard-quick-calculator.md` §6 v1.2: phone screenshot showed the card off-center (`gitna` order). Root cause: card had `width 90%` + `maxWidth 400` but no `alignSelf: center` (SPEC-26 pattern cited, not re-normed).
+- D-08 `components/CalculatorModal.tsx`: one line added (`alignSelf: "center"`); arithmetic/keys/display/header/bell untouched.
+- D-09 `utils/calculator.test.ts`: ACC-08 centering guards (card `90%`/`400`/`center` + container `justifyContent`/`alignItems`) × android/ios/web.
+- Open (user-run): `npx jest utils/calculator.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S04 (phone portrait light+dark centered card, even gutters, all keys tappable; web capped + centered) + Expo Go + `expo export --platform web` clean.
+- Rollback: delete the one `alignSelf` line (off-center card returns).
+
+---
+
+## 2026-10-07 -- SPEC-63 v1.3 FINAL + implemented (D-11..D-13)
+
+- `specs/63-dashboard-quick-calculator.md` §7 v1.3: v1.2 was a redundant no-op (admitted — `alignSelf: auto` already inherits `alignItems: center`); fresh-bundle phone still off-center on both axes. Root cause from Paper 5.13 source (`Modal.tsx:219-224` + `:238-246`): `contentContainerStyle` sits on a content-wrapping `Surface`, so centering only worked inside the wrap, never on the true screen.
+- D-11 `components/CalculatorModal.tsx`: one key (`flex: 1` first in `contentContainerStyle`) — transparent `Surface` now fills the wrapper, so its `justifyContent + alignItems: center` centers the card on the real screen, any phone size. Card/keys/arithmetic/header/bell untouched.
+- D-12 `utils/calculator.test.ts`: ACC-10 guards (container `flex: 1` + centering; card `90%`/`400`/`center` retained) × android/ios/web.
+- Open (user-run): `npx jest utils/calculator.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S05 (phone portrait light+dark dead-center both axes, even gutters, backdrop tap still dismisses; web capped + centered) + Expo Go + `expo export --platform web` clean.
+- Rollback: delete the `flex: 1` key (wrap-only centering returns).
+
+---
+
+## 2026-10-07 -- SPEC-63 v1.4 FINAL + implemented (D-14..D-16)
+
+- `specs/63-dashboard-quick-calculator.md` §8 v1.4: v1.3 still bottom-stuck on phone (7:15 screenshot: white sheet peeking below the tab bar). Verified root cause in Paper 5.13 source — iOS `SurfaceIOS` splits `contentContainerStyle` (layout keys → outer layer, centering keys → wrapping inner layer with forced `flex: undefined` under `container`), so no Paper-`Modal` style combo can guarantee centering. User chose option (a) RN rewrite; option (b) third Paper guess rejected. `Portal.Host` verified present/full-screen (`PaperProvider.tsx:113`), host exonerated.
+- D-14 `components/CalculatorModal.tsx` shell-only: RN `Modal` (`transparent`, `fade`, `onRequestClose`) + backdrop `Pressable` (dim, full-screen, centered, dismiss) + inner tap-swallow `Pressable` (`() => {}` precedent lint-clean); `Portal`/Paper-`Modal` imports deleted; card/keys/state/arithmetic/props byte-identical.
+- D-15 `utils/calculator.test.ts`: ACC-12 guards (RN shell present, `<Portal>`/`contentContainerStyle` absent, card tokens retained) × android/ios/web.
+- Open (user-run): `npx jest utils/calculator.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S06 (phone portrait light+dark dead-center both axes, backdrop/Android-back dismiss, card-gap taps never dismiss; web capped + centered) + Expo Go + `expo export --platform web` clean. SPEC-26 dialogs untouched (still Paper).
+- Rollback: revert D-14/D-15 (Paper Modal + bottom-stuck card return).
+
+---
+
+## 2026-10-07 -- SPEC-64 v1.0 FINAL + implemented (D-01..D-06) + SPEC-05 §7 (D-MD-09..D-MD-11)
+
+- `specs/64-transaction-details-polish.md` (new number: no spec owned details layout; SPEC-30/31 icon color+name + SPEC-42/45 flows retained as CON-02). Desktop screenshot: full-width stretch, small hero icon, raw `bank_transfer`, centered toast over card.
+- D-01 `scrollContainer`: `width 100% + maxWidth 600 + alignSelf center` (Appbar full-width, phones fluid).
+- D-02 hero: `elevation: 2`, icon box 64→80 (r16), glyph 32→40; colors/mapping/padding retained.
+- D-03 rows: value `textAlign right + flexShrink 1`; CATEGORY row divider/margin dropped via `lastDetailRow`.
+- D-04 new pure `utils/formatMethod.ts` (`bank_transfer → Bank Transfer`); call site keeps `"Cash"` fallback. No other caller.
+- D-05 new `utils/transactionDetails.test.ts` (ACC-01..04 × android/ios/web). Existing `uuid`/`transactionDeleteFeedback` guards verified untouched (assert only gating/delete-flow strings).
+- Toast: §1.13 overlap gate fired (global toast = SPEC-05 home) → user called OD-T1 (a) "Global to bottom". SPEC-05 §7: `wrapperStyle` → `{top: 0, bottom: 24, flex-end}` (navy/maxWidth/timing/action retained); `toastLegibility.test.ts` ACC-MD-08 → ACC-MD-11 (consequential stale-assertion fix). Transient nav overlap = standard Material behavior (noted in spec).
+- Open (user-run): `npx jest utils/transactionDetails.test.ts utils/formatMethod`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01 (desktop capped/centered/titled) + ACC-MD-13 (bottom-docked toast, phone + web, light + dark) + Expo Go + `expo export --platform web` clean.
+- Rollback: revert details hunks + delete the 2 new files (raw values + stretch return); revert wrapperStyle (centered toast returns).
+
+---
+
+## 2026-10-07 -- SPEC-65 v1.0 FINAL + implemented (D-01..D-05)
+
+- `specs/65-success-dialog-pattern.md` (new number: no home for success pattern; option A per user call; red error toast confirmed design-reference only, source not in-tree). Delete/edit success = white centered dialog like Delete confirm, not navy toast.
+- D-01 `components/ConfirmDialog.tsx`: optional `tone` (`danger` default → byte-identical: alert icon + Cancel + error button; `success` → check-circle-outline (MCI-verified) + primary OK, no Cancel). All 8 existing callers verified toneless (zero test asserted internals).
+- D-02 details: `successVisible` + `handleSuccessDismiss` (hide + back — backdrop can't strand user on deleted tx); success toast line deleted, failure toast retained.
+- D-03 edit: same pattern ("Updated Successfully"); now-unused `useToast` import/binding removed (lint-required, same D); failure `Alert` + validators retained.
+- D-04 tests: new `utils/successDialog.test.ts` (ACC-01..04 ×3 OS) + consequential success-assertion rewrites in `transactionDeleteFeedback`/`transactionEditFeedback` (failure assertions retained). SPEC-36 success-toast display superseded; SPEC-26/05 untouched.
+- Open (user-run): `npx jest utils/successDialog.test.ts utils/transactionDeleteFeedback.test.ts utils/transactionEditFeedback.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01 (white success dialogs w/ check + OK, phone + web, light + dark; danger dialogs unchanged) + Expo Go + `expo export --platform web` clean.
+- Rollback: revert D-01..D-03 + delete `successDialog.test.ts` (success toasts + immediate back return).
+
+---
+
+## 2026-10-07 -- SPEC-66 v1.0 FINAL + implemented (D-01..D-03)
+
+- `specs/66-make-online-dialog-centering.md` (new number: no home for settings-dialog shells). iPhone screenshots (7:44/7:50): Make Online PIN dialog bottom-anchored + cut off. Structural proof: single `<Portal>` spans `:1395-1831`, so ALL settings dialogs already render in the fullscreen host — inline/short-parent theory ruled out; same Paper-Modal+iOS-Surface bug class as SPEC-63 (3 style fixes missed there; RN shell ended it on the same phone).
+- D-01 `app/(tabs)/settings.tsx` only: PIN + New-Account dialogs → RN `Modal` (`transparent`/`fade`/`onRequestClose`) + backdrop/tap-swallow `Pressable`s + card (`surface` r24 p20 `90%`/`480`/center); `closePinVerificationDialog` const reused by Cancel/backdrop/back; `verifyPinForSync`/inline error/migrate handoff + all other dialogs byte-identical.
+- D-02 new `utils/makeOnlineDialog.test.ts` (ACC-01/02 ×3 OS). Zero existing guards covered these dialogs (verified by grep).
+- Open (user-run): `npx jest utils/makeOnlineDialog.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01 (iPhone light+dark dead-center both dialogs; wrong-PIN handoff centered; web capped; other dialogs unchanged) + Expo Go + `expo export --platform web` clean.
+- Rollback: revert D-01 + delete test (Paper Dialog + bottom-anchored PIN return).
+
+---
+
+## 2026-10-07 -- SPEC-53 v1.5 + SPEC-63 v1.5 FINAL + implemented (capsule ends)
+
+- User order: floating pills must end in full curves, scoped to both pills. Stadium math: bar ≈70px tall needed ≥35; header pill ≈50px+ needed ≥25.
+- SPEC-53 §9 (D-26..D-28): `CONTAINER_RADIUS 28 → 36` (1 line); `PILL_RADIUS`/padding/colors/icons/`+`/centering/in-flow untouched. D-27 `floatingTabBar.test.ts` ACC-17 (value guard; existing guards name-based, unbroken).
+- SPEC-63 §9 (D-17..D-19): header pill `borderRadius 20 → 28` (1 line in `index.tsx`); bell/calc/badge/modal untouched. D-18 `calculator.test.ts` ACC-01 consequential rewrite (`20 → 28`).
+- Open (user-run): `npx jest utils/floatingTabBar.test.ts utils/calculator.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S10/S07 (stadium ends, phone + web) + Expo Go + `expo export --platform web` clean.
+- Rollback: revert the 2 radius lines (squarish ends return).
+
+---
+
+## 2026-10-07 -- SPEC-67 v1.0 FINAL (archive persistence = backend column; no app code)
+
+- User report (web `/savings`): archive flickers, item never reaches Archived/never leaves Active; archived must still deduct from available balance. Diagnosis in-tree: app sends `isArchived` (web PUT / native upsert+queue) and sums UNFILTERED everywhere (`SummaryCard:33`, `savings:23`, `dues:270`, `add-tx:73` — deduct already correct), but wallet-api has no such column → drops the field → every refetch reverts (web worst-hit: API-direct, no local copy). Direction chosen by user: backend column (client overlay rejected — breaks multi-device + fights SPEC-36 CON-W-03).
+- D-01 (user, wallet-api): `ALTER TABLE savingsItems ADD isArchived BOOLEAN NOT NULL DEFAULT FALSE` + PUT-merge/GET-include/validator-allow + `updatedAt` bump (exact SQL + curl in spec §4; adapt names; Export-first; rollback = drop column). Adjacent rot noted, untouched: `migrateSavingsItem` legacy branch drops the flag (own spec if needed).
+- D-02 (user): V-01..V-04 matrix (archive/restore stick across reload on web+native; archived still reserved; curl round-trip) + lint/tsc/jest green (app untouched).
+- Open: backend apply + V-matrix results pasted back. See `docs/savepoint.md` (this entry) + spec.
+
+---
+
+## 2026-10-07 -- SPEC-65 v1.1 FINAL + implemented (D-06..D-08)
+
+- User report: delete succeeds (row gone) but screen shows "Transaction not found" instead of the success dialog. Root cause: context removes the row → lookup effect nulls `transaction` → early-return swaps the whole tree (dialogs live only in main return), unmounting success dialog unseen.
+- D-06 `app/transaction-details.tsx`: effect guard `if (found || !successVisible)` (+ dep). Content stays behind the dialog; bogus ids still show not-found; edit flow unaffected.
+- D-07 `utils/successDialog.test.ts` ACC-06 guard (×3 OS).
+- Open (user-run): `npx jest utils/successDialog.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S02 (no not-found flash; bogus id still not-found) + Expo Go + web export.
+- Rollback: revert D-06 (not-found trap returns).
+
+---
+
+## 2026-10-07 -- SPEC-68 v1.0 FINAL + implemented (D-01..D-03)
+
+- `specs/68-scheduled-screen-material3-polish.md` (new number: no existing spec owns Scheduled M3 polish; SPEC-18/48/26-v1.4/47 cross-referenced, never re-normed). Scheduled = `app/dues.tsx` (no `scheduled.tsx` in-tree, glob-verified).
+- D-01 `app/dues.tsx` styles/props only: filter `SegmentedButtons` +`style={{ borderRadius: 16 }}`; total `Card` `errorContainer→primaryContainer` + `onErrorContainer→onPrimaryContainer` (both lines), `padding 12→16`, `borderRadius 12→16`, +`elevation: 1`; upcoming `Card` +`elevation: 1` (r16/surface retained); Pay `Button` `outlined→contained` +`style={{ borderRadius: 12 }}`, outline `theme` prop dropped (contained needs none), `compact`/`disabled={payBusy}`/`onPress` retained; pencil/trash `IconButton`s byte-identical; badges pill `4→12`, `6/2→8/4` (OVERDUE/DUE+RECEIVABLE/AUTO-RENEW colors/copy retained); Pay `Chip`s +`icon={payMethod === m.name ? "check" : undefined}` +`style={{ borderRadius: 12 }}`, wrap grid untouched; Pay `Dialog.Title` +`fontWeight: "700"` (center retained); Cancel-text/Confirm-contained + `styles.dialog` retained.
+- D-02 new `utils/scheduledPolish.test.ts` (ACC-01..05 × android/ios/web, scoped `blockAround` guards so pre-existing r16/elevations can't false-pass; ACC-02 asserts `errorContainer` absent from total block).
+- Open (user-run): `npx jest utils/scheduledPolish.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01/S02 (phone + web desktop polish, no full-bleed, no red-box) + Expo Go + `expo export --platform web` clean.
+- Rollback: revert D-01 + delete test (plain filter, reddish total, flat cards, outlined Pay, square badges, check-less chips return).
+
+---
+
+## 2026-10-07 -- SPEC-68 v1.1 FINAL + implemented (Pay-color revert)
+
+- User correction on the v1.0 screenshot: Pay color MUST NOT change. D-01 repair (one block): Pay `Button` back to `mode="outlined"` + `theme` outline override byte-identical to pre-v1.0; only `style={{ borderRadius: 12 }}` shape retained.
+- Spec v1.1: DEC-03/ACC-03/matrix-row-3/glossary amended; test ACC-03 flipped to `outlined`-present / `contained`-absent (+r12 + theme retained).
+- Open (user-run): `npx jest utils/scheduledPolish.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01/S02 re-check (Pay outlined original color, rounded shape) + Expo Go + web export.
+
+---
+
+## 2026-10-07 -- SPEC-69 FINAL v1.0 + implemented (D-01..D-03)
+
+- User screenshots: two overlapping `Pay "Testing"?` dialogs + flicker on web. Static proof: exactly ONE Pay `Dialog` in-tree (`dues.tsx:645`, `visible={!!payTarget}`) — doubling is sequential, not structural.
+- Mechanism: `openPayDialog` mounted the dialog with 2 fallback chips, then swapped to 6 API chips post-fetch; each step re-rendered/re-centered on web. Open path had no busy guard (SPEC-48 covers Confirm only).
+- D-01 `app/dues.tsx` only: `openPayDialog` fetch-then-open (fetch resolves → methods set → single `setPayTarget(due)`; interim `setPayMethod("Cash")` removed, fallback sets `FALLBACK_PAY_METHODS[0].name` = `"Cash"` — SPEC-47 behavior identical) + new `payOpening` flag (early return, `false` in `finally`); row Pay `disabled={payBusy || payOpening}`; `renderItem` deps +`payOpening` (exhaustive-deps). `payBusy`/Confirm/validation/colors/copy untouched.
+- D-02 new `utils/payDialogOpen.test.ts` (ACC-01 order, ACC-02 guard, ACC-03 single-instance count, ACC-04 fallback + outlined retained — × android/ios/web).
+- Test repairs from user-run jest (3 failing guards, app code untouched): (1) SPEC-48 `dueVisibility.test.ts` ACC-02b was stale — row Pay no longer carries bare `disabled={payBusy}` after D-01, now asserts `disabled={payBusy || payOpening}` (consequential §1.14 overlap: SPEC-48 owns busy, SPEC-69 extends the row-pay key; SPEC-48 spec file untouched); (2) ACC-01 searched `authFetch("paymentMethods")` but source carries a generic (`authFetch<…>(…)`), now anchors on `authFetch`; (3) ACC-04 forward window 100→300 (theme line sits between `onPress` and `borderRadius: 12`).
+- Open (user-run): `npx jest utils/payDialogOpen.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01/S02 (single stable dialog, double-tap → one; offline → fallback) + Expo Go + web export.
+
+## 2026-10-07 -- SPEC-69 v1.1 FINAL + implemented (D-04..D-06)
+
+- Pay/Receive Confirmation Modal visual amendment, finalized per user request. `app/dues.tsx`: bold 20px title, highlighted prominent amount, 2-column fixed-height payment-method options with accessible selected state/checkmark and theme-token fill/border, padded rounded dialog, and right-aligned spaced Cancel/Confirm actions. Existing responsive width cap, opening sequence, method fallback, submission, alert dialog, and Pay-row button styling retained.
+- `utils/payDialogOpen.test.ts` extended with ACC-06..ACC-08 source guards across Android/iOS/Web. SPEC-69 v1.1 is the canonical visual-design home for this modal; SPEC-26 responsive width and SPEC-47 method behavior remain retained.
+- Editor diagnostics: no errors in `app/dues.tsx` or `utils/payDialogOpen.test.ts`. CLI checks and Expo Go/web visual matrix remain user-run per AGENTS §1.3/§1.10.
+
+## 2026-10-07 -- SPEC-68 v1.2 FINAL + stale guard synchronized
+
+- The user-run full Jest output showed 3 failures (Android/iOS/Web) in `utils/scheduledPolish.test.ts` ACC-05 because it required the removed Chip-only `icon` and `selected` props. The finalized SPEC-69 v1.1 implementation uses accessible Pressable options instead.
+- SPEC-68 v1.2 now cross-references SPEC-69 for Pay-dialog presentation and preserves its acceptance intent: selected accessibility state, checkmark, rounded option, centered bold title, and unchanged Cancel/Confirm modes. Replaced only the stale ACC-05 source guards; no app behavior changed.
+- Editor diagnostics: no errors in the amended SPEC-68 or `utils/scheduledPolish.test.ts`. Jest/lint/tsc remain user-run per AGENTS §1.3.
+
+## 2026-10-07 -- SPEC-69 v1.2 FINAL + darker amount badge
+
+- Per screenshot feedback, the Pay/Receive amount summary now uses `theme.colors.primary` fill and `theme.colors.onPrimary` label/amount text, replacing the pale `primaryContainer` treatment. The color follows the active theme and matches the Confirm action; modal layout and payment behavior are unchanged.
+- SPEC-69 v1.2 finalized; `utils/payDialogOpen.test.ts` ACC-06 guards the fill and both text colors across Android/iOS/Web. Editor diagnostics clean; user-run Jest/lint/tsc and visual review remain pending.
+
+## 2026-10-07 -- SPEC-49 v1.1 FINAL + centered PIN validation
+
+- `app/(tabs)/settings.tsx`: Clear Data incorrect-PIN feedback now renders inline beneath its PIN input, centered, and clears on edit/dismiss/reopen; it no longer opens a message dialog behind the PIN prompt. Delete Account inline PIN errors are also centered. PIN verification and account/data mutation logic are unchanged.
+- New `utils/settingsPinFeedback.test.ts` adds ACC-09 source guards across Android/iOS/Web. SPEC-49 v1.1 finalized. Editor diagnostics clean; Jest/lint/tsc remain user-run per AGENTS §1.3.
+
+## 2026-10-07 -- SPEC-66 v1.1 + SPEC-69 v1.3 FINAL + five dialogs centered
+
+- Converted the five screenshot dialogs to RN core `Modal` shells with centered full-screen backdrops, tap-swallow cards, responsive 90%/480px bounds, and existing dismiss handlers: Scheduled Pay/Receive + alert; Settings Clear Data PIN, Delete Account, and Set/Change Passcode.
+- Existing Paper title/content/actions, validation, copy, payment/account callbacks, and business logic retained. Updated `utils/payDialogOpen.test.ts`, `utils/settingsPinFeedback.test.ts`, and added `utils/settingsDialogCentering.test.ts` for Android/iOS/Web guards. SPEC-66 v1.1 and SPEC-69 v1.3 FINAL.
+- Editor diagnostics clean. Jest/lint/tsc and Expo Go phone visual confirmation remain user-run per AGENTS §1.3/§1.10.
+
+## 2026-10-07 -- SPEC-70 v1.0 FINAL + theme hydration and dark canvas
+
+- `app/_layout.tsx`: authenticated route/passcode rendering waits while an active account profile is loading or unresolved, so account screens first appear with the saved profile theme. Signed-out behavior and theme preference logic are unchanged.
+- Added `theme.colors.background` to the full-screen loading and MainLayout canvases so the transparent floating tab bar and bottom safe-area region no longer expose a white host background in dark mode.
+- New `utils/themeStartup.test.ts` covers ACC-01..ACC-03 across Android/iOS/Web. Editor diagnostics clean; Jest/lint/tsc and login/theme visual checks remain user-run per AGENTS §1.3/§1.10.
+
+## 2026-10-07 -- SPEC-53 v1.6 FINAL + themed tab-bar canvas
+
+- `components/FloatingTabBar.tsx`: outer wrapper now paints `theme.colors.background`, eliminating the default white navigator canvas behind the in-flow bar. Inner pill remains `theme.colors.surface`; all geometry, gutters, colors, shadows, and tab behavior remain unchanged.
+- `utils/floatingTabBar.test.ts` adds ACC-19 verifying outer canvas vs inner pill colors across Android/iOS/Web. Editor diagnostics clean; Jest/lint/tsc and dark-mode visual check remain user-run.
+
+## 2026-10-07 -- SPEC-53 ACC-19 guard made line-ending independent
+
+- User-run `npx jest utils/floatingTabBar.test.ts` reported only ACC-19 failures because its outer-wrapper anchor expected LF indentation while the Windows file uses CRLF. Updated the guard to find the wrapper relative to the theme-background token; no app behavior changed.
+- Editor diagnostics clean. Targeted Jest rerun requested; no claim of test pass until user confirms.
+
+## 2026-10-07 -- SPEC-53 v1.7 FINAL + canvas moved behind floating bar
+
+- Corrected v1.6's dock-like result: restored a transparent `FloatingTabBar` outer wrapper and added `theme.colors.background` to the full-size parent `View` around `<Tabs>` in `app/(tabs)/_layout.tsx`. Inner pill remains `theme.colors.surface`; gutters, metrics, geometry, tabs, and `+` are unchanged.
+- Replaced the v1.6 wrapper-fill guard with SPEC-53 v1.7 ACC-21, which checks the themed Tabs parent and transparent wrapper across Android/iOS/Web. Editor diagnostics clean; focused Jest and dark-mode visual check remain user-run.
+
+## 2026-10-07 -- Modal shell test guards synchronized
+
+- User-provided full Jest output showed failures in source-text guards after the Paper Dialog shells were replaced with RN `Modal` wrappers. Updated `utils/payDialogOpen.test.ts` to match the alert shell without indentation assumptions and to inspect the expanded Pressable card style; updated `utils/settingsPinFeedback.test.ts` to find the prompt opener outside its modal body; updated `utils/scheduledPolish.test.ts` to anchor ACC-05 on the Pay `NativeModal`.
+- No app behavior changed. Editor diagnostics clean for modified test files. Jest has not been rerun by the user since these repairs; do not treat the pasted failing run as current verification.
+
+## 2026-10-07 -- Modal scrims use theme backdrop token
+
+- User reran full Jest after shell-guard fixes: 38 suites passed, 1 failed; all 3 failures were `utils/themeColors.test.js` identifying the two hardcoded `rgba(...)` scrims in `app/dues.tsx` across Android/iOS/Web.
+- Replaced both modal scrims with `theme.colors.backdrop`. No modal layout or behavior changed. Editor diagnostics clean; full Jest/lint/tsc rerun remains user-run.
 ## 2026-10-06 -- SPEC-50 implemented (Highlights stability + Recent-five by updatedAt)
 
 - Problem: Highlights flickered on navigation/refresh; Recent showed 6 by transaction date.

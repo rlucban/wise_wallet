@@ -204,6 +204,14 @@ function MainLayout() {
     }
   }, [activeUserId, authFailureReason, failedUserId, authLoading, profileLoading, profile, segments, navigationState?.key, router, addSessionAlert, clearAuthFailureReason, clearFailedUserId]);
 
+  if (activeUserId && (profileLoading || !profile)) {
+    return (
+      <PaperProvider theme={theme}>
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }} />
+      </PaperProvider>
+    );
+  }
+
   if (isPasscodeEnabled && !isUnlocked) {
       return <PasscodeScreen />;
   }
@@ -211,7 +219,7 @@ function MainLayout() {
   return (
     <PaperProvider theme={theme}>
       <NetworkProvider>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
           <OfflineIndicator />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="intro" options={{ animation: "fade" }} />
@@ -222,6 +230,7 @@ function MainLayout() {
             <Stack.Screen name="add-transaction" options={{ presentation: "modal" }} />
             <Stack.Screen name="edit-transaction" options={{ presentation: "modal" }} />
             <Stack.Screen name="transaction-details" options={{ title: "Details" }} />
+            <Stack.Screen name="transactions" options={{ title: "Transaction History" }} />
             <Stack.Screen name="calendar" />
             <Stack.Screen name="completed-dues" />
             <Stack.Screen name="savings" />

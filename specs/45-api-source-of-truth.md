@@ -112,3 +112,48 @@ Subjective (reviewer-observed, Expo Go + web export):
 - `context/TransactionsContext.tsx:77-99,136-206,229-335` · `repositories/base.storage.ts:40-53` · `utils/syncQueue.ts` · `utils/syncProcessor.ts:151-178` · `hooks/useSyncStatus.ts:93-96` · `app/(tabs)/index.tsx:67-76` · `app/(tabs)/settings.tsx:25-100,247,1192` · `components/SummaryCard.tsx:19-27` · `utils/authMode.ts` · `utils/onboardingPayload.ts:3` (`OPENING_BALANCE_CATEGORY_ID`)
 - `specs/04-connection-status-vs-offline-mode.md` (sync-vs-auth split; promotion) · `specs/36-web-platform-invariants.md` (web API-direct, flag meaningless on web) · `specs/40-authfetch-envelope-unwrap.md` (merge re-enabled) · `specs/43-onboarding-opening-balance-once-only.md` (write-site guard; merge out of scope) · `docs/todo-specs.md` T-05 (loop evidence home; HAR proof)
 - Plan-fix run: (to be recorded on `/plan-fix` invocation per §1.13)
+
+## 7. v1.1 Amendment — Legacy non-UUID row quarantine (FINAL per user call 2026-10-07: all (a), code this for me)
+
+### 7.1 Evidence (user-pasted log + static proof, 2026-10-07)
+
+- Edit of an old row fails server-side: `invalid input syntax for type uuid: "9"` via `PUT transactions/9` (`TransactionsContext` update path, `edit-transaction.tsx:151` `handleSave`). The row's id is literally `"9"` — served by the list GET, so it is a **server-side legacy id**, not a client artifact. The API route casts the id to UUID, so no client repull, rewrite, or retry can ever address this row: PUT and DELETE are deterministically dead for it. True healing = `wallet-api` repair (out of tree, user-run, Export-first like DEC-06).
+- v1.3/v1.5 fixed forward paths (server-minted UUID rows reconcile; 204 reads as success; messages surface). This amendment covers only backward rows the API cannot address.
+
+### 7.2 Decisions (CALLED — FINAL: OD-45A a, OD-45B a)
+
+- **OD-45A (quarantine).** (a) Recommended — client quarantine, zero data change: new pure `isUUID(id)` helper (`utils/uuid.ts` + unit test); context `updateTransaction`/`deleteTransaction` short-circuit non-UUID ids with a clear message BEFORE any API call (zero dead writes); `transaction-details`/`edit-transaction` hide writer affordances (pencil, trash, Save) for such rows and show an explainer line instead. (b) Backend-only repair, no client change.
+- **OD-45B (explainer copy).** (a) Recommended: `"This entry can't be edited or deleted from the app — it needs a backend repair. Your data is safe."` (b) User-supplied copy.
+
+### 7.3 Constraints
+
+- **CON-45A — Read-only gating.** Quarantine MUST NOT write, migrate, delete, or re-id anything — it only refuses known-dead writes and explains. UUID-shaped rows MUST stay byte-identical in behavior. No dependency, contract, storage-key, or route change. Server repair stays user-run backend work (out of tree), Export-first.
+
+### 7.4 Goal
+
+- **DEC-45A/DEC-45B (pending OD-45A/OD-45B).** Non-UUID ids: pure-helper verdict → short-circuit + hidden affordances + explainer copy.
+
+| State | Behavior |
+|---|---|
+| Row id is UUID-shaped | Everything unchanged (edit/delete flow as today) |
+| Row id is legacy (`"9"`) | No PUT/DELETE issued; pencil/trash/Save hidden; explainer line shown; row still readable |
+| Server repair done later | Row returns with a UUID id → full flow resumes, zero client change needed |
+
+Objective (jest, `Platform.OS` = android/ios/web):
+
+| ID | Check |
+|---|---|
+| ACC-45A | `isUUID` unit verdicts: canonical v4 true; `"9"`, `""`, truncated, non-hex false |
+| ACC-45B | Context guards check id shape before `authFetch` on update/delete paths; screens hide writer affordances + render the explainer copy for quarantined rows; UUID rows untouched |
+| ACC-45C | `npm test` 0 failed; `npm run lint` clean; `npx tsc --noEmit` clean (user-run per §1.3) |
+
+Subjective (reviewer-observed, web export + Expo Go):
+
+- **ACC-45D:** Reviewer opens the `"9"` row: readable, no edit/delete affordances, explainer visible, zero API calls, zero red box. Reviewer edits/deletes a normal row: unchanged flow.
+
+### 7.5 Deliverables
+
+- **D-45A (`utils/uuid.ts` + `utils/uuid.test.ts` new):** pure `isUUID` + unit tests × android/ios/web.
+- **D-45B (`context/TransactionsContext.tsx`):** pre-call id-shape guards on update/delete with the explainer message. Nothing else in the file.
+- **D-45C (`app/transaction-details.tsx` + `app/edit-transaction.tsx`):** affordance gating + explainer copy per DEC-45A/45B. Nothing else in either file.
+- **D-45D (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry. Server-side repair tracked as open user-run backend work (Export-first), not in this tree.

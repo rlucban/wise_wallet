@@ -16,6 +16,11 @@ export default function CategorySettings() {
   const [modalVisible, setModalVisible] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const toggleSortOrder = () => {
+    setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+  };
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -24,6 +29,12 @@ export default function CategorySettings() {
   };
 
   const filteredCategories = categories.filter((c) => c.type === type);
+
+  const sortedCategories = [...filteredCategories].sort((a, b) => {
+    return sortOrder === "asc"
+      ? a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+      : b.name.localeCompare(a.name, undefined, { sensitivity: "base" });
+  });
 
   const handleAdd = async () => {
     if (newCatName.trim()) {
@@ -43,6 +54,10 @@ export default function CategorySettings() {
       <Appbar.Header>
         <Appbar.BackAction onPress={() => safeGoBack(router)} />
         <Appbar.Content title="Manage Categories" />
+        <Appbar.Action
+          icon={sortOrder === "asc" ? "sort-alphabetical-ascending" : "sort-alphabetical-descending"}
+          onPress={toggleSortOrder}
+        />
       </Appbar.Header>
 
       <View style={{ padding: 16 }}>
@@ -57,7 +72,7 @@ export default function CategorySettings() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
-        {filteredCategories.map((cat) => (
+        {sortedCategories.map((cat) => (
           <Card key={cat.id} style={{ marginBottom: 8, backgroundColor: theme.colors.surface }}>
             <List.Item
               title={cat.name}

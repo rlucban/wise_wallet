@@ -2,7 +2,9 @@ import { useRef } from "react";
 import { Animated, Easing, Pressable, Platform } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 import { Tabs } from "expo-router";
+import { View } from "react-native";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import FloatingTabBar from "../../components/FloatingTabBar";
 import { useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getTabBarMetrics } from "../../utils/tabBarMetrics";
@@ -66,6 +68,28 @@ export default function TabLayout() {
     const { height, paddingTop, paddingBottom } = getTabBarMetrics(insets.bottom);
 
     return (
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <Tabs
+                tabBar={FloatingTabBar}
+                screenOptions={{
+                    headerShown: false,
+                    tabBarActiveTintColor: theme.colors.primary,
+                    tabBarInactiveTintColor: theme.colors.outline,
+                    tabBarStyle: {
+                        backgroundColor: theme.colors.surface,
+                        borderTopWidth: 1,
+                        borderTopColor: theme.colors.surfaceVariant,
+                        elevation: 0,
+                        height,
+                        paddingTop,
+                        paddingBottom,
+                    },
+                    tabBarLabelStyle: {
+                        fontSize: 12,
+                        fontWeight: "600",
+                    },
+                }}
+            >
         <Tabs
             screenOptions={{
                 headerShown: false,
@@ -149,6 +173,7 @@ export default function TabLayout() {
                     ),
                 }}
             />
-        </Tabs>
+            </Tabs>
+        </View>
     );
 }

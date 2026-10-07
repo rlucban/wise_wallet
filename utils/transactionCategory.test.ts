@@ -39,15 +39,25 @@ function runSuite(os: "android" | "ios" | "web") {
 
         it("ACC-01: online POST bodies derive categoryId from the selected category id (web + native)", () => {
             const src = readRepo("context/TransactionsContext.tsx");
-            const derived = src.match(/categoryId: uploaded\.category\?\.id \?\? null/g) || [];
+            const derived = src.match(/categoryId: isUUID\(uploaded\.category\?\.id\) \? uploaded\.category\?\.id \?\? null : null/g) || [];
             expect(derived).toHaveLength(2);
             expect(src).not.toMatch(/categoryId:\s*["'][^"']+["']/);
         });
 
-        it("ACC-01b: PUT bodies send categoryId only when updates carry a category (web + native)", () => {
+        it("ACC-01b: PUT bodies send categoryId only when updates carry a category (web)", () => {
             const src = readRepo("context/TransactionsContext.tsx");
-            const cond = src.match(/if \(updates\.category !== undefined\) updateBody\.categoryId = updates\.category \? updates\.category\.id : null;/g) || [];
-            expect(cond).toHaveLength(2);
+            const cond = src.match(/if \(updates\.category !== undefined\) updateBody\.categoryId = updates\.category && isUUID\(updates\.category\.id\) \? updates\.category\.id : null;/g) || [];
+            expect(cond).toHaveLength(1);
+        });
+
+        it("ACC-08 (v1.2): synthetic ids never pass through — UUID gate on all 3 online derivations", () => {
+            const src = readRepo("context/TransactionsContext.tsx");
+            expect(src).not.toMatch(/categoryId: uploaded\.category\?\.id \?\? null/);
+            expect(src).not.toContain("updates.category ? updates.category.id : null");
+            const postGates = src.match(/isUUID\(uploaded\.category\?\.id\)/g) || [];
+            expect(postGates).toHaveLength(2);
+            const putGates = src.match(/isUUID\(updates\.category\.id\)/g) || [];
+            expect(putGates).toHaveLength(1);
         });
 
         it("ACC-02: web branch carries web-depth placement, native carries native-depth", () => {
@@ -56,10 +66,10 @@ function runSuite(os: "android" | "ios" | "web") {
             expect(src).toContain("\n                body: JSON.stringify({ ...uploaded, categoryId:");
         });
 
-        it("ACC-03: categoryId appears only on the 4 online sites; local write path intact", () => {
+        it("ACC-03: categoryId appears only on the 3 online sites; local write path intact", () => {
             const src = readRepo("context/TransactionsContext.tsx");
             const hits = src.match(/categoryId/g) || [];
-            expect(hits).toHaveLength(4);
+            expect(hits).toHaveLength(3);
             expect(src).toContain("await txRepo.upsert(newTransaction);");
         });
 

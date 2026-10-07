@@ -94,3 +94,36 @@ to be interpreted as described in RFC 2119. Informative prose is non-normative u
 
 - [settings.tsx](file:///c:/Users/rcluc/Downloads/wise_wallet/app/(tabs)/settings.tsx)
 - [ConfirmDialog.tsx](file:///c:/Users/rcluc/Downloads/wise_wallet/components/ConfirmDialog.tsx)
+
+---
+
+## 6. v1.4 Amendment — Dues dialogs responsive parity (FINAL v1.4 per user call 2026-10-07: "SPEC-26 v1.4 FINAL, code this for me")
+
+### 6.1 Context
+
+- Screenshot 2026-10-07 (`/dues`, web desktop): the Pay `"fdsfsf?"` dialog spans nearly the full viewport width. `app/dues.tsx:643` (Pay dialog) and `:680` (alert dialog) carry no responsive container style — dues.tsx has no `styles.dialog` entry at all — unlike the SPEC-26 D-01/D-02 dialogs. Same defect class as §1.1 problem 1, new screens. Payment chips already wrap (`flexWrap: "wrap"`, `:652`) and titles/actions are already centered — unaffected, untouched.
+- Note: if Pay → Confirm still errors after this, that flow is SPEC-46 v1.2 (synthetic `categoryId` sanitize — implemented, awaiting user ACC-S06 verification), not this amendment.
+
+### 6.2 Constraints (FINAL v1.4)
+
+- **CON-09:** Only the two Dialog containers plus the `StyleSheet` addition in `app/dues.tsx` MAY change (StyleSheet import to be verified at implementation). Chip layout, pay logic, alert copy/buttons, FAB, and list rendering MUST stay byte-identical. Cross-platform (Android + iOS + Web); `npm run lint` clean.
+
+### 6.3 Goal
+
+- **DEC-05:** Add `styles.dialog` (`maxWidth: 480`, `width: "90%"`, `alignSelf: "center"` — SPEC-26 CON-01 tokens verbatim) and apply `style={styles.dialog}` to the Pay dialog and the alert dialog. No alignment, copy, or button change.
+
+Objective (jest/manual, `Platform.OS` = android/ios/web):
+
+| ID | Check |
+|---|---|
+| ACC-09 | Both dues Dialogs carry `style={styles.dialog}` and `styles.dialog` holds the three CON-01 tokens (source-text guard) |
+| ACC-10 | `npm run lint` clean; `npx tsc --noEmit` clean; `npx jest` 0 failed (user-run per §1.3) |
+
+Subjective (reviewer-observed, Expo Go + web export):
+
+- **ACC-S07:** Phone + web desktop — Pay and alert dialogs render as capped centered cards like the settings dialogs; chips wrap on narrow widths; no full-bleed dialog on desktop.
+
+### 6.4 Deliverables
+
+- **D-04 (`app/dues.tsx`):** StyleSheet import + `styles.dialog` + two `style` props per DEC-05. Nothing else in the file.
+- **D-05 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.

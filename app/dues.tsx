@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { View } from "react-native";
+import { View, StyleSheet, Pressable, Modal as NativeModal } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Appbar, Text, Card, FAB, Portal, Modal, TextInput, Button, Checkbox, useTheme, Chip, IconButton, SegmentedButtons, Dialog } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -76,6 +76,7 @@ export default function DuesScreen() {
   const [payMethods, setPayMethods] = useState<PaymentMethodInfo[]>(FALLBACK_PAY_METHODS);
   const [payMethod, setPayMethod] = useState("Cash");
   const [payBusy, setPayBusy] = useState(false);
+  const [payOpening, setPayOpening] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -240,8 +241,8 @@ export default function DuesScreen() {
   };
 
   const openPayDialog = useCallback(async (due: Due) => {
-    setPayTarget(due);
-    setPayMethod("Cash");
+    if (payOpening) return;
+    setPayOpening(true);
     try {
       const { ok, data } = await authFetch<PaymentMethodInfo[]>("paymentMethods");
       if (ok && Array.isArray(data) && data.length > 0) {
@@ -249,11 +250,17 @@ export default function DuesScreen() {
         setPayMethod(data[0].name);
       } else {
         setPayMethods(FALLBACK_PAY_METHODS);
+        setPayMethod(FALLBACK_PAY_METHODS[0].name);
       }
+      setPayTarget(due);
     } catch {
       setPayMethods(FALLBACK_PAY_METHODS);
+      setPayMethod(FALLBACK_PAY_METHODS[0].name);
+      setPayTarget(due);
+    } finally {
+      setPayOpening(false);
     }
-  }, []);
+  }, [payOpening]);
 
   const recordTransaction = useCallback(async (item: Due, method: string) => {
     if (payBusy) return;
@@ -360,7 +367,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
     const projection = getRecurringProjectionMessage(due, formatAmount);
 
     return (
-      <Card style={{ marginBottom: 12, borderRadius: 16, backgroundColor: theme.colors.surface }}>
+      <Card style={{ marginBottom: 12, borderRadius: 16, elevation: 1, backgroundColor: theme.colors.surface }}>
         <Card.Content>
           <View style={{ flexDirection: "column", gap: 8 }}>
 
@@ -402,9 +409,9 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
                       fontWeight: "bold",
                       fontSize: 10,
                       backgroundColor: theme.colors.errorContainer,
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
-                      borderRadius: 4,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 12,
                     }}
                   >
                     OVERDUE
@@ -418,16 +425,16 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
                       fontWeight: "bold",
                       fontSize: 10,
                       backgroundColor: theme.colors.primaryContainer,
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
-                      borderRadius: 4,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 12,
                     }}
                   >
                     {due.type === "income" ? "RECEIVABLE" : "DUE"}
                   </Text>
                 )}
                 {due.autoProcess && (
-                  <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: theme.colors.surfaceVariant, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: theme.colors.surfaceVariant, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
                     <MaterialCommunityIcons name="lightning-bolt" size={12} color={theme.colors.tertiary} style={{ marginRight: 2 }} />
                     <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600", fontSize: 10 }}>AUTO-RENEW</Text>
                   </View>
@@ -439,9 +446,10 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
               <Button
                 mode="outlined"
                 compact
-                disabled={payBusy}
+                disabled={payBusy || payOpening}
                 onPress={() => openPayDialog(due)}
                 theme={{ colors: { primary: theme.colors.primary, outline: theme.colors.primary } }}
+                style={{ borderRadius: 12 }}
               >
                 {due.type === "income" ? "Receive" : "Pay"}
               </Button>
@@ -470,7 +478,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         </Card.Content>
       </Card>
     );
-  }, [theme, formatAmount, openPayDialog, handleEdit, payBusy]);
+  }, [theme, formatAmount, openPayDialog, handleEdit, payBusy, payOpening]);
 
   const ListHeader = useCallback(() => (
     <View>
@@ -483,16 +491,17 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
             { value: "month", label: "This Month" },
             { value: "all", label: "All" },
           ]}
+          style={{ borderRadius: 16 }}
         />
       </View>
 
       {filter !== "all" && (
         <View style={{ flexDirection: "row", paddingHorizontal: 16, marginBottom: 12, gap: 8 }}>
-          <Card style={{ flex: 1, padding: 12, borderRadius: 12, backgroundColor: theme.colors.errorContainer }}>
-            <Text variant="labelSmall" style={{ color: theme.colors.onErrorContainer, textAlign: "center" }}>
+          <Card style={{ flex: 1, padding: 16, borderRadius: 16, elevation: 1, backgroundColor: theme.colors.primaryContainer }}>
+            <Text variant="labelSmall" style={{ color: theme.colors.onPrimaryContainer, textAlign: "center" }}>
               {filter === "week" ? "Week" : "Month"} Total
             </Text>
-            <Text variant="titleMedium" style={{ fontWeight: "700", textAlign: "center", color: theme.colors.onErrorContainer }}>
+            <Text variant="titleMedium" style={{ fontWeight: "700", textAlign: "center", color: theme.colors.onPrimaryContainer }}>
               {formatAmount(Math.abs(filter === "week" ? weekTotal : monthTotal))}
             </Text>
           </Card>
@@ -649,24 +658,63 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         </Portal>
 
         <Portal>
-          <Dialog visible={!!payTarget} onDismiss={() => setPayTarget(null)}>
-            <Dialog.Title style={{ textAlign: "center" }}>
+          <NativeModal visible={!!payTarget} transparent animationType="fade" onRequestClose={() => setPayTarget(null)}>
+            <Pressable
+              onPress={() => setPayTarget(null)}
+              style={{ flex: 1, backgroundColor: theme.colors.backdrop, justifyContent: "center", alignItems: "center", padding: 20 }}
+            >
+              <Pressable
+                onPress={() => {}}
+                style={[styles.dialog, styles.payDialog, { backgroundColor: theme.colors.surface }]}
+              >
+            <Dialog.Title style={{ fontSize: 20, textAlign: "center", fontWeight: "700", paddingHorizontal: 0, paddingTop: 0, marginBottom: 16 }}>
               {payTarget?.type === "income" ? `Receive "${payTarget?.title}"?` : `Pay "${payTarget?.title}"?`}
             </Dialog.Title>
-            <Dialog.Content>
-              <Text variant="bodyMedium" style={{ textAlign: "center", marginBottom: 12 }}>
-                {payTarget ? `${payTarget.title} (${formatAmount(payTarget.amount)})` : ""}
-              </Text>
-              <Text variant="labelLarge" style={{ marginBottom: 8 }}>Payment Method</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-                {payMethods.map((m) => (
-                  <Chip key={m.id} selected={payMethod === m.name} onPress={() => setPayMethod(m.name)} mode="outlined">
-                    {m.name}
-                  </Chip>
-                ))}
+            <Dialog.Content style={{ paddingHorizontal: 0 }}>
+              <View style={[styles.amountSummary, { backgroundColor: theme.colors.primary }]}>
+                <Text variant="labelSmall" style={{ color: theme.colors.onPrimary, fontWeight: "600" }}>AMOUNT</Text>
+                <Text variant="headlineSmall" style={{ color: theme.colors.onPrimary, fontWeight: "700" }}>
+                  {payTarget ? formatAmount(payTarget.amount) : ""}
+                </Text>
+              </View>
+              <Text variant="labelLarge" style={{ marginBottom: 10, fontWeight: "600" }}>Payment Method</Text>
+              <View style={styles.paymentMethodGrid}>
+                {payMethods.map((method) => {
+                  const isSelected = payMethod === method.name;
+                  return (
+                    <Pressable
+                      key={method.id}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: isSelected }}
+                      onPress={() => setPayMethod(method.name)}
+                      style={[
+                        styles.paymentMethodOption,
+                        {
+                          backgroundColor: isSelected ? theme.colors.primaryContainer : theme.colors.surface,
+                          borderColor: isSelected ? theme.colors.primary : theme.colors.outline,
+                        },
+                      ]}
+                    >
+                      {isSelected && <MaterialCommunityIcons name="check-circle" size={18} color={theme.colors.primary} />}
+                      <Text
+                        variant="labelLarge"
+                        numberOfLines={2}
+                        style={{
+                          color: isSelected ? theme.colors.onPrimaryContainer : theme.colors.onSurface,
+                          fontWeight: isSelected ? "700" : "500",
+                          flexShrink: 1,
+                          textAlign: "center",
+                          marginLeft: isSelected ? 6 : 0,
+                        }}
+                      >
+                        {method.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </Dialog.Content>
-            <Dialog.Actions style={{ justifyContent: "center" }}>
+            <Dialog.Actions style={{ justifyContent: "flex-end", gap: 12, paddingHorizontal: 0, paddingBottom: 0 }}>
               <Button mode="text" onPress={() => setPayTarget(null)}>Cancel</Button>
               <Button
                 mode="contained"
@@ -682,11 +730,26 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
                 Confirm
               </Button>
             </Dialog.Actions>
-          </Dialog>
+              </Pressable>
+            </Pressable>
+          </NativeModal>
         </Portal>
 
        <Portal>
-         <Dialog visible={alertDialog.visible} onDismiss={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
+          <NativeModal
+            visible={alertDialog.visible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}
+          >
+            <Pressable
+              onPress={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}
+              style={{ flex: 1, backgroundColor: theme.colors.backdrop, justifyContent: "center", alignItems: "center", padding: 20 }}
+            >
+              <Pressable
+                onPress={() => {}}
+                style={[styles.dialog, { backgroundColor: theme.colors.surface, borderRadius: 24, elevation: 3 }]}
+              >
            <Dialog.Icon icon={alertDialog.title === "Error" || alertDialog.title === "Insufficient Balance" ? "alert-circle-outline" : "check-circle-outline"} />
            <Dialog.Title style={{ textAlign: "center" }}>{alertDialog.title}</Dialog.Title>
            <Dialog.Content>
@@ -699,7 +762,9 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
                OK
              </Button>
            </Dialog.Actions>
-         </Dialog>
+              </Pressable>
+            </Pressable>
+          </NativeModal>
        </Portal>
 
        <Portal>
@@ -765,7 +830,46 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
             style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
             color={theme.colors.onPrimary}
            onPress={() => router.push("/add-due")}
-         />
-    </View>
-  );
+          />
+     </View>
+   );
 }
+
+// SPEC-26 v1.4 DEC-05: responsive dialog container (CON-01 tokens verbatim).
+const styles = StyleSheet.create({
+  dialog: {
+    maxWidth: 480,
+    width: "90%",
+    alignSelf: "center",
+  },
+  payDialog: {
+    padding: 24,
+    borderRadius: 20,
+    elevation: 3,
+  },
+  amountSummary: {
+    alignItems: "center",
+    borderRadius: 14,
+    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  paymentMethodGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "space-between",
+  },
+  paymentMethodOption: {
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1.5,
+    flexBasis: "47%",
+    flexDirection: "row",
+    flexGrow: 0,
+    flexShrink: 0,
+    height: 56,
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+});

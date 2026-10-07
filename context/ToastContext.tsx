@@ -28,7 +28,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         visible={visible}
         onDismiss={onDismiss}
         duration={5000}
-        style={{ backgroundColor: colors.elevation.level3 }}
+        wrapperStyle={{ top: 0, bottom: 24, justifyContent: "flex-end" }}
+        // SPEC-05 §6 DEC-MD-7(a): navy system skin. Text/action colors are Paper's
+        // defaults (inverseOnSurface/inversePrimary), verified to pair with
+        // primary in both modes (Snackbar.tsx:260-262) — only the container changes.
+        style={{
+          backgroundColor: colors.primary,
+          borderRadius: 16,
+          maxWidth: 480,
+          width: "90%",
+          alignSelf: "center",
+        }}
         action={{ label: "OK", onPress: onDismiss }}
       >
         {message}

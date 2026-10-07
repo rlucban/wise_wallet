@@ -46,7 +46,8 @@ function runSuite(os: "android" | "ios" | "web") {
 
         it("ACC-02b: both tap sites disabled while busy", () => {
             const src = readRepo("app/dues.tsx");
-            expect(src).toContain("disabled={payBusy}");
+            // SPEC-69 consequential: row Pay now also carries the open-fetch guard.
+            expect(src).toContain("disabled={payBusy || payOpening}");
             expect(src).toContain("disabled={!payTarget || payBusy}");
         });
 

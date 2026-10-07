@@ -8,6 +8,9 @@ import { useTransactions } from "../hooks/useTransactions";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { Transaction } from "../types";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { isUUID, LEGACY_NON_UUID_MESSAGE } from "../utils/uuid";
+import { formatMethodLabel } from "../utils/formatMethod";
+import { useToast } from "../context/ToastContext";
 
 const renderCategoryIcon = (category?: string, title?: string, type?: string): string => {
   const text = `${category || ""}`.toLowerCase() + " " + `${title || ""}`.toLowerCase();
@@ -31,26 +34,39 @@ export default function TransactionDetails() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { transactions, deleteTransaction } = useTransactions();
   const { formatAmount } = useCurrencyActions();
+  const { showToast } = useToast();
 
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [successVisible, setSuccessVisible] = useState(false);
 
   useEffect(() => {
     const found = transactions.find((t) => t.id === id);
-    setTransaction(found || null);
-  }, [id, transactions]);
+    if (found || !successVisible) setTransaction(found || null);
+  }, [id, transactions, successVisible]);
 
   const isIncome = transaction?.type === "income";
   const amountColor = isIncome ? theme.colors.primary : theme.colors.error;
   const amountPrefix = isIncome ? "+" : "-";
   const isScheduled = Boolean(transaction?.dueId || transaction?.category?.id === "scheduled");
+  // SPEC-45 v1.1 DEC-45A: legacy non-UUID ids can never be PUT/DELETEd — hide writers.
+  const isLegacyId = transaction !== null && !isUUID(transaction.id);
 
   const handleDelete = async () => {
-    if (transaction) {
+    if (!transaction) return;
+    try {
       await deleteTransaction(transaction.id);
       setDeleteDialogVisible(false);
-      safeGoBack(router);
+      setSuccessVisible(true);
+    } catch (e) {
+      setDeleteDialogVisible(false);
+      showToast(e instanceof Error ? e.message : "Failed to delete transaction. Please check your connection.");
     }
+  };
+
+  const handleSuccessDismiss = () => {
+    setSuccessVisible(false);
+    safeGoBack(router);
   };
 
   if (!transaction) {
@@ -79,6 +95,7 @@ export default function TransactionDetails() {
         </View>
         <View style={styles.appbarRight}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {!isLegacyId && (
             <TouchableOpacity
               style={{
                 width: 40,
@@ -94,7 +111,8 @@ export default function TransactionDetails() {
             >
               <MaterialCommunityIcons name="pencil" size={20} color="#3b82f6" />
             </TouchableOpacity>
-            {!isScheduled && (
+            )}
+            {!isLegacyId && !isScheduled && (
               <TouchableOpacity
                 style={{
                   width: 40,
@@ -116,13 +134,18 @@ export default function TransactionDetails() {
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {isLegacyId && (
+          <Text variant="bodySmall" style={{ textAlign: "center", marginBottom: 12, color: theme.colors.error }}>
+            {LEGACY_NON_UUID_MESSAGE}
+          </Text>
+        )}
         {/* Hero Summary Card */}
         <Card style={styles.heroCard}>
           <Card.Content style={styles.heroContent}>
             <View style={styles.amountIcon}>
               <MaterialCommunityIcons
                 name={renderCategoryIcon(transaction.category?.name, transaction.title, transaction.type)}
-                size={32}
+                size={40}
                 color={isIncome ? "#16A34A" : "#DC2626"}
               />
             </View>
@@ -168,11 +191,11 @@ export default function TransactionDetails() {
             <View style={styles.detailRow}>
               <Text style={styles.label}>PAYMENT METHOD / ACCOUNT</Text>
               <Text style={styles.value}>
-                {transaction.paymentMethod || "Cash"}
+                {transaction.paymentMethod ? formatMethodLabel(transaction.paymentMethod) : "Cash"}
               </Text>
             </View>
 
-            <View style={styles.detailRow}>
+            <View style={[styles.detailRow, styles.lastDetailRow]}>
               <Text style={styles.label}>CATEGORY</Text>
               <Text style={styles.value}>{transaction.category?.name || "Others"}</Text>
             </View>
@@ -188,6 +211,15 @@ export default function TransactionDetails() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteDialogVisible(false)}
       />
+      <ConfirmDialog
+        visible={successVisible}
+        tone="success"
+        title="Deleted Successfully"
+        message="The transaction has been deleted."
+        confirmLabel="OK"
+        onConfirm={handleSuccessDismiss}
+        onCancel={handleSuccessDismiss}
+      />
     </View>
   );
 }
@@ -200,6 +232,9 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
+    width: "100%",
+    maxWidth: 600,
+    alignSelf: "center",
   },
   appbarLeft: {
     flexDirection: "row",
@@ -214,15 +249,16 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     overflow: "hidden",
     width: "100%",
+    elevation: 2,
   },
   heroContent: {
     padding: 24,
     alignItems: "center",
   },
   amountIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
+    width: 80,
+    height: 80,
+    borderRadius: 16,
     backgroundColor: "#f9fafb",
     justifyContent: "center",
     alignItems: "center",
@@ -259,5 +295,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#64748b",
     marginLeft: 8,
+    textAlign: "right",
+    flexShrink: 1,
+  },
+  lastDetailRow: {
+    borderBottomWidth: 0,
+    marginBottom: 0,
+    paddingBottom: 0,
   },
 });

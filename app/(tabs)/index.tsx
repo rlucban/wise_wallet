@@ -1,9 +1,9 @@
 import { View, TouchableOpacity, Platform } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { FAB, Text, Card, IconButton } from "react-native-paper";
+import { Text, Card, IconButton } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useFocusEffect } from "expo-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { startOfWeek, endOfWeek, isWithinInterval, format } from "date-fns";
 import { useThemeData } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
@@ -20,6 +20,7 @@ import { CloudLinkBanner } from "../../components/CloudLinkBanner";
 import { SmartInsights } from "../../components/SmartInsights";
 import { Transaction } from "../../types";
 import EmptyState from "../../components/EmptyState";
+import CalculatorModal from "../../components/CalculatorModal";
 
 const renderCategoryIcon = (category?: string, title?: string, type?: string): string => {
   const text = `${category || ''} ${title || ''}`.toLowerCase();
@@ -77,6 +78,8 @@ export default function Dashboard() {
   );
 
   const totalBadgeCount = useMemo(() => pendingDues.length + unreadCount, [pendingDues.length, unreadCount]);
+
+  const [calcVisible, setCalcVisible] = useState(false);
 
   const now = useMemo(() => new Date(), []);
   const weekFromNow = useMemo(() => {
@@ -268,7 +271,32 @@ export default function Dashboard() {
               {format(new Date(), "MMMM d, yyyy")}
             </Text>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: theme.colors.surface,
+              borderRadius: 28,
+              paddingVertical: 4,
+              paddingHorizontal: 4,
+              ...Platform.select({
+                web: { boxShadow: "0 8px 24px rgba(0, 0, 0, 0.12)" },
+                default: {
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 12,
+                  elevation: 8,
+                },
+              }),
+            }}
+          >
+            <IconButton
+              icon="calculator"
+              size={24}
+              accessibilityLabel="Calculator"
+              onPress={() => setCalcVisible(true)}
+            />
             <View style={{ position: "relative" }}>
               <IconButton
                 icon="bell-outline"
@@ -309,6 +337,7 @@ export default function Dashboard() {
         contentContainerStyle={{ paddingBottom: 160 }}
         showsVerticalScrollIndicator={false}
       />
+      <CalculatorModal visible={calcVisible} onDismiss={() => setCalcVisible(false)} />
 
       <FAB
         icon="plus"
