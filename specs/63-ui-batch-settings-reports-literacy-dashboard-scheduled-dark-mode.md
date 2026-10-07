@@ -84,3 +84,11 @@ WiseWallet has user-facing UI gaps: Manage Categories lacks a visible Sort by co
 - `specs/56-overlay-tab-bar-and-clearance.md`
 - `specs/47-due-payment-method-picker.md`
 - `specs/48-paid-due-visibility.md`
+
+## Follow-up v1.1 (auto-pilot, user-approved continuation)
+- Calculator: header icon opens `components/CalculatorDialog.tsx`; arithmetic is handled by `utils/calculator.ts`; no dependency/route added.
+- Transaction row visual: row borders and rounded icon boxes use theme tokens in `app/(tabs)/index.tsx` and `components/TransactionList.tsx`.
+- Scheduled edit/delete: already present in `app/dues.tsx`; no behavior change in this follow-up.
+- Reports month '?': diagnosed as invalid `calendar-year`; D-02 remains the fix.
+- Dark mode: dashboard surface variant aligned via `context/ThemeContext.tsx`; no new dependency.
+
