@@ -39,13 +39,13 @@ export function useDues() {
   const repos = useRepositories();
   const { showToast } = useToast();
 
-  const fetchDues = useCallback(async () => {
+  const fetchDues = useCallback(async (opts: { skipCache?: boolean } = {}) => {
     setLoading(true);
     try {
       if (Platform.OS === "web") {
         // SPEC-36 CON-W-03 (v1.2): web loads API-direct — no local reads, no merge, no queue.
         if (API_URL && activeUserId) {
-          const { ok, data: remoteData } = await authFetch(`dues`);
+          const { ok, data: remoteData } = await authFetch(`dues`, {}, opts);
           if (ok && Array.isArray(remoteData)) {
             setDues(remoteData);
           }

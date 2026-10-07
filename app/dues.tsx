@@ -533,7 +533,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         contentContainerStyle={{ padding: 16 }}
         showsVerticalScrollIndicator={false}
         refreshing={loading}
-        onRefresh={refetch}
+        onRefresh={() => refetch({ skipCache: true })}
       />
       )}
 

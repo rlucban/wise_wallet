@@ -960,3 +960,15 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - D-61-04 `utils/loadingSkeletons.test.ts` ACC-61-01/02 × android/ios/web (blocks + driver + five branches + dashboard byte-identity).
 - Verified user-run pending: lint/jest/tsc + ACC-S01/S02 visual matrix (Expo Go + web, light/dark). Uncommitted per standing instruction.
 
+---
+
+## 2026-10-07 -- SPEC-62 FINAL + implemented (D-62-01..D-62-05)
+
+- Repeat web reads paid full latency + budget on every mount/focus. Pass-through `authFetch` amended with a read-through layer (SPEC-45 amended for ≤60s windows).
+- D-62-01 `specs/62-get-memoization.md` (FINAL user-marked 2026-10-07; A1 + manual-only-bypass amendment same day).
+- D-62-02 `utils/apiClient.ts`: 60s TTL memory Map, endpoint-alone keys, ok-only store, lazy expiry, cap-50 drop-oldest, prefix-invalidate on mutating ok, wipe on 401; 401/unwrap behavior otherwise identical.
+- D-62-04 wipe wired into `context/AuthContext.tsx` login/logout (2 calls).
+- D-62-03 bypass: `fetchDues(opts)` threads `skipCache`; dues pull-to-refresh always bypasses (only pull surface; focus serves ≤60s cache per amendment). SPEC-60 guard updated to the intentional new form.
+- D-62-04 `utils/getCache.test.ts` ACC-62-01/02 × android/ios/web.
+- Verified user-run pending: lint/jest/tsc + ACC-S01/S02 device matrix (instant remount, fresh pull, ≤60s convergence, no cross-session leak). Uncommitted per standing instruction.
+

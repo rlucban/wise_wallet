@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { resetAuthSessionWarningLatch, setAuthFailureCallback } from "../utils/apiClient";
+import { resetAuthSessionWarningLatch, setAuthFailureCallback, wipeGetCache } from "../utils/apiClient";
 import { setCachedUserId } from "../utils/cache";
 import { setSecureItem, getSecureItem, removeSecureItem } from "../utils/secureStorage";
 
@@ -63,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCachedUserId(String(userId));
     setToken(token);
     resetAuthSessionWarningLatch();
+    wipeGetCache(); // SPEC-62 DEC-62-04: never serve rows across sessions.
   }, []);
 
   const logout = useCallback(async () => {
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCachedUserId(null);
     setToken(null);
     resetAuthSessionWarningLatch();
+    wipeGetCache(); // SPEC-62 DEC-62-04: never serve rows across sessions.
   }, []);
 
   const clearAuthFailureReason = useCallback(() => {

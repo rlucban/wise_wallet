@@ -25,7 +25,8 @@ function runSuite(os: "android" | "ios" | "web"): void {
             expect(screen).toContain("useFocusEffect");
             expect(screen).toContain("refetch();");
             expect(screen).toContain("refreshing={loading}");
-            expect(screen).toContain("onRefresh={refetch}");
+            // SPEC-62 D-62-03: pull bypasses the GET cache (manual = fresh).
+            expect(screen).toContain("onRefresh={() => refetch({ skipCache: true })}");
             const dues = readRepo("hooks/useDues.ts");
             expect(dues).toContain("refetch: fetchDues");
         });
