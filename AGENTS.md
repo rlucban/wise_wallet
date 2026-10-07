@@ -461,6 +461,20 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-06 — Spec 49 FINAL + implemented (Option A).** `specs/49-scheduled-tx-link-persistence.md`: deletion lock for due-generated transactions persisted via client-side `user_{id}_due_tx_links` map. D-01 `context/TransactionsContext.tsx`: attach links on web/native/local reads, record on POST success, prune on delete. D-02 new `utils/dueTxLinks.ts`: record/prune/attach with echo-wins. D-03 `utils/dueTxLinks.test.ts`. D-04 docs. Server-side persist parked.
 
+- **2026-10-07 — Spec 53 FINAL + implemented.** `specs/53-auth-button-label-contrast.md`: white labels on indigo auth buttons. D-01 `app/login.tsx` + D-02 `app/register.tsx` shared `containedLabel: #fff` on primaries, dialog contained/OK, active-only mode buttons; outlined/text buttons untouched. D-03 `utils/authButtonLabels.test.ts` (ACC-01 × android/ios/web; 1 count repair, screens were correct). D-04 docs. Verified user-run lint/jest/tsc green. Open: ACC-S01..S03 visual matrix. See `docs/savepoint.md`.
+
+- **2026-10-07 — Spec 51 FINAL + implemented.** `specs/51-pin-gate-verification-parity.md`: Clear/Backup PIN gates converged on server → `verifyLocalPin` (hash-or-plaintext, Delete parity). D-51-01/02/03 `app/(tabs)/settings.tsx` (offline fail-closed, PIN preserved for migrate, corrected copy; Change-PIN byte-identical); D-51-04 `utils/pinGate.ts`; D-51-05 tests ACC-01..05 (1 ESM-mock repair). Verified user-run lint/jest/tsc green. Open: device matrix. See `docs/savepoint.md`.
+
+- **2026-10-07 — Spec 52 FINAL + implemented.** `specs/52-floating-tab-bar.md`: in-flow floating pill via `tabBarStyle` only (16/12/24, platform shadow, web flat); SPEC-32 metrics/labels intact (CON-06 amended in 3 named values). D-52-01 `_layout.tsx`; D-52-02 `utils/tabBarFloat.test.ts`. Open: lint/jest/tsc + ACC-S01..S04. See `docs/savepoint.md`.
+
+- **2026-10-07 — Spec 52 v1.1 FINAL + implemented.** `specs/52-floating-tab-bar.md` v1.1: deeper shadow (iOS 0.25/16/h6, Android 8, web flat), dark pill `surfaceContainerHigh` tonal lift, `borderRadius: height / 2` capsule, eased press (0.85/120ms in, 1/180ms out, JS driver to dodge the SPEC-06 web WARN class). D-52-11 `_layout.tsx` (inline `AnimatedTabButton`, a11y/testID pass-through, `ThemeContext.tsx` untouched); D-52-12 tests ACC-11..13 × android/ios/web; D-52-13 docs. Open: lint/jest/tsc + ACC-S11..S14. See `docs/savepoint.md`.
+
+- **2026-10-07 — Spec 54 FINAL + implemented.** `specs/54-tab-bar-soft-edge-and-float.md`: zero-dep "blurred edge" veil (rejected `expo-blur`, §1.12) + float higher. D-54-01 `_layout.tsx`: `TabBarVeil` via `tabBarBackground` (`LinearGradient` transparent→surface + `blur`/`blur-off` glyphs at 0.18, `pointerEvents="none"`, pill-clipped), `marginBottom` 12→20; deviation disclosed — library renders `tabBarBackground` in `absoluteFill`, so the veil sits inside the pill face (an outside bleed would be Android-clipped, platform-only per §1.10). D-54-02 `utils/tabBarVeil.test.ts` ACC-01..03 × android/ios/web; D-54-04 docs. Open: lint/jest/tsc + ACC-S01..S04. See `docs/savepoint.md`.
+
+- **2026-10-07 — Spec 55 FINAL + implemented.** `specs/55-remove-veil-raise-enlarge-tab-bar.md`: veil deleted, pill 68→78, float 20→32. D-55-01 `_layout.tsx` (veil/background/imports removed); D-55-02 `TAB_BAR_CONTENT_HEIGHT` 78 (SPEC-32 amended, one value); D-55-03 test literals + boundary re-pinned 2.0→3.0, veil test deleted (guards folded into float suite). Open: lint/jest/tsc + ACC-S01..S03. See `docs/savepoint.md`.
+
+- **2026-10-07 — Spec 56 FINAL + implemented.** `specs/56-overlay-tab-bar-and-clearance.md`: absolute overlay kills the white rectangle (in-flow margins showed the un-themed root bg; content can now scroll behind the pill). D-56-01 one key `position: "absolute"` (reverses SPEC-52 CON-52-03, declared); D-56-02 `paddingBottom: 160` on all five tab tails + Home FAB `bottom: 160` (static worst-case 112+32+16; dues/savings untouched). D-56-03 guards × android/ios/web. Open: lint/jest/tsc + ACC-S01..S03. See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

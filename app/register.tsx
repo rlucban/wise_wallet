@@ -174,6 +174,7 @@ export default function RegisterScreen() {
                                 <Button
                                     key={i}
                                     mode={btn.style === "cancel" ? "text" : "contained"}
+                                    labelStyle={btn.style === "cancel" ? undefined : styles.containedLabel}
                                     onPress={() => {
                                         setDialog({ ...dialog, visible: false });
                                         btn.onPress?.();
@@ -184,7 +185,7 @@ export default function RegisterScreen() {
                                 </Button>
                             ))
                         ) : (
-                            <Button mode="contained" onPress={() => setDialog({ ...dialog, visible: false })}>
+                            <Button mode="contained" labelStyle={styles.containedLabel} onPress={() => setDialog({ ...dialog, visible: false })}>
                                 OK
                             </Button>
                         )}
@@ -211,7 +212,7 @@ export default function RegisterScreen() {
                                             mode={accountMode === "online" ? "contained" : "outlined"}
                                             onPress={() => { setAccountMode("online"); setEmail(""); setEmailError(""); }}
                                             style={[styles.modeBtn, accountMode === "online" && styles.modeBtnActive]}
-                                            labelStyle={styles.modeBtnLabel}
+                                            labelStyle={accountMode === "online" ? [styles.modeBtnLabel, styles.containedLabel] : styles.modeBtnLabel}
                                             icon="cloud-outline"
                                             disabled={loading}
                                         >
@@ -221,7 +222,7 @@ export default function RegisterScreen() {
                                             mode={accountMode === "offline" ? "contained" : "outlined"}
                                             onPress={() => { setAccountMode("offline"); setEmail(""); setEmailError(""); }}
                                             style={[styles.modeBtn, accountMode === "offline" && styles.modeBtnActive]}
-                                            labelStyle={styles.modeBtnLabel}
+                                            labelStyle={accountMode === "offline" ? [styles.modeBtnLabel, styles.containedLabel] : styles.modeBtnLabel}
                                             icon="cellphone-off"
                                             disabled={loading}
                                         >
@@ -285,6 +286,7 @@ export default function RegisterScreen() {
                                             loading={loading}
                                             disabled={loading}
                                             style={styles.primaryBtn}
+                                            labelStyle={styles.containedLabel}
                                         >
                                             Register
                                         </Button>
@@ -438,5 +440,6 @@ const styles = StyleSheet.create({
     },
     switchPrompt: { color: '#666', fontSize: 14 },
     switchLink: { margin: 0 },
-    switchLinkLabel: { color: '#3949ab', fontWeight: '600', fontSize: 14 }
+    switchLinkLabel: { color: '#3949ab', fontWeight: '600', fontSize: 14 },
+    containedLabel: { color: "#fff" },
 });

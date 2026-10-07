@@ -265,6 +265,7 @@ export default function LoginScreen() {
                                 <Button
                                     key={i}
                                     mode={btn.style === "cancel" ? "text" : "contained"}
+                                    labelStyle={btn.style === "cancel" ? undefined : styles.containedLabel}
                                     onPress={() => {
                                         setDialog({ ...dialog, visible: false });
                                         btn.onPress?.();
@@ -275,7 +276,7 @@ export default function LoginScreen() {
                                 </Button>
                             ))
                         ) : (
-                            <Button mode="contained" onPress={() => setDialog({ ...dialog, visible: false })}>
+                            <Button mode="contained" labelStyle={styles.containedLabel} onPress={() => setDialog({ ...dialog, visible: false })}>
                                 OK
                             </Button>
                         )}
@@ -355,6 +356,7 @@ export default function LoginScreen() {
                                             loading={loading}
                                             disabled={loading}
                                             style={styles.primaryBtn}
+                                            labelStyle={styles.containedLabel}
                                         >
                                             Login
                                         </Button>
@@ -496,5 +498,6 @@ const styles = StyleSheet.create({
     },
     switchPrompt: { color: '#666', fontSize: 14 },
     switchLink: { margin: 0 },
-    switchLinkLabel: { color: '#3949ab', fontWeight: '600', fontSize: 14 }
+    switchLinkLabel: { color: '#3949ab', fontWeight: '600', fontSize: 14 },
+    containedLabel: { color: "#fff" },
 });
