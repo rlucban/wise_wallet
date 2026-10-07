@@ -16,6 +16,64 @@ export const resetAuthSessionWarningLatch = () => {
     authWarnLatched = false;
 };
 
+// SPEC-62 D-62-02 (DEC-62-01/02/03): 60s TTL read-through cache for heavy
+// collection GETs. Memory-only Map (SPEC-36: no persistence); endpoint-alone
+// keys (SPEC-59 rotates tokens — token keys would never hit; single live
+// session + wipe-on-auth-change keeps this safe); lazy Date.now expiry (no
+// timers — open-handle leak class); ok-only store, 401s never populate.
+const GET_CACHE_TTL_MS = 60_000;
+const GET_CACHE_MAX_ENTRIES = 50;
+const HEAVY_GET_SEGMENTS: readonly string[] = ["transactions", "dues", "savingsItems"];
+
+interface GetCacheEntry {
+  at: number;
+  status: number;
+  payload: unknown;
+}
+
+const getCache = new Map<string, GetCacheEntry>();
+
+function firstSegment(endpoint: string): string {
+  const trimmed = endpoint.startsWith("/") ? endpoint.slice(1) : endpoint;
+  return trimmed.split(/[/?#]/, 1)[0];
+}
+
+function isHeavyGet(endpoint: string): boolean {
+  return (HEAVY_GET_SEGMENTS as readonly string[]).includes(firstSegment(endpoint));
+}
+
+export function invalidateGetCache(prefix: string): void {
+  const bare = prefix.startsWith("/") ? prefix.slice(1) : prefix;
+  for (const key of getCache.keys()) {
+    const k = key.startsWith("/") ? key.slice(1) : key;
+    if (k === bare || k.startsWith(`${bare}?`) || k.startsWith(`${bare}/`)) {
+      getCache.delete(key);
+    }
+  }
+}
+
+export function wipeGetCache(): void {
+  getCache.clear();
+}
+
+function readGetCache(key: string): ApiResult<unknown> | null {
+  const entry = getCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.at > GET_CACHE_TTL_MS) {
+    getCache.delete(key);
+    return null;
+  }
+  return { ok: true, status: entry.status, data: entry.payload };
+}
+
+function storeGetCache(key: string, status: number, payload: unknown): void {
+  if (getCache.size >= GET_CACHE_MAX_ENTRIES) {
+    const oldest = getCache.keys().next();
+    if (!oldest.done) getCache.delete(oldest.value);
+  }
+  getCache.set(key, { at: Date.now(), status, payload });
+}
+
 const clearAuthStorage = async () => {
     await removeSecureItem('authToken');
     await AsyncStorage.removeItem('activeUserId');
@@ -60,7 +118,8 @@ const unwrapEnvelope = <T,>(data: unknown): T => {
 
 export async function authFetch<T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  opts: { skipCache?: boolean } = {}
 ): Promise<ApiResult<T>> {
   const token = await getSecureItem('authToken');
 
@@ -78,6 +137,13 @@ export async function authFetch<T = unknown>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const method = (options.method ?? "GET").toUpperCase();
+  const cacheKey = formattedEndpoint;
+  if (method === "GET" && !opts.skipCache && isHeavyGet(formattedEndpoint)) {
+    const cached = readGetCache(cacheKey);
+    if (cached) return cached as ApiResult<T>;
+  }
+
   try {
     const response = await fetch(`${API_URL}${formattedEndpoint}`, {
       ...options,
@@ -91,9 +157,16 @@ export async function authFetch<T = unknown>(
         authWarnLatched = true;
       }
       await clearAuthStorage();
+      wipeGetCache();
       if (onAuthFailure) {
         onAuthFailure('session_ended');
       }
+    }
+
+    // Mutation hit the network (ok incl. empty-body 204s): drop the
+    // collection's cached rows so the next GET refetches (DEC-62-03).
+    if (method !== "GET" && response.ok) {
+      invalidateGetCache(firstSegment(formattedEndpoint));
     }
 
     let body: unknown;
@@ -116,6 +189,10 @@ export async function authFetch<T = unknown>(
     const unwrapped: T = unwrapEnvelope<T>(
       env?.status === 'success' && env?.data ? env.data : env
     );
+
+    if (method === "GET" && response.ok && !opts.skipCache && isHeavyGet(formattedEndpoint)) {
+      storeGetCache(cacheKey, response.status, unwrapped);
+    }
 
     return {
       ok: response.ok,

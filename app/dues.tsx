@@ -14,6 +14,7 @@ import { Due, DueFrequency, PaymentMethodInfo } from "../types";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import EmptyState from "../components/EmptyState";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { ListRowsSkeleton } from "../components/SkeletonLoader";
 import { scheduleDueNotifications } from "../utils/notifications";
 import { getTimeOfMonthTip, getRecurringProjectionMessage, isOverdue } from "../utils/financialLiteracy";
 import { ensureOthersOption } from "../utils/categoryOptions";
@@ -45,7 +46,7 @@ export default function DuesScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { formatAmount } = useCurrencyActions();
-  const { dues, addDue, updateDue, deleteDue, refetch } = useDues();
+  const { dues, loading, addDue, updateDue, deleteDue, refetch } = useDues();
   const { addTransaction } = useTransactionsActions();
   const { transactions } = useTransactions();
   const { categories } = useCategoriesData();
@@ -514,6 +515,11 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         />
       </Appbar.Header>
 
+      {loading && listData.length === 0 ? (
+        <View style={{ padding: 16 }}>
+          <ListRowsSkeleton rows={5} />
+        </View>
+      ) : (
       <FlashList
         data={listData}
         renderItem={renderItem}
@@ -526,7 +532,10 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         }
         contentContainerStyle={{ padding: 16 }}
         showsVerticalScrollIndicator={false}
+        refreshing={loading}
+        onRefresh={() => refetch({ skipCache: true })}
       />
+      )}
 
       <Portal>
         <Modal

@@ -8,6 +8,7 @@ import { DonutChart } from "../../components/DonutChart";
 import { MonthlyTrendChart } from "../../components/MonthlyTrendChart";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { exportToCSV, exportToPDF } from "../../utils/exportUtils";
+import { CardSkeleton, ChartSkeleton, ListRowsSkeleton } from "../../components/SkeletonLoader";
 import { isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format, subMonths, addMonths, addWeeks, subWeeks } from "date-fns";
 
 const TREND_MONTHS = 6;
@@ -52,7 +53,7 @@ const CARD_SHADOW = {
 
 export default function ReportsScreen() {
   const theme = useTheme();
-  const { transactions = [], refetch } = useTransactions();
+  const { transactions = [], loading, refetch } = useTransactions();
   const { formatAmount } = useCurrency();
   const screenWidth = Dimensions.get("window").width;
 
@@ -245,6 +246,14 @@ export default function ReportsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 160 }}>
+        {loading && transactions.length === 0 ? (
+          <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+            <CardSkeleton height={110} />
+            <ChartSkeleton height={220} />
+            <ListRowsSkeleton rows={4} />
+          </View>
+        ) : (
+        <>
         {/* 3-Column Summary Cards */}
         <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingTop: 16, gap: 10 }}>
           {/* Expense Card */}
@@ -394,6 +403,8 @@ export default function ReportsScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </>
+        )}
       </ScrollView>
     </View>
   );

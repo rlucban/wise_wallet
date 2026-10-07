@@ -84,3 +84,28 @@ export const DashboardSkeleton = () => {
     </View>
   );
 };
+
+export const ListRowsSkeleton = ({ rows = 3 }: { rows?: number }) => {
+  return (
+    <View>
+      {Array.from({ length: rows }, (_, i) => (
+        <View key={i} style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+          <SkeletonLoader width={48} height={48} borderRadius={24} style={{ marginRight: 12 }} />
+          <View style={{ flex: 1 }}>
+            <SkeletonLoader width="60%" height={16} style={{ marginBottom: 8 }} />
+            <SkeletonLoader width="40%" height={12} />
+          </View>
+          <SkeletonLoader width={80} height={20} />
+        </View>
+      ))}
+    </View>
+  );
+};
+
+export const CardSkeleton = ({ height = 160 }: { height?: number }) => {
+  return <SkeletonLoader height={height} borderRadius={16} style={{ marginBottom: 20 }} />;
+};
+
+export const ChartSkeleton = ({ height = 220 }: { height?: number }) => {
+  return <SkeletonLoader height={height} borderRadius={16} style={{ marginBottom: 20 }} />;
+};
