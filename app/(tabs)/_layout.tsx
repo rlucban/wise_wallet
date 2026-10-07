@@ -1,4 +1,5 @@
 import { Tabs } from "expo-router";
+import { View } from "react-native";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import FloatingTabBar from "../../components/FloatingTabBar";
 import { useTheme } from "react-native-paper";
@@ -11,27 +12,28 @@ export default function TabLayout() {
     const { height, paddingTop, paddingBottom } = getTabBarMetrics(insets.bottom);
 
     return (
-        <Tabs
-            tabBar={FloatingTabBar}
-            screenOptions={{
-                headerShown: false,
-                tabBarActiveTintColor: theme.colors.primary,
-                tabBarInactiveTintColor: theme.colors.outline,
-                tabBarStyle: {
-                    backgroundColor: theme.colors.surface,
-                    borderTopWidth: 1,
-                    borderTopColor: theme.colors.surfaceVariant,
-                    elevation: 0,
-                    height,
-                    paddingTop,
-                    paddingBottom,
-                },
-                tabBarLabelStyle: {
-                    fontSize: 12,
-                    fontWeight: "600",
-                },
-            }}
-        >
+        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <Tabs
+                tabBar={FloatingTabBar}
+                screenOptions={{
+                    headerShown: false,
+                    tabBarActiveTintColor: theme.colors.primary,
+                    tabBarInactiveTintColor: theme.colors.outline,
+                    tabBarStyle: {
+                        backgroundColor: theme.colors.surface,
+                        borderTopWidth: 1,
+                        borderTopColor: theme.colors.surfaceVariant,
+                        elevation: 0,
+                        height,
+                        paddingTop,
+                        paddingBottom,
+                    },
+                    tabBarLabelStyle: {
+                        fontSize: 12,
+                        fontWeight: "600",
+                    },
+                }}
+            >
             <Tabs.Screen
                 name="index"
                 options={{
@@ -74,6 +76,7 @@ export default function TabLayout() {
                     ),
                 }}
             />
-        </Tabs>
+            </Tabs>
+        </View>
     );
 }

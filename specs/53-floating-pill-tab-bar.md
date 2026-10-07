@@ -4,9 +4,9 @@
 |---|---|
 | ID | SPEC-53 |
 | Title | Replace standard bottom tab bar with custom floating pill tab bar + separate circular action button |
-| Status | **FINAL v1.0** (marked by user 2026-10-06 + `code this for me`; OD-02..OD-05 closed on the proposed defaults DD-01..DD-05 per owner waiver — no Vercel token sheet was supplied) |
+| Status | **FINAL v1.7** (user approved floating-canvas correction 2026-10-07; v1.6 wrapper fill superseded) |
 | Owner | User (final authority) |
-| Version | 1.0 |
+| Version | 1.7 |
 
 > History: v0.1 DRAFT (full OD set open); v0.2 DRAFT amendment (OD-01 called: `+` → `/add-transaction`; Home FAB removal folded in as DEC-06/D-04). v1.0 FINAL: OD-02..OD-05 closed on DD-01..DD-05 below; DEC-05 error fallback deleted as over-engineering (single custom-bar code path). v1.1 DRAFT (§5, pending FINAL mark): floating pill restored as canonical — SPEC-58 centering folded in, SPEC-59/61 superseded for bar layout, SPEC-62 DRAFT retired (see §5.1). No new spec number per owner order + §1.14 one-home.
 | Scope | `app/(tabs)/_layout.tsx` custom `tabBar` prop (floating rounded container, active-tab pill, separate circular `+`) + removal of the in-screen Home `+ Transaction` FAB (`app/(tabs)/index.tsx:315-321`); one new component file max |
@@ -249,6 +249,38 @@ Subjective (reviewer-observed, Expo Go + web export):
 - **D-24 (`utils/floatingTabBar.test.ts`, extend):** ACC-16 guards × android/ios/web. No new test file.
 - **D-25 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.
 
+## 9. v1.5 Amendment — Full-capsule container ends (FINAL v1.5 per user call 2026-10-07: "final / code this for me")
+
+### 9.1 Context (evidence 2026-10-07)
+
+- User order: floating shapes must end in full curves, not squarish ("pa curve sa dulo hindi parang square") — scoped to both pills (tab bar + header cluster) per 3-way confirm.
+- Bar geometry: container height ≈ 70px (v1.2 `paddingVertical: 12` ×2 + ~46px tab buttons) but `CONTAINER_RADIUS = 28` < 35 (half height) — hence the squarish ends. Stadium needs radius ≥ half height: `28 → 36`.
+
+### 9.2 Constraints (FINAL v1.5)
+
+- **CON-11 — Radius-only.** Only `CONTAINER_RADIUS` in `components/FloatingTabBar.tsx` MAY change. `PILL_RADIUS`, padding (v1.2), colors (v1.4), icons/labels, `+` button, centering, in-flow shell, SPEC-32 wiring MUST stay byte-identical. Cross-platform; `npm run lint` clean.
+
+### 9.3 Goal (FINAL v1.5)
+
+- **DEC-09:** `CONTAINER_RADIUS = 28 → 36`. Nothing else.
+
+Objective (jest, `Platform.OS` = android/ios/web):
+
+| ID | Check |
+|---|---|
+| ACC-17 | `const CONTAINER_RADIUS = 36` present; `PILL_RADIUS` + `maxWidth: 560` + surface shell + `primary`/`onSurfaceVariant` tokens intact (source-text guards) |
+| ACC-18 | `npm test` 0 failed; `npm run lint` clean; `npx tsc --noEmit` clean (user-run per §1.3) |
+
+Subjective (reviewer-observed, Expo Go + web export):
+
+- **ACC-S10:** Phone + web: bar ends fully round (stadium); tabs, pill highlight, `+` unchanged.
+
+### 9.4 Deliverables (FINAL v1.5)
+
+- **D-26 (`components/FloatingTabBar.tsx`):** one constant per DEC-09. Nothing else in the file.
+- **D-27 (`utils/floatingTabBar.test.ts`, extend):** ACC-17 guards × android/ios/web. No new test file.
+- **D-28 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.
+
 ## Glossary
 
 | Term | Meaning |
@@ -268,3 +300,68 @@ Subjective (reviewer-observed, Expo Go + web export):
 - `specs/32-tab-bar-label-visibility.md` (geometry owner), `specs/06-web-warning-cleanup.md` (`boxShadow` precedent), `specs/17-fab-button-styling.md` (FAB precedent)
 - `vercel.json` (web build: `expo export --platform web` → `dist`)
 - `AGENTS.md §1` (spec-first, no CLI, invariants, TDD, bare-minimum, docs)
+
+## 10. v1.6 Amendment — Theme the Tab-Bar Canvas (FINAL v1.6 per user call "FINAL" 2026-10-07)
+
+### 10.1 Context
+
+The user's dark-mode Web screenshot still shows a white full-width strip behind the floating tab bar after SPEC-70 themed the `MainLayout` canvas. `FloatingTabBar`'s outer in-flow wrapper has no background, while its inner pill uses `theme.colors.surface`; with the custom `tabBar` path, the navigator-owned tab-bar host remains white. SPEC-70's parent canvas change alone does not paint that host.
+
+### 10.2 Constraints
+
+- **CON-12 — Wrapper background only.** Only the outermost `View` in `components/FloatingTabBar.tsx` MAY gain `backgroundColor: theme.colors.background`. This supersedes DEC-10's transparent wrapper key only; in-flow geometry, gutters, inner surface pill, radius, shadows, tabs, `+`, and SPEC-32 metrics MUST remain unchanged.
+- **CON-13 — Theme and parity.** The wrapper MUST use `theme.colors.background` with no hardcoded color. Android/iOS/Web behavior MUST remain equivalent; no dependency or native-only import.
+- **CON-14 — TDD.** Jest guards MUST run under mocked Android/iOS/Web; phone + Web screenshot checks are user-run.
+
+### 10.3 Goal and Acceptance
+
+- **DEC-13 (wrapper canvas, FINAL).** Add `backgroundColor: theme.colors.background` to the outermost `View` in `components/FloatingTabBar.tsx`; keep the inner pill's `theme.colors.surface` fill and all other tokens unchanged.
+
+| Platform | Objective | Subjective reviewer check |
+|---|---|---|
+| Android | ACC-19 source guard passes with `Platform.OS="android"` | ACC-S11: Dark-mode phone shows themed canvas behind the floating pill and safe-area gutters; pill remains surface-colored. |
+| iOS | ACC-19 source guard passes with `Platform.OS="ios"` | ACC-S11: Same check in Expo Go, including the bottom safe-area region. |
+| Web | ACC-19 source guard passes with `Platform.OS="web"` | ACC-S12: Dark Settings screenshot has no white strip behind/below the tab bar; light mode and pill remain unchanged. |
+
+| ID | Check |
+|---|---|
+| ACC-19 | Outer tab-bar wrapper uses `theme.colors.background`; inner pill continues to use `theme.colors.surface`; all existing SPEC-53 layout/color guards remain valid. |
+| ACC-20 | `npx jest utils/floatingTabBar.test.ts`, full Jest, lint, and TypeScript pass (user-run per AGENTS §1.3). |
+
+### 10.4 Deliverables
+
+- **D-29 (`components/FloatingTabBar.tsx`):** Add `backgroundColor: theme.colors.background` to the outermost wrapper only.
+- **D-30 (`utils/floatingTabBar.test.ts`):** Add ACC-19 outer-wrapper/background separation guard × Android/iOS/Web.
+- **D-31 (journal):** Update `docs/savepoint.md` and `AGENTS.md` §3 after FINAL approval and implementation.
+
+## 11. v1.7 Amendment — Keep Canvas Behind the Floating Bar (FINAL v1.7 per user call "FINAL" 2026-10-07)
+
+### 11.1 Context
+
+The v1.6 wrapper background removes the white strip but makes the whole-width outer tab-bar wrapper read as a dock, contrary to the intended floating pill. The bundled `BottomTabView` invokes the custom `tabBar` directly and places it inside its own safe-area host; `tabBarStyle` is not applied to the custom component. Therefore the canvas belongs on the parent `Tabs` scene, while the custom floating component's outer wrapper remains transparent. This v1.7 amendment supersedes v1.6 CON-12/DEC-13/ACC-19/D-29/D-30; v1.6 D-31's journal obligation is retained.
+
+### 11.2 Constraints
+
+- **CON-15 — Preserve floating appearance.** The outer `FloatingTabBar` wrapper MUST have no background color. The full-width parent canvas MUST use `theme.colors.background`; the pill MUST remain `theme.colors.surface`. The change MUST NOT add a visible top border, full-width bar surface, or dock-like styling.
+- **CON-16 — Minimal scope.** Only `app/(tabs)/_layout.tsx`, `components/FloatingTabBar.tsx`, and `utils/floatingTabBar.test.ts` MAY change. Bar geometry, metrics, tabs, colors, shadows, pill, `+`, and destinations MUST stay unchanged.
+- **CON-17 — Cross-platform/TDD.** Android, iOS, and Web MUST share the themed parent canvas and transparent floating wrapper. Jest guards cover all three mocked `Platform.OS` values; native/Web visual checks are user-run.
+
+### 11.3 Goal and Acceptance
+
+| Platform | Objective | Subjective reviewer check |
+|---|---|---|
+| Android | ACC-21 source guards pass with `Platform.OS="android"` | ACC-S13: Floating pill remains visually detached; surrounding bottom canvas matches the active screen theme. |
+| iOS | ACC-21 source guards pass with `Platform.OS="ios"` | ACC-S13: Same check in Expo Go, including the safe-area region. |
+| Web | ACC-21 source guards pass with `Platform.OS="web"` | ACC-S14: No white strip and no full-width dock band; pill remains floating on both light and dark Settings screens. |
+
+| ID | Check |
+|---|---|
+| ACC-21 | Tabs parent has a full-size `theme.colors.background` canvas; FloatingTabBar outer wrapper is transparent/no background; inner pill remains `theme.colors.surface`; existing layout/color guards remain valid. |
+| ACC-22 | Focused floating-tab Jest, full Jest, lint, and TypeScript pass (user-run per AGENTS §1.3). |
+
+### 11.4 Deliverables
+
+- **D-32 (`components/FloatingTabBar.tsx`):** Remove only the v1.6 outer-wrapper background key.
+- **D-33 (`app/(tabs)/_layout.tsx`):** Wrap `<Tabs>` in a full-size `View` with `backgroundColor: theme.colors.background`.
+- **D-34 (`utils/floatingTabBar.test.ts`):** Replace ACC-19 with ACC-21 parent-canvas/transparent-wrapper guards × Android/iOS/Web.
+- **D-35 (journal):** Update `docs/savepoint.md` and `AGENTS.md` §3 after implementation.

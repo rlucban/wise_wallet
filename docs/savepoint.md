@@ -1145,3 +1145,130 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Open (user-run): `npx jest utils/successDialog.test.ts utils/transactionDeleteFeedback.test.ts utils/transactionEditFeedback.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01 (white success dialogs w/ check + OK, phone + web, light + dark; danger dialogs unchanged) + Expo Go + `expo export --platform web` clean.
 - Rollback: revert D-01..D-03 + delete `successDialog.test.ts` (success toasts + immediate back return).
 
+---
+
+## 2026-10-07 -- SPEC-66 v1.0 FINAL + implemented (D-01..D-03)
+
+- `specs/66-make-online-dialog-centering.md` (new number: no home for settings-dialog shells). iPhone screenshots (7:44/7:50): Make Online PIN dialog bottom-anchored + cut off. Structural proof: single `<Portal>` spans `:1395-1831`, so ALL settings dialogs already render in the fullscreen host — inline/short-parent theory ruled out; same Paper-Modal+iOS-Surface bug class as SPEC-63 (3 style fixes missed there; RN shell ended it on the same phone).
+- D-01 `app/(tabs)/settings.tsx` only: PIN + New-Account dialogs → RN `Modal` (`transparent`/`fade`/`onRequestClose`) + backdrop/tap-swallow `Pressable`s + card (`surface` r24 p20 `90%`/`480`/center); `closePinVerificationDialog` const reused by Cancel/backdrop/back; `verifyPinForSync`/inline error/migrate handoff + all other dialogs byte-identical.
+- D-02 new `utils/makeOnlineDialog.test.ts` (ACC-01/02 ×3 OS). Zero existing guards covered these dialogs (verified by grep).
+- Open (user-run): `npx jest utils/makeOnlineDialog.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01 (iPhone light+dark dead-center both dialogs; wrong-PIN handoff centered; web capped; other dialogs unchanged) + Expo Go + `expo export --platform web` clean.
+- Rollback: revert D-01 + delete test (Paper Dialog + bottom-anchored PIN return).
+
+---
+
+## 2026-10-07 -- SPEC-53 v1.5 + SPEC-63 v1.5 FINAL + implemented (capsule ends)
+
+- User order: floating pills must end in full curves, scoped to both pills. Stadium math: bar ≈70px tall needed ≥35; header pill ≈50px+ needed ≥25.
+- SPEC-53 §9 (D-26..D-28): `CONTAINER_RADIUS 28 → 36` (1 line); `PILL_RADIUS`/padding/colors/icons/`+`/centering/in-flow untouched. D-27 `floatingTabBar.test.ts` ACC-17 (value guard; existing guards name-based, unbroken).
+- SPEC-63 §9 (D-17..D-19): header pill `borderRadius 20 → 28` (1 line in `index.tsx`); bell/calc/badge/modal untouched. D-18 `calculator.test.ts` ACC-01 consequential rewrite (`20 → 28`).
+- Open (user-run): `npx jest utils/floatingTabBar.test.ts utils/calculator.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S10/S07 (stadium ends, phone + web) + Expo Go + `expo export --platform web` clean.
+- Rollback: revert the 2 radius lines (squarish ends return).
+
+---
+
+## 2026-10-07 -- SPEC-67 v1.0 FINAL (archive persistence = backend column; no app code)
+
+- User report (web `/savings`): archive flickers, item never reaches Archived/never leaves Active; archived must still deduct from available balance. Diagnosis in-tree: app sends `isArchived` (web PUT / native upsert+queue) and sums UNFILTERED everywhere (`SummaryCard:33`, `savings:23`, `dues:270`, `add-tx:73` — deduct already correct), but wallet-api has no such column → drops the field → every refetch reverts (web worst-hit: API-direct, no local copy). Direction chosen by user: backend column (client overlay rejected — breaks multi-device + fights SPEC-36 CON-W-03).
+- D-01 (user, wallet-api): `ALTER TABLE savingsItems ADD isArchived BOOLEAN NOT NULL DEFAULT FALSE` + PUT-merge/GET-include/validator-allow + `updatedAt` bump (exact SQL + curl in spec §4; adapt names; Export-first; rollback = drop column). Adjacent rot noted, untouched: `migrateSavingsItem` legacy branch drops the flag (own spec if needed).
+- D-02 (user): V-01..V-04 matrix (archive/restore stick across reload on web+native; archived still reserved; curl round-trip) + lint/tsc/jest green (app untouched).
+- Open: backend apply + V-matrix results pasted back. See `docs/savepoint.md` (this entry) + spec.
+
+---
+
+## 2026-10-07 -- SPEC-65 v1.1 FINAL + implemented (D-06..D-08)
+
+- User report: delete succeeds (row gone) but screen shows "Transaction not found" instead of the success dialog. Root cause: context removes the row → lookup effect nulls `transaction` → early-return swaps the whole tree (dialogs live only in main return), unmounting success dialog unseen.
+- D-06 `app/transaction-details.tsx`: effect guard `if (found || !successVisible)` (+ dep). Content stays behind the dialog; bogus ids still show not-found; edit flow unaffected.
+- D-07 `utils/successDialog.test.ts` ACC-06 guard (×3 OS).
+- Open (user-run): `npx jest utils/successDialog.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S02 (no not-found flash; bogus id still not-found) + Expo Go + web export.
+- Rollback: revert D-06 (not-found trap returns).
+
+---
+
+## 2026-10-07 -- SPEC-68 v1.0 FINAL + implemented (D-01..D-03)
+
+- `specs/68-scheduled-screen-material3-polish.md` (new number: no existing spec owns Scheduled M3 polish; SPEC-18/48/26-v1.4/47 cross-referenced, never re-normed). Scheduled = `app/dues.tsx` (no `scheduled.tsx` in-tree, glob-verified).
+- D-01 `app/dues.tsx` styles/props only: filter `SegmentedButtons` +`style={{ borderRadius: 16 }}`; total `Card` `errorContainer→primaryContainer` + `onErrorContainer→onPrimaryContainer` (both lines), `padding 12→16`, `borderRadius 12→16`, +`elevation: 1`; upcoming `Card` +`elevation: 1` (r16/surface retained); Pay `Button` `outlined→contained` +`style={{ borderRadius: 12 }}`, outline `theme` prop dropped (contained needs none), `compact`/`disabled={payBusy}`/`onPress` retained; pencil/trash `IconButton`s byte-identical; badges pill `4→12`, `6/2→8/4` (OVERDUE/DUE+RECEIVABLE/AUTO-RENEW colors/copy retained); Pay `Chip`s +`icon={payMethod === m.name ? "check" : undefined}` +`style={{ borderRadius: 12 }}`, wrap grid untouched; Pay `Dialog.Title` +`fontWeight: "700"` (center retained); Cancel-text/Confirm-contained + `styles.dialog` retained.
+- D-02 new `utils/scheduledPolish.test.ts` (ACC-01..05 × android/ios/web, scoped `blockAround` guards so pre-existing r16/elevations can't false-pass; ACC-02 asserts `errorContainer` absent from total block).
+- Open (user-run): `npx jest utils/scheduledPolish.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01/S02 (phone + web desktop polish, no full-bleed, no red-box) + Expo Go + `expo export --platform web` clean.
+- Rollback: revert D-01 + delete test (plain filter, reddish total, flat cards, outlined Pay, square badges, check-less chips return).
+
+---
+
+## 2026-10-07 -- SPEC-68 v1.1 FINAL + implemented (Pay-color revert)
+
+- User correction on the v1.0 screenshot: Pay color MUST NOT change. D-01 repair (one block): Pay `Button` back to `mode="outlined"` + `theme` outline override byte-identical to pre-v1.0; only `style={{ borderRadius: 12 }}` shape retained.
+- Spec v1.1: DEC-03/ACC-03/matrix-row-3/glossary amended; test ACC-03 flipped to `outlined`-present / `contained`-absent (+r12 + theme retained).
+- Open (user-run): `npx jest utils/scheduledPolish.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01/S02 re-check (Pay outlined original color, rounded shape) + Expo Go + web export.
+
+---
+
+## 2026-10-07 -- SPEC-69 FINAL v1.0 + implemented (D-01..D-03)
+
+- User screenshots: two overlapping `Pay "Testing"?` dialogs + flicker on web. Static proof: exactly ONE Pay `Dialog` in-tree (`dues.tsx:645`, `visible={!!payTarget}`) — doubling is sequential, not structural.
+- Mechanism: `openPayDialog` mounted the dialog with 2 fallback chips, then swapped to 6 API chips post-fetch; each step re-rendered/re-centered on web. Open path had no busy guard (SPEC-48 covers Confirm only).
+- D-01 `app/dues.tsx` only: `openPayDialog` fetch-then-open (fetch resolves → methods set → single `setPayTarget(due)`; interim `setPayMethod("Cash")` removed, fallback sets `FALLBACK_PAY_METHODS[0].name` = `"Cash"` — SPEC-47 behavior identical) + new `payOpening` flag (early return, `false` in `finally`); row Pay `disabled={payBusy || payOpening}`; `renderItem` deps +`payOpening` (exhaustive-deps). `payBusy`/Confirm/validation/colors/copy untouched.
+- D-02 new `utils/payDialogOpen.test.ts` (ACC-01 order, ACC-02 guard, ACC-03 single-instance count, ACC-04 fallback + outlined retained — × android/ios/web).
+- Test repairs from user-run jest (3 failing guards, app code untouched): (1) SPEC-48 `dueVisibility.test.ts` ACC-02b was stale — row Pay no longer carries bare `disabled={payBusy}` after D-01, now asserts `disabled={payBusy || payOpening}` (consequential §1.14 overlap: SPEC-48 owns busy, SPEC-69 extends the row-pay key; SPEC-48 spec file untouched); (2) ACC-01 searched `authFetch("paymentMethods")` but source carries a generic (`authFetch<…>(…)`), now anchors on `authFetch`; (3) ACC-04 forward window 100→300 (theme line sits between `onPress` and `borderRadius: 12`).
+- Open (user-run): `npx jest utils/payDialogOpen.test.ts`, `npx jest`, `npm run lint`, `npx tsc --noEmit` + ACC-S01/S02 (single stable dialog, double-tap → one; offline → fallback) + Expo Go + web export.
+
+## 2026-10-07 -- SPEC-69 v1.1 FINAL + implemented (D-04..D-06)
+
+- Pay/Receive Confirmation Modal visual amendment, finalized per user request. `app/dues.tsx`: bold 20px title, highlighted prominent amount, 2-column fixed-height payment-method options with accessible selected state/checkmark and theme-token fill/border, padded rounded dialog, and right-aligned spaced Cancel/Confirm actions. Existing responsive width cap, opening sequence, method fallback, submission, alert dialog, and Pay-row button styling retained.
+- `utils/payDialogOpen.test.ts` extended with ACC-06..ACC-08 source guards across Android/iOS/Web. SPEC-69 v1.1 is the canonical visual-design home for this modal; SPEC-26 responsive width and SPEC-47 method behavior remain retained.
+- Editor diagnostics: no errors in `app/dues.tsx` or `utils/payDialogOpen.test.ts`. CLI checks and Expo Go/web visual matrix remain user-run per AGENTS §1.3/§1.10.
+
+## 2026-10-07 -- SPEC-68 v1.2 FINAL + stale guard synchronized
+
+- The user-run full Jest output showed 3 failures (Android/iOS/Web) in `utils/scheduledPolish.test.ts` ACC-05 because it required the removed Chip-only `icon` and `selected` props. The finalized SPEC-69 v1.1 implementation uses accessible Pressable options instead.
+- SPEC-68 v1.2 now cross-references SPEC-69 for Pay-dialog presentation and preserves its acceptance intent: selected accessibility state, checkmark, rounded option, centered bold title, and unchanged Cancel/Confirm modes. Replaced only the stale ACC-05 source guards; no app behavior changed.
+- Editor diagnostics: no errors in the amended SPEC-68 or `utils/scheduledPolish.test.ts`. Jest/lint/tsc remain user-run per AGENTS §1.3.
+
+## 2026-10-07 -- SPEC-69 v1.2 FINAL + darker amount badge
+
+- Per screenshot feedback, the Pay/Receive amount summary now uses `theme.colors.primary` fill and `theme.colors.onPrimary` label/amount text, replacing the pale `primaryContainer` treatment. The color follows the active theme and matches the Confirm action; modal layout and payment behavior are unchanged.
+- SPEC-69 v1.2 finalized; `utils/payDialogOpen.test.ts` ACC-06 guards the fill and both text colors across Android/iOS/Web. Editor diagnostics clean; user-run Jest/lint/tsc and visual review remain pending.
+
+## 2026-10-07 -- SPEC-49 v1.1 FINAL + centered PIN validation
+
+- `app/(tabs)/settings.tsx`: Clear Data incorrect-PIN feedback now renders inline beneath its PIN input, centered, and clears on edit/dismiss/reopen; it no longer opens a message dialog behind the PIN prompt. Delete Account inline PIN errors are also centered. PIN verification and account/data mutation logic are unchanged.
+- New `utils/settingsPinFeedback.test.ts` adds ACC-09 source guards across Android/iOS/Web. SPEC-49 v1.1 finalized. Editor diagnostics clean; Jest/lint/tsc remain user-run per AGENTS §1.3.
+
+## 2026-10-07 -- SPEC-66 v1.1 + SPEC-69 v1.3 FINAL + five dialogs centered
+
+- Converted the five screenshot dialogs to RN core `Modal` shells with centered full-screen backdrops, tap-swallow cards, responsive 90%/480px bounds, and existing dismiss handlers: Scheduled Pay/Receive + alert; Settings Clear Data PIN, Delete Account, and Set/Change Passcode.
+- Existing Paper title/content/actions, validation, copy, payment/account callbacks, and business logic retained. Updated `utils/payDialogOpen.test.ts`, `utils/settingsPinFeedback.test.ts`, and added `utils/settingsDialogCentering.test.ts` for Android/iOS/Web guards. SPEC-66 v1.1 and SPEC-69 v1.3 FINAL.
+- Editor diagnostics clean. Jest/lint/tsc and Expo Go phone visual confirmation remain user-run per AGENTS §1.3/§1.10.
+
+## 2026-10-07 -- SPEC-70 v1.0 FINAL + theme hydration and dark canvas
+
+- `app/_layout.tsx`: authenticated route/passcode rendering waits while an active account profile is loading or unresolved, so account screens first appear with the saved profile theme. Signed-out behavior and theme preference logic are unchanged.
+- Added `theme.colors.background` to the full-screen loading and MainLayout canvases so the transparent floating tab bar and bottom safe-area region no longer expose a white host background in dark mode.
+- New `utils/themeStartup.test.ts` covers ACC-01..ACC-03 across Android/iOS/Web. Editor diagnostics clean; Jest/lint/tsc and login/theme visual checks remain user-run per AGENTS §1.3/§1.10.
+
+## 2026-10-07 -- SPEC-53 v1.6 FINAL + themed tab-bar canvas
+
+- `components/FloatingTabBar.tsx`: outer wrapper now paints `theme.colors.background`, eliminating the default white navigator canvas behind the in-flow bar. Inner pill remains `theme.colors.surface`; all geometry, gutters, colors, shadows, and tab behavior remain unchanged.
+- `utils/floatingTabBar.test.ts` adds ACC-19 verifying outer canvas vs inner pill colors across Android/iOS/Web. Editor diagnostics clean; Jest/lint/tsc and dark-mode visual check remain user-run.
+
+## 2026-10-07 -- SPEC-53 ACC-19 guard made line-ending independent
+
+- User-run `npx jest utils/floatingTabBar.test.ts` reported only ACC-19 failures because its outer-wrapper anchor expected LF indentation while the Windows file uses CRLF. Updated the guard to find the wrapper relative to the theme-background token; no app behavior changed.
+- Editor diagnostics clean. Targeted Jest rerun requested; no claim of test pass until user confirms.
+
+## 2026-10-07 -- SPEC-53 v1.7 FINAL + canvas moved behind floating bar
+
+- Corrected v1.6's dock-like result: restored a transparent `FloatingTabBar` outer wrapper and added `theme.colors.background` to the full-size parent `View` around `<Tabs>` in `app/(tabs)/_layout.tsx`. Inner pill remains `theme.colors.surface`; gutters, metrics, geometry, tabs, and `+` are unchanged.
+- Replaced the v1.6 wrapper-fill guard with SPEC-53 v1.7 ACC-21, which checks the themed Tabs parent and transparent wrapper across Android/iOS/Web. Editor diagnostics clean; focused Jest and dark-mode visual check remain user-run.
+
+## 2026-10-07 -- Modal shell test guards synchronized
+
+- User-provided full Jest output showed failures in source-text guards after the Paper Dialog shells were replaced with RN `Modal` wrappers. Updated `utils/payDialogOpen.test.ts` to match the alert shell without indentation assumptions and to inspect the expanded Pressable card style; updated `utils/settingsPinFeedback.test.ts` to find the prompt opener outside its modal body; updated `utils/scheduledPolish.test.ts` to anchor ACC-05 on the Pay `NativeModal`.
+- No app behavior changed. Editor diagnostics clean for modified test files. Jest has not been rerun by the user since these repairs; do not treat the pasted failing run as current verification.
+
+## 2026-10-07 -- Modal scrims use theme backdrop token
+
+- User reran full Jest after shell-guard fixes: 38 suites passed, 1 failed; all 3 failures were `utils/themeColors.test.js` identifying the two hardcoded `rgba(...)` scrims in `app/dues.tsx` across Android/iOS/Web.
+- Replaced both modal scrims with `theme.colors.backdrop`. No modal layout or behavior changed. Editor diagnostics clean; full Jest/lint/tsc rerun remains user-run.
+

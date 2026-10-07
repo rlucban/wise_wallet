@@ -42,8 +42,8 @@ export default function TransactionDetails() {
 
   useEffect(() => {
     const found = transactions.find((t) => t.id === id);
-    setTransaction(found || null);
-  }, [id, transactions]);
+    if (found || !successVisible) setTransaction(found || null);
+  }, [id, transactions, successVisible]);
 
   const isIncome = transaction?.type === "income";
   const amountColor = isIncome ? theme.colors.primary : theme.colors.error;

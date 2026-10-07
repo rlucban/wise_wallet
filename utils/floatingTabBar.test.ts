@@ -105,6 +105,25 @@ function runSuite(os: "android" | "ios" | "web") {
             expect(source).toContain("PILL_RADIUS");
         });
 
+        it("SPEC-53 v1.5 ACC-17: full-capsule container ends", () => {
+            const source = readRepo("components/FloatingTabBar.tsx");
+            expect(source).toContain("const CONTAINER_RADIUS = 36");
+            expect(source).toContain("PILL_RADIUS");
+            expect(source).toContain("maxWidth: 560");
+            expect(source).toContain("backgroundColor: theme.colors.surface");
+            expect(source).toContain("theme.colors.onSurfaceVariant");
+        });
+
+        it("SPEC-53 v1.7 ACC-21: parent canvas is themed; floating wrapper stays transparent", () => {
+            const layout = readRepo("app/(tabs)/_layout.tsx");
+            const bar = readRepo("components/FloatingTabBar.tsx");
+
+            expect(layout).toMatch(/<View style=\{\{ flex: 1, backgroundColor: theme\.colors\.background \}\}>\s*<Tabs/);
+            expect(bar).not.toContain("backgroundColor: theme.colors.background");
+            expect(bar).toContain("backgroundColor: theme.colors.surface");
+            expect(bar).toContain("paddingBottom: metrics.paddingBottom + 12");
+        });
+
         it("SPEC-53 v1.4 ACC-16: surface bar + transparent active (supersedes v1.3 ACC-14)", () => {
             const source = readRepo("components/FloatingTabBar.tsx");
             expect(source).toContain("backgroundColor: theme.colors.surface");

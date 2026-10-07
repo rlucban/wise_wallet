@@ -89,6 +89,38 @@ Subjective (reviewer-observed, Expo Go + web export):
 - **D-04 (tests):** new `utils/successDialog.test.ts` (ACC-01..ACC-04 × android/ios/web) + consequential rewrites of the success assertions in `utils/transactionDeleteFeedback.test.ts` + `utils/transactionEditFeedback.test.ts` (failure assertions retained).
 - **D-05 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.
 
+## 4. v1.1 Amendment — Preserve details content behind the delete-success dialog (FINAL v1.1 per user call 2026-10-07: "final / code this for me")
+
+### 4.1 Context (evidence 2026-10-07)
+
+- User report: after a successful delete, the screen shows "Transaction not found" instead of the "Deleted Successfully" dialog (the row IS gone — the delete itself succeeded).
+- Root cause (`app/transaction-details.tsx`): the context removes the row from state on delete, so the lookup effect resolves to null and the `if (!transaction)` early-return swaps the whole tree to the not-found view — unmounting the success dialog (which lives only in the main return) before it is ever seen, stranding the user with no way back.
+
+### 4.2 Constraints (FINAL v1.1)
+
+- **CON-09 — Guard-only.** Only the lookup `useEffect` MAY change. Dialogs, handlers, gating, genuine missing-id behavior (bad link still shows not-found) MUST stay byte-identical. Cross-platform; `npm run lint` clean.
+
+### 4.3 Goal (FINAL v1.1)
+
+- **DEC-05:** Effect becomes `if (found || !successVisible) setTransaction(found || null)` (deps gain `successVisible`). While the success flow is open, the last-known transaction stays rendered behind the dialog; a genuinely missing id with no success flow still resolves to the not-found view.
+
+Objective (jest, `Platform.OS` = android/ios/web):
+
+| ID | Check |
+|---|---|
+| ACC-06 | Effect guards on `successVisible` (lookup preserved while the success flow is open; null only otherwise) — source-text guard |
+| ACC-07 | `npm test` 0 failed; `npm run lint` clean; `npx tsc --noEmit` clean (user-run per §1.3) |
+
+Subjective (reviewer-observed, Expo Go + web export):
+
+- **ACC-S02:** Delete → details content stays behind the "Deleted Successfully" dialog (no not-found flash) → OK/backdrop lands back; opening a bogus id still shows not-found.
+
+### 4.4 Deliverables (FINAL v1.1)
+
+- **D-06 (`app/transaction-details.tsx`):** effect guard per DEC-05. Nothing else in the file.
+- **D-07 (`utils/successDialog.test.ts`, extend):** ACC-06 guard × android/ios/web. No new test file.
+- **D-08 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.
+
 ## Glossary
 
 | Term | Meaning |

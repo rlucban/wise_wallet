@@ -19,7 +19,7 @@ const TAB_LABELS: Record<string, string> = {
     settings: "Settings",
 };
 
-const CONTAINER_RADIUS = 28;
+const CONTAINER_RADIUS = 36;
 const PILL_RADIUS = 20;
 
 // NOTE: expo-router's fork invokes tabBar() as a plain function call

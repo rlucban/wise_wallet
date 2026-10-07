@@ -278,7 +278,7 @@ export default function Dashboard() {
               flexDirection: "row",
               alignItems: "center",
               backgroundColor: theme.colors.surface,
-              borderRadius: 20,
+              borderRadius: 28,
               paddingVertical: 4,
               paddingHorizontal: 4,
               ...Platform.select({

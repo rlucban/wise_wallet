@@ -4,9 +4,9 @@
 |---|---|
 | ID | SPEC-49 |
 | Title | Clear Data PIN Layering and Delete Account PIN Verification |
-| Status | **FINAL** (2026-10-06 per user call) |
+| Status | **FINAL v1.1** (centered validation feedback per user request 2026-10-07; v1.0 behavior retained) |
 | Owner | User (final authority) |
-| Version | 1.0 |
+| Version | 1.1 |
 | Scope | `app/(tabs)/settings.tsx`: Clear Data PIN modal inline error display, unified PIN verification in `verifyAccountPin` and `handleClearData`, and robust account deletion flow |
 | Non-goals | Changing API contract for `/auth/login` or `/auth/account`; modifying `PasscodeContext` internals; modifying `register.tsx` or `login.tsx` |
 | Normative source | This file. `AGENTS.md §4` is a pointer only. File+symbol cites are normative; `:line` numbers are hints only. |
@@ -92,3 +92,30 @@ The keywords **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **S
 - `specs/04-connection-status-vs-offline-mode.md` (SPEC-04)
 - `specs/26-responsive-dialogs-and-clear-data-flow.md` (SPEC-26)
 - `specs/35-pin-change-persistence-and-promotion-safety.md` (SPEC-35)
+
+## 7. v1.1 Amendment — Center PIN Validation Feedback (FINAL)
+
+### 7.1 Constraints
+
+- **CON-06 — Centered inline validation.** Clear Data (`showPinPrompt`) and Delete Account (`showDeleteDialog`) PIN validation errors MUST be displayed inline directly below their respective PIN inputs and horizontally centered (`textAlign: "center"`, `alignSelf: "center"`, `width: "100%"`). Clear Data validation MUST NOT open a second message dialog while its PIN prompt is visible.
+- **CON-07 — Behavior preservation.** PIN verification, Local/offline behavior, deletion/clear operations, copy, and dialog transitions MUST remain unchanged except that Clear Data validation is rendered inline and both errors are centered.
+- **CON-08 — Cross-platform TDD.** Objective guards MUST run under mocked Android/iOS/Web; reviewer checks MUST cover phone-sized Android and iOS screens and Web.
+
+### 7.2 Goal and Acceptance
+
+| Platform | Objective checks | Subjective reviewer check |
+|---|---|---|
+| Android | ACC-09 source guards pass with `Platform.OS="android"` | ACC-S09: On a phone, incorrect Clear Data and Delete Account PIN feedback is visible inline, centered, and does not appear behind another dialog. |
+| iOS | ACC-09 source guards pass with `Platform.OS="ios"` | ACC-S09: Same observation in Expo Go on a phone. |
+| Web | ACC-09 source guards pass with `Platform.OS="web"` | ACC-S10: Both inline validation messages remain centered and visible in the responsive dialog. |
+
+| ID | Check |
+|---|---|
+| ACC-09 | Clear Data has centered inline error state below its PIN input; wrong PIN sets that error without opening `messageDialog`; Delete Account validation error is centered below its PIN input; all × Android/iOS/Web. |
+| ACC-10 | `npm run lint`, `npx tsc --noEmit`, and relevant Jest tests pass (user-run per AGENTS §1.3). |
+
+### 7.3 Deliverables
+
+- **D-02 (`app/(tabs)/settings.tsx`):** Render Clear Data PIN validation inline and center both Clear Data and Delete Account validation messages. Keep verification and mutation logic unchanged.
+- **D-03 (`utils/settingsPinFeedback.test.ts`):** Add focused source guards for ACC-09, parameterized across Android/iOS/Web.
+- **D-04 (journal):** Update `docs/savepoint.md` and `AGENTS.md` §3.

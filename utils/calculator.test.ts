@@ -42,7 +42,7 @@ function runSuite(os: "android" | "ios" | "web") {
             expect(calcAt).toBeGreaterThanOrEqual(0);
             expect(bellAt).toBeGreaterThan(calcAt);
             expect(source).toContain("CalculatorModal");
-            expect(source).toContain("borderRadius: 20");
+            expect(source).toContain("borderRadius: 28");
             expect(source).toContain("setCalcVisible(true)");
         });
 

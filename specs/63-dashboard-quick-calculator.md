@@ -214,6 +214,37 @@ Subjective (reviewer-observed, Expo Go + web export):
 - **D-15 (`utils/calculator.test.ts`, extend):** ACC-12 guards × android/ios/web. No new test file.
 - **D-16 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.
 
+## 9. v1.5 Amendment — Full-capsule header pill (FINAL v1.5 per user call 2026-10-07: "final / code this for me")
+
+### 9.1 Context (evidence 2026-10-07)
+
+- Same order as SPEC-53 §9 (both pills scoped): the header calculator+bell pill must end in full curves. Pill height ≈ 50px+ but `borderRadius: 20` < 25 (half height) — squarish ends. Stadium: `20 → 28`.
+
+### 9.2 Constraints (FINAL v1.5)
+
+- **CON-11 — Radius-only.** Only the header pill `borderRadius` in `app/(tabs)/index.tsx` MAY change. Calculator modal, keys, bell/badge, paddings, shadows MUST stay byte-identical. Cross-platform; `npm run lint` clean.
+
+### 9.3 Goal (FINAL v1.5)
+
+- **DEC-08:** Header pill container `borderRadius: 20 → 28`. Nothing else.
+
+Objective (jest, `Platform.OS` = android/ios/web):
+
+| ID | Check |
+|---|---|
+| ACC-13 | Pill carries `borderRadius: 28`; calculator glyph, bell/badge wiring, `setCalcVisible(true)` intact (source-text guards) |
+| ACC-14 | `npm test` 0 failed; `npm run lint` clean; `npx tsc --noEmit` clean (user-run per §1.3) |
+
+Subjective (reviewer-observed, Expo Go + web export):
+
+- **ACC-S07:** Phone + web: header pill ends fully round; bell badge + calculator tap unchanged.
+
+### 9.4 Deliverables (FINAL v1.5)
+
+- **D-17 (`app/(tabs)/index.tsx`):** one radius per DEC-08. Nothing else in the file.
+- **D-18 (`utils/calculator.test.ts`, extend):** ACC-01 guard rewritten `20 → 28` (consequential stale-assertion fix inside this D) × android/ios/web. No new test file.
+- **D-19 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.
+
 ## Glossary
 
 | Term | Meaning |

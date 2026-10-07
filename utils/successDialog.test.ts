@@ -61,6 +61,13 @@ function runSuite(os: "android" | "ios" | "web") {
             expect(source).toContain("Failed to save changes. Please check your connection.");
         });
 
+        it("SPEC-65 v1.1 ACC-06: lookup preserves the row behind the success dialog", () => {
+            const source = readRepo("app/transaction-details.tsx");
+            expect(source).toContain("if (found || !successVisible) setTransaction(found || null)");
+            expect(source).toContain("[id, transactions, successVisible]");
+            expect(source).toContain("Transaction not found");
+        });
+
         it("SPEC-65 ACC-04: other callers toneless, failure-path toast imports kept", () => {
             for (const file of OTHER_CALLERS) {
                 expect(readRepo(file)).not.toContain("tone=");

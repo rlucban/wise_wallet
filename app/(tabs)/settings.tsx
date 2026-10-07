@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { View, ScrollView, Platform, StyleSheet } from "react-native";
+import { View, ScrollView, Platform, StyleSheet, Modal, Pressable } from "react-native";
 import { Appbar, List, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
@@ -257,6 +257,7 @@ export default function SettingsScreen() {
   const [showNewAccountDialog, setShowNewAccountDialog] = useState(false);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [pinInput, setPinInput] = useState("");
+  const [pinClearError, setPinClearError] = useState("");
   const [showChangePasscodeDialog, setShowChangePasscodeDialog] = useState(false);
   const [currentPasscodeInput, setCurrentPasscodeInput] = useState("");
   const [newPasscodeInput, setNewPasscodeInput] = useState("");
@@ -320,7 +321,13 @@ export default function SettingsScreen() {
      }
    };
 
-   const verifyPinForSync = async () => {
+    const closePinVerificationDialog = () => {
+      setShowPinVerificationDialog(false);
+      setPinVerificationInput("");
+      setVerificationError("");
+    };
+
+    const verifyPinForSync = async () => {
      if (!pinVerificationInput.trim()) {
        setVerificationError("PIN is required");
        return;
@@ -765,6 +772,12 @@ export default function SettingsScreen() {
     }
   };
 
+  const closeClearDataPinPrompt = () => {
+    setShowPinPrompt(false);
+    setPinInput("");
+    setPinClearError("");
+  };
+
   const handleClearData = async () => {
     if (!pinInput.trim()) return;
 
@@ -803,7 +816,8 @@ export default function SettingsScreen() {
     }
 
 if (!pinVerified) {
-      showMessage("error", "Incorrect PIN", "Please try again.");
+      setPinClearError("Incorrect PIN. Please try again.");
+      setPinInput("");
       setIsSyncing(false);
       return;
     }
@@ -849,6 +863,7 @@ if (!pinVerified) {
       await resetProfileToDefaults();
       setShowPinPrompt(false);
       setPinInput("");
+      setPinClearError("");
 
       await Promise.all([
         refetchTx(),
@@ -1321,7 +1336,7 @@ if (!pinVerified) {
               Import Data
             </Button>
 
-            <Button mode="contained-tonal" buttonColor={paperTheme.colors.errorContainer} textColor={paperTheme.colors.onErrorContainer} icon="delete-alert" onPress={() => setShowPinPrompt(true)} style={{ marginTop: 8 }}>
+            <Button mode="contained-tonal" buttonColor={paperTheme.colors.errorContainer} textColor={paperTheme.colors.onErrorContainer} icon="delete-alert" onPress={() => { setPinInput(""); setPinClearError(""); setShowPinPrompt(true); }} style={{ marginTop: 8 }}>
               Clear All Data
             </Button>
 
@@ -1393,7 +1408,15 @@ if (!pinVerified) {
       </ScrollView>
 
       <Portal>
-        <Dialog visible={showDeleteDialog} onDismiss={closeDeleteDialog} style={styles.dialog}>
+        <Modal visible={showDeleteDialog} transparent animationType="fade" onRequestClose={closeDeleteDialog}>
+          <Pressable
+            onPress={closeDeleteDialog}
+            style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "center", alignItems: "center", padding: 20 }}
+          >
+            <Pressable
+              onPress={() => {}}
+              style={{ backgroundColor: paperTheme.colors.surface, borderRadius: 24, width: "90%", maxWidth: 480, alignSelf: "center" }}
+            >
           <Dialog.Title>Delete Account</Dialog.Title>
           <Dialog.Content>
             <Text style={{ color: paperTheme.colors.error, fontWeight: "700" }}>
@@ -1417,7 +1440,7 @@ if (!pinVerified) {
               disabled={pinVerified || isSyncing}
             />
             {deletePinError ? (
-              <Text style={{ color: paperTheme.colors.error, marginTop: 4 }}>{deletePinError}</Text>
+              <Text style={{ color: paperTheme.colors.error, marginTop: 4, textAlign: "center", alignSelf: "center", width: "100%" }}>{deletePinError}</Text>
             ) : null}
 
             {pinVerified ? (
@@ -1462,7 +1485,9 @@ if (!pinVerified) {
               Delete Permanently
             </Button>
           </Dialog.Actions>
-        </Dialog>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         <Dialog visible={messageDialog.visible} onDismiss={closeMessage} style={styles.dialog}>
           <Dialog.Icon
@@ -1504,52 +1529,108 @@ if (!pinVerified) {
           onCancel={() => setShowRestoreConfirm(false)}
         />
 
-        <Dialog visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)} style={styles.dialog}>
-          <Dialog.Title>{isLocal ? "Make Online" : "Verify Account PIN"}</Dialog.Title>
-          <Dialog.Content>
-            <Text style={{ marginBottom: 16 }}>
-              {isLocal
-                ? `This will convert your account to an online account. Auto-backup will be enabled and this action cannot be reverted back to local-only.\n\nEnter your PIN for "${profile?.name || "your account"}" to proceed.`
-                : `To enable cloud sync, please enter the PIN for "${profile?.name || "your account"}".`
-              }
-            </Text>
-            <TextInput
-              label="Current PIN"
-              value={pinVerificationInput}
-              onChangeText={(t) => { setPinVerificationInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setVerificationError(""); }}
-              secureTextEntry
-              keyboardType="numeric"
-              maxLength={4}
-              error={!!verificationError}
-            />
-            {verificationError ? (
-              <Text style={{ color: paperTheme.colors.error, marginTop: 4 }}>{verificationError}</Text>
-            ) : null}
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => { setShowPinVerificationDialog(false); setPinVerificationInput(""); setVerificationError(""); }}>Cancel</Button>
-            <Button onPress={verifyPinForSync} loading={isSyncing} disabled={isSyncing}>Verify & Sync</Button>
-          </Dialog.Actions>
-        </Dialog>
+        <Modal
+          visible={showPinVerificationDialog}
+          transparent
+          animationType="fade"
+          onRequestClose={closePinVerificationDialog}
+        >
+          <Pressable
+            onPress={closePinVerificationDialog}
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 20,
+            }}
+          >
+            <Pressable
+              onPress={() => {}}
+              style={{
+                backgroundColor: paperTheme.colors.surface,
+                borderRadius: 24,
+                padding: 20,
+                width: "90%",
+                maxWidth: 480,
+                alignSelf: "center",
+              }}
+            >
+              <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 8 }}>
+                {isLocal ? "Make Online" : "Verify Account PIN"}
+              </Text>
+              <Text style={{ marginBottom: 16 }}>
+                {isLocal
+                  ? `This will convert your account to an online account. Auto-backup will be enabled and this action cannot be reverted back to local-only.\n\nEnter your PIN for "${profile?.name || "your account"}" to proceed.`
+                  : `To enable cloud sync, please enter the PIN for "${profile?.name || "your account"}".`
+                }
+              </Text>
+              <TextInput
+                label="Current PIN"
+                value={pinVerificationInput}
+                onChangeText={(t) => { setPinVerificationInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setVerificationError(""); }}
+                secureTextEntry
+                keyboardType="numeric"
+                maxLength={4}
+                error={!!verificationError}
+              />
+              {verificationError ? (
+                <Text style={{ color: paperTheme.colors.error, marginTop: 4 }}>{verificationError}</Text>
+              ) : null}
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 8 }}>
+                <Button onPress={closePinVerificationDialog}>Cancel</Button>
+                <Button onPress={verifyPinForSync} loading={isSyncing} disabled={isSyncing}>Verify & Sync</Button>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
-        <Dialog visible={showNewAccountDialog} onDismiss={() => setShowNewAccountDialog(false)} style={styles.dialog}>
-          <Dialog.Title>{isLocal ? "Create Cloud Account" : "PIN Doesn't Match"}</Dialog.Title>
-          <Dialog.Content>
-            <Text style={{ marginBottom: 16 }}>
-              {isLocal
-                ? "No cloud account found. This will create a new cloud account and migrate all your local data. This action cannot be reverted back to local-only."
-                : "The PIN you entered doesn't match the cloud account. Would you like to create a new cloud account with this PIN and migrate all your local data to it?"
-              }
-            </Text>
-            <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
-              Your existing cloud data won't be affected. This will create a separate account.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setShowNewAccountDialog(false)}>Cancel</Button>
-            <Button onPress={createNewAccountAndMigrate} loading={isSyncing} disabled={isSyncing}>Create New & Migrate</Button>
-          </Dialog.Actions>
-        </Dialog>
+        <Modal
+          visible={showNewAccountDialog}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowNewAccountDialog(false)}
+        >
+          <Pressable
+            onPress={() => setShowNewAccountDialog(false)}
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              justifyContent: "center",
+              alignItems: "center",
+              padding: 20,
+            }}
+          >
+            <Pressable
+              onPress={() => {}}
+              style={{
+                backgroundColor: paperTheme.colors.surface,
+                borderRadius: 24,
+                padding: 20,
+                width: "90%",
+                maxWidth: 480,
+                alignSelf: "center",
+              }}
+            >
+              <Text variant="titleLarge" style={{ fontWeight: "700", marginBottom: 8 }}>
+                {isLocal ? "Create Cloud Account" : "PIN Doesn't Match"}
+              </Text>
+              <Text style={{ marginBottom: 16 }}>
+                {isLocal
+                  ? "No cloud account found. This will create a new cloud account and migrate all your local data. This action cannot be reverted back to local-only."
+                  : "The PIN you entered doesn't match the cloud account. Would you like to create a new cloud account with this PIN and migrate all your local data to it?"
+                }
+              </Text>
+              <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
+                Your existing cloud data won't be affected. This will create a separate account.
+              </Text>
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 8 }}>
+                <Button onPress={() => setShowNewAccountDialog(false)}>Cancel</Button>
+                <Button onPress={createNewAccountAndMigrate} loading={isSyncing} disabled={isSyncing}>Create New & Migrate</Button>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         <Dialog visible={showBackupDialog} onDismiss={() => setShowBackupDialog(false)} style={styles.dialog}>
           <Dialog.Title>Enable Auto-save</Dialog.Title>
@@ -1581,24 +1662,37 @@ if (!pinVerified) {
             </Dialog.Actions>
          </Dialog>
 
-        <Dialog visible={showPinPrompt} onDismiss={() => setShowPinPrompt(false)} style={styles.dialog}>
+        <Modal visible={showPinPrompt} transparent animationType="fade" onRequestClose={closeClearDataPinPrompt}>
+          <Pressable
+            onPress={closeClearDataPinPrompt}
+            style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "center", alignItems: "center", padding: 20 }}
+          >
+            <Pressable
+              onPress={() => {}}
+              style={{ backgroundColor: paperTheme.colors.surface, borderRadius: 24, width: "90%", maxWidth: 480, alignSelf: "center" }}
+            >
           <Dialog.Title style={{ textAlign: "center" }}>Enter PIN to Clear Data</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16, textAlign: "center" }}>This action cannot be undone. All local data will be permanently deleted.</Text>
             <TextInput
               label="PIN"
               value={pinInput}
-              onChangeText={(t) => setPinInput(t.replace(/[^0-9]/g, "").slice(0, 4))}
+              onChangeText={(t) => { setPinInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setPinClearError(""); }}
               secureTextEntry
               keyboardType="numeric"
               maxLength={4}
             />
+            {pinClearError ? (
+              <Text style={{ color: paperTheme.colors.error, marginTop: 4, textAlign: "center", alignSelf: "center", width: "100%" }}>{pinClearError}</Text>
+            ) : null}
           </Dialog.Content>
           <Dialog.Actions style={{ justifyContent: "center", gap: 12 }}>
-            <Button mode="outlined" onPress={() => setShowPinPrompt(false)}>Cancel</Button>
+            <Button mode="outlined" onPress={closeClearDataPinPrompt}>Cancel</Button>
             <Button mode="contained" buttonColor={paperTheme.colors.error} textColor="#fff" onPress={handleClearData} loading={isSyncing} disabled={isSyncing}>Clear Data</Button>
           </Dialog.Actions>
-        </Dialog>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         <Dialog visible={showDeleteConfirmation} onDismiss={() => setShowDeleteConfirmation(false)} style={styles.dialog}>
           <Dialog.Title style={{ textAlign: "center" }}>Are you absolutely sure?</Dialog.Title>
@@ -1622,7 +1716,15 @@ if (!pinVerified) {
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={showChangePasscodeDialog} onDismiss={closeChangePasscodeDialog} style={styles.dialog}>
+        <Modal visible={showChangePasscodeDialog} transparent animationType="fade" onRequestClose={closeChangePasscodeDialog}>
+          <Pressable
+            onPress={closeChangePasscodeDialog}
+            style={{ flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)", justifyContent: "center", alignItems: "center", padding: 20 }}
+          >
+            <Pressable
+              onPress={() => {}}
+              style={{ backgroundColor: paperTheme.colors.surface, borderRadius: 24, width: "90%", maxWidth: 480, alignSelf: "center" }}
+            >
           {isPasscodeEnabled ? (
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
               <Dialog.Title>{pinStep === 1 ? "Change Passcode" : "Enter New Passcode"}</Dialog.Title>
@@ -1827,7 +1929,9 @@ if (!pinVerified) {
               </Button>
             )}
           </Dialog.Actions>
-        </Dialog>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </Portal>
     </View>
   );
