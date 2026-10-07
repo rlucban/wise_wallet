@@ -7,11 +7,12 @@ import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import EmptyState from "../components/EmptyState";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { CardSkeleton, ListRowsSkeleton } from "../components/SkeletonLoader";
 
 export default function ArchivedAllocationsScreen() {
     const router = useRouter();
     const theme = useTheme();
-    const { items, updateItem, deleteItem, refetch } = useSavings();
+    const { items, loading, updateItem, deleteItem, refetch } = useSavings();
     const { formatAmount } = useCurrencyActions();
 
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -80,7 +81,12 @@ export default function ArchivedAllocationsScreen() {
                     </Card>
                 )}
 
-                {archivedItems.length === 0 ? (
+                {loading && archivedItems.length === 0 ? (
+                    <>
+                        <CardSkeleton height={120} />
+                        <ListRowsSkeleton rows={4} />
+                    </>
+                ) : archivedItems.length === 0 ? (
                     <EmptyState
                         icon="archive-outline"
                         title="No archived allocations"

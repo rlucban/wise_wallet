@@ -949,3 +949,14 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - D-60-05 `utils/insightsDuesSavings.test.ts` ACC-60-01/02 × android/ios/web.
 - Verified user-run pending: lint/jest/tsc + ACC-S01/S02 device matrix (incl. no-flicker re-proof). Uncommitted per standing instruction.
 
+---
+
+## 2026-10-07 -- SPEC-61 FINAL + implemented (D-61-01..D-61-05)
+
+- Every page load had timing delay with empty frames (flicker absent per user). Skeleton pattern existed dashboard-only; five fetch-driven surfaces were bare.
+- D-61-01 `specs/61-loading-skeletons.md` (FINAL user-marked 2026-10-07; standalone, amends nothing; scope C confirmed, Option A generic blocks).
+- D-61-02 `components/SkeletonLoader.tsx`: `ListRowsSkeleton` + `CardSkeleton` + `ChartSkeleton` appended, composed of `SkeletonLoader` (driver guard inherited, one animation path, no new imports).
+- D-61-03 five first-load-empty branches: `app/dues.tsx` (rows, ListEmpty keeps truly-empty), `app/savings.tsx` + `app/archived-allocations.tsx` (card + rows, EmptyState keeps loaded-empty), `app/(tabs)/reports.tsx` (card + chart + rows, header/banner live), `app/completed-dues.tsx` (rows). Refetch-with-content untouched everywhere.
+- D-61-04 `utils/loadingSkeletons.test.ts` ACC-61-01/02 × android/ios/web (blocks + driver + five branches + dashboard byte-identity).
+- Verified user-run pending: lint/jest/tsc + ACC-S01/S02 visual matrix (Expo Go + web, light/dark). Uncommitted per standing instruction.
+

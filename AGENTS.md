@@ -481,6 +481,8 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-07 — Spec 60 FINAL + implemented.** `specs/60-dues-savings-aware-highlights.md`: dues/savings-aware insights memo + dues pull-to-refresh. D-60-02 `useInsights.ts` fingerprints join memo gate (SPEC-50 D-01 amended, last-good/no-flash/latest-1 kept); D-60-04 `dues.tsx` pull-to-refresh (focus wiring verified, FlashList, no new dep); SmartInsights + useDues untouched; D-60-05 `utils/insightsDuesSavings.test.ts` × android/ios/web. No wallet-api change. Open: lint/jest/tsc + ACC-S01/S02 (incl. no-flicker re-proof). See `docs/savepoint.md`.
 
+- **2026-10-07 — Spec 61 FINAL + implemented.** `specs/61-loading-skeletons.md`: shimmer on every fetch-driven surface. D-61-02 `SkeletonLoader.tsx` shared blocks (composed of pulse, driver guard kept, one animation); D-61-03 five first-load-empty branches (dues/completed rows; savings/archived card+rows; reports card+chart+rows; empty states kept, refetch untouched). D-61-04 `utils/loadingSkeletons.test.ts` × android/ios/web. No fetch/deps/API change; dashboard byte-identical. Open: lint/jest/tsc + ACC-S01/S02 visual matrix. See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

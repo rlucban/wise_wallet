@@ -11,11 +11,12 @@ import { formatNumberInput, parseAmount } from "../utils/amount";
 import { useUserProfile } from "../context/UserProfileContext";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { CardSkeleton, ListRowsSkeleton } from "../components/SkeletonLoader";
 
 export default function SavingsScreen() {
     const router = useRouter();
     const theme = useTheme();
-    const { items, updateItem, deleteItem, refetch } = useSavings();
+    const { items, loading, updateItem, deleteItem, refetch } = useSavings();
     const { formatAmount } = useCurrencyActions();
     const { transactions } = useTransactions();
     const { profile } = useUserProfile();
@@ -256,7 +257,12 @@ export default function SavingsScreen() {
                     </Card>
                 )}
 
-                {activeAllocations.length === 0 ? (
+                {loading && activeAllocations.length === 0 ? (
+                    <>
+                        <CardSkeleton height={120} />
+                        <ListRowsSkeleton rows={4} />
+                    </>
+                ) : activeAllocations.length === 0 ? (
                     <EmptyState icon="piggy-bank" title="No active allocations" subtitle="Tap + to create an allocation" />
                 ) : (
                     <>

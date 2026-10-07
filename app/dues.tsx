@@ -14,6 +14,7 @@ import { Due, DueFrequency, PaymentMethodInfo } from "../types";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import EmptyState from "../components/EmptyState";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { ListRowsSkeleton } from "../components/SkeletonLoader";
 import { scheduleDueNotifications } from "../utils/notifications";
 import { getTimeOfMonthTip, getRecurringProjectionMessage, isOverdue } from "../utils/financialLiteracy";
 import { ensureOthersOption } from "../utils/categoryOptions";
@@ -514,6 +515,11 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         />
       </Appbar.Header>
 
+      {loading && listData.length === 0 ? (
+        <View style={{ padding: 16 }}>
+          <ListRowsSkeleton rows={5} />
+        </View>
+      ) : (
       <FlashList
         data={listData}
         renderItem={renderItem}
@@ -529,6 +535,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         refreshing={loading}
         onRefresh={refetch}
       />
+      )}
 
       <Portal>
         <Modal

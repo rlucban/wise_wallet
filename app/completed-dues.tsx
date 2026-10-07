@@ -9,11 +9,12 @@ import { useCurrencyActions } from "../context/CurrencyContext";
 import { Due } from "../types";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import EmptyState from "../components/EmptyState";
+import { ListRowsSkeleton } from "../components/SkeletonLoader";
 
 export default function CompletedDuesScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { dues, refetch } = useDues();
+  const { dues, loading, refetch } = useDues();
   const { formatAmount } = useCurrencyActions();
 
   const [filter, setFilter] = useState<"week" | "month" | "all">("all");
@@ -169,6 +170,11 @@ export default function CompletedDuesScreen() {
         <Appbar.Content title="Completed Dues" />
       </Appbar.Header>
 
+      {loading && completedDues.length === 0 ? (
+        <View style={{ padding: 16 }}>
+          <ListRowsSkeleton rows={5} />
+        </View>
+      ) : (
       <FlashList
         data={completedDues}
         renderItem={renderItem}
@@ -184,6 +190,7 @@ export default function CompletedDuesScreen() {
         contentContainerStyle={{ padding: 16 }}
         showsVerticalScrollIndicator={false}
       />
+      )}
     </View>
   );
 }
