@@ -12,6 +12,7 @@ import { useSystemAlerts } from "../context/SystemAlertsContext";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { useThemeData } from "../context/ThemeContext";
 import EmptyState from "../components/EmptyState";
+import { ListRowsSkeleton } from "../components/SkeletonLoader";
 
 type NotificationItem =
   | { type: "system_alert"; data: SystemAlert }
@@ -82,8 +83,9 @@ const formatDueDate = (dateStr: string) => {
 export default function NotificationsScreen() {
   const router = useRouter();
   const { theme } = useThemeData();
-  const { dues, refetch: refetchDues } = useDues();
-  const { alerts, refetchAlerts, markAsRead, markAllAsRead, clearAlerts } = useSystemAlerts();
+  const { dues, loading: duesLoading, refetch: refetchDues } = useDues();
+  const { alerts, loading: alertsLoading, refetchAlerts, markAsRead, markAllAsRead, clearAlerts } = useSystemAlerts();
+  const isRefreshing = duesLoading || alertsLoading;
   const { formatAmount } = useCurrencyActions();
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -114,6 +116,8 @@ export default function NotificationsScreen() {
     });
   }, [alerts, dues]);
 
+  const showSkeletons = isRefreshing && notificationItems.length === 0;
+
   const renderItem = useCallback(
     ({ item }: { item: NotificationItem }) => {
       if (item.type === "system_alert") {
@@ -129,15 +133,15 @@ export default function NotificationsScreen() {
             }}
             activeOpacity={0.7}
             style={{
-              backgroundColor: alert.read ? theme.colors.surface : theme.colors.errorContainer + "33",
-              borderRadius: 16,
+              backgroundColor: theme.colors.surface,
+              borderRadius: 18,
               padding: 16,
               marginBottom: 12,
               marginHorizontal: 16,
               flexDirection: "row",
               alignItems: "center",
-              borderWidth: alert.read ? 0 : 1,
-              borderColor: theme.colors.error,
+              borderWidth: 1,
+              borderColor: alert.read ? theme.colors.outlineVariant : theme.colors.error,
               ...Platform.select({
                 web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)" },
                 default: {
