@@ -541,8 +541,7 @@ export default function SavingsScreen() {
 
 <FAB
         icon="plus"
-        label="New Allocation"
-        style={{ position: "absolute", margin: 16, right: 0, bottom: 0, borderRadius: 20, backgroundColor: theme.colors.primary }}
+        style={{ position: "absolute", margin: 24, right: 0, bottom: 24, borderRadius: 999, backgroundColor: theme.colors.primary }}
         color={theme.colors.onPrimary}
         onPress={() => router.push("/add-allocation")}
       />

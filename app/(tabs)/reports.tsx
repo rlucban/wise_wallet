@@ -228,7 +228,7 @@ export default function ReportsScreen() {
         >
           <Menu.Item onPress={() => { setPeriod("weekly"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Weekly" leadingIcon="calendar-week" />
           <Menu.Item onPress={() => { setPeriod("monthly"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Monthly" leadingIcon="calendar-month" />
-          <Menu.Item onPress={() => { setPeriod("annually"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Yearly" leadingIcon="calendar-year" />
+          <Menu.Item onPress={() => { setPeriod("annually"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Yearly" leadingIcon="calendar-range" />
         </Menu>
       </Appbar.Header>
 

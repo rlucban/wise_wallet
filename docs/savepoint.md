@@ -972,3 +972,20 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - D-62-04 `utils/getCache.test.ts` ACC-62-01/02 × android/ios/web.
 - Verified user-run pending: lint/jest/tsc + ACC-S01/S02 device matrix (instant remount, fresh pull, ≤60s convergence, no cross-session leak). Uncommitted per standing instruction.
 
+---
+
+## 2026-10-07 -- SPEC-63 FINAL + implemented (D-01..D-08)
+
+- D-01 `app/(tabs)/category-settings.tsx` + `utils/categorySort.ts`: visible Name/Type/Recent sort control; deterministic sort tests.
+- D-02 `app/(tabs)/reports.tsx`: Yearly period icon changed from invalid `calendar-year` to `calendar-range` to remove literal `?`.
+- D-03/D-04 `utils/learningData.ts` + `app/(tabs)/learning.tsx` + `app/(tabs)/learning-detail.tsx`: new App Guide topic, WiseWallet App Guide article, filters.
+- D-05 `app/(tabs)/index.tsx` + `app/(tabs)/_layout.tsx`: circle add FAB beside bottom tab pill; tab pill right margin widened.
+- D-06 `app/dues.tsx` + `app/completed-dues.tsx`: pay Confirm shows loading, completed dues has refresh + totals.
+- D-07 `context/ThemeContext.tsx`: dark `surfaceVariant` aligned with dark surface palette.
+- D-08 `utils/categorySort.test.ts` covers name/type/recent sorting.
+- 2026-10-07 follow-up: dashboard FAB moved into `app/(tabs)/_layout.tsx` as a persistent circle `+` beside the tab pill on all tab routes; removed dashboard-local FAB so add transaction never disappears when switching tabs. Verified user-run pending: lint/jest/tsc + manual matrix. No commit.
+- 2026-10-07 follow-up 2: `app/dues.tsx` and `app/savings.tsx` FABs now match the shared add-transaction style—icon-only circle, primary background, `onPrimary` plus, and wider 24px edge margin. No commit.
+- 2026-10-07 follow-up 3: shared `+` FAB shifted right to `right: 8`, producing an 8px gap from the tab pill's 72px right margin. No commit.
+- 2026-10-07 follow-up 4: bottom tab button labels got `paddingHorizontal: 8` for more spacing. No commit.
+- Verified user-run pending: lint/jest/tsc + manual matrix. Uncommitted per standing instruction; no git commit performed.
+

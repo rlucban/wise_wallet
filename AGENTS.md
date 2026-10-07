@@ -485,6 +485,8 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-07 — Spec 62 FINAL + implemented.** `specs/62-get-memoization.md`: 60s TTL read-through cache in `authFetch` (heavy collections only, manual-only bypass per same-day amendment). D-62-02 apiClient layer (endpoint keys, ok-only, lazy expiry, cap-50, invalidate-on-mutation, wipe on 401); AuthContext login/logout wipe; `fetchDues` skip threading + dues pull bypass; `utils/getCache.test.ts` × android/ios/web. 401/unwrap identical; no server/deps/storage change. Open: lint/jest/tsc + ACC-S01/S02. See `docs/savepoint.md`.
 
+- **2026-10-07 — Spec 63 FINAL + implemented.** `specs/63-ui-batch-settings-reports-literacy-dashboard-scheduled-dark-mode.md`: D-01 category sort control + helper/tests; D-02 Reports invalid icon fixed; D-03/D-04 App Guide literacy article/filter; D-05 circle add FAB beside pill; D-06 pay loading + completed-dues refresh/total; D-07 dark surface alignment. Open: lint/jest/tsc + ACC-S01..S07 manual matrix. Follow-up 3: shared `+` has an 8px x-gap from the tab pill. Follow-up 4: tab buttons horizontally padded by 8px. See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

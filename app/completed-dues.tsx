@@ -180,6 +180,8 @@ export default function CompletedDuesScreen() {
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={ListHeader}
+        refreshing={loading}
+        onRefresh={refetch}
         ListEmptyComponent={
           <EmptyState
             icon="check-circle-outline"

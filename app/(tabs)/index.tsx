@@ -1,6 +1,6 @@
 import { View, TouchableOpacity, Platform } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { FAB, Text, Card, IconButton } from "react-native-paper";
+import { Text, Card, IconButton } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useCallback, useMemo } from "react";
@@ -310,13 +310,7 @@ export default function Dashboard() {
         showsVerticalScrollIndicator={false}
       />
 
-      <FAB
-        icon="plus"
-        label="Transaction"
-        style={{ position: "absolute", margin: 20, right: 0, bottom: 160, borderRadius: 20, backgroundColor: theme.colors.primary }}
-        color="#fff"
-        onPress={() => router.push("/add-transaction")}
-      />
     </View>
+
   );
 }

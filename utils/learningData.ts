@@ -1,7 +1,7 @@
-export type ArticleTopic = "Budgeting" | "Savings" | "Debt";
+export type ArticleTopic = "Budgeting" | "Savings" | "Debt" | "App Guide";
 export type AudienceType = "Students" | "Workers";
 
-export const LEARNING_CATEGORIES = ["All", "Budgeting", "Savings", "Debt"] as const;
+export const LEARNING_CATEGORIES = ["All", "Budgeting", "Savings", "Debt", "App Guide"] as const;
 export type LearningCategory = (typeof LEARNING_CATEGORIES)[number];
 
 export interface LearningResource {
@@ -67,6 +67,15 @@ export const LEARNING_RESOURCES: LearningResource[] = [
     icon: "clipboard-text-outline",
     topic: "Budgeting",
     minutes: 3,
+    audience: "Students",
+  },
+  {
+    id: "wisewallet_app_guide",
+    title: "WiseWallet App Guide",
+    description: "A quick getting-started walkthrough for WiseWallet.",
+    icon: "rocket-launch-outline",
+    topic: "App Guide",
+    minutes: 4,
     audience: "Students",
   },
 ];

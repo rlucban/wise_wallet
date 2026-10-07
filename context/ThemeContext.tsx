@@ -60,6 +60,8 @@ const CustomDarkTheme: MD3Theme = {
         surface: '#161B22',
         onBackground: '#E6EDF3',
         onSurface: '#E6EDF3',
+        surfaceVariant: '#21262D',
+        onSurfaceVariant: '#C9D1D9',
     },
 };
 

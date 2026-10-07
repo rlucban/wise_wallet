@@ -1,9 +1,9 @@
 import { useRef } from "react";
-import { Animated, Easing, Pressable, Platform } from "react-native";
+import { Animated, Easing, Pressable, Platform, View } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import { useTheme } from "react-native-paper";
+import { FAB, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getTabBarMetrics } from "../../utils/tabBarMetrics";
 
@@ -62,16 +62,18 @@ function AnimatedTabButton({
 
 export default function TabLayout() {
     const theme = useTheme();
+    const router = useRouter();
     const insets = useSafeAreaInsets();
     const { height, paddingTop, paddingBottom } = getTabBarMetrics(insets.bottom);
 
     return (
+        <View style={{ flex: 1 }}>
         <Tabs
             screenOptions={{
                 headerShown: false,
                 tabBarActiveTintColor: theme.colors.primary,
                 tabBarInactiveTintColor: theme.colors.outline,
-                tabBarButton: (props) => <AnimatedTabButton {...props} />,
+                tabBarButton: (props) => <AnimatedTabButton {...props} style={[props.style, { paddingHorizontal: 8 }]} />,
                 tabBarStyle: {
                     // SPEC-56 (CON-56-04): overlay — page content scrolls behind the pill.
                     position: "absolute",
@@ -80,7 +82,8 @@ export default function TabLayout() {
                     // literally; light keeps surface.
                     backgroundColor: theme.dark ? "#2B2930" : theme.colors.surface,
                     borderTopWidth: 0,
-                    marginHorizontal: 16,
+                    marginLeft: 16,
+                    marginRight: 72,
                     // CON-55-06: float higher still (was 20 in SPEC-54).
                     marginBottom: 32,
                     // CON-52-16: true capsule at every inset (34 / 46 / 51).
@@ -150,5 +153,18 @@ export default function TabLayout() {
                 }}
             />
         </Tabs>
+        <FAB
+          icon="plus"
+          onPress={() => router.push("/add-transaction")}
+          style={{
+            position: "absolute",
+            right: 8,
+            bottom: 32 + Math.max(0, (height - 56) / 2),
+            borderRadius: 999,
+            backgroundColor: theme.colors.primary,
+          }}
+          color="#fff"
+        />
+        </View>
     );
 }
