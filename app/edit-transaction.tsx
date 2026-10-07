@@ -11,6 +11,8 @@ import { TransactionType, PaymentMethod, Category } from "../types";
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
 import { ensureOthersOption, isOthersCategory } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import ConfirmDialog from "../components/ConfirmDialog";
+import { isUUID, LEGACY_NON_UUID_MESSAGE } from "../utils/uuid";
 
 const DEFAULT_CATEGORIES: Category[] = [
   { id: "1", name: "Food", type: "expense", updatedAt: 0 },
@@ -36,6 +38,9 @@ export default function EditTransaction() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { transactions, updateTransaction } = useTransactions();
+  // SPEC-45 v1.1 DEC-45A: legacy non-UUID ids can never be PUT — hide Save.
+  const isLegacyId = typeof id === "string" && !isUUID(id);
+  const [successVisible, setSuccessVisible] = useState(false);
 
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -159,11 +164,16 @@ export default function EditTransaction() {
         receiptUrl: receiptImage || undefined,
       });
       setLoading(false);
-      safeGoBack(router);
-    } catch {
+      setSuccessVisible(true);
+    } catch (e) {
       setLoading(false);
-      Alert.alert("Error", "Failed to save changes. Please check your connection.");
+      Alert.alert("Error", e instanceof Error ? e.message : "Failed to save changes. Please check your connection.");
     }
+  };
+
+  const handleSuccessDismiss = () => {
+    setSuccessVisible(false);
+    safeGoBack(router);
   };
 
   const theme = useTheme();
@@ -283,9 +293,15 @@ export default function EditTransaction() {
           </View>
         )}
 
-        <Button mode="contained" onPress={handleSave} loading={loading} disabled={loading} style={{ marginTop: 8 }}>
-          Save Changes
-        </Button>
+        {isLegacyId ? (
+          <Text variant="bodySmall" style={{ textAlign: "center", marginTop: 12, color: theme.colors.error }}>
+            {LEGACY_NON_UUID_MESSAGE}
+          </Text>
+        ) : (
+          <Button mode="contained" onPress={handleSave} loading={loading} disabled={loading} style={{ marginTop: 8 }}>
+            Save Changes
+          </Button>
+        )}
 
         <Portal>
           <Modal
@@ -344,6 +360,15 @@ export default function EditTransaction() {
           </Modal>
         </Portal>
         </ScrollView>
+      <ConfirmDialog
+        visible={successVisible}
+        tone="success"
+        title="Updated Successfully"
+        message="Your changes have been saved."
+        confirmLabel="OK"
+        onConfirm={handleSuccessDismiss}
+        onCancel={handleSuccessDismiss}
+      />
     </View>
   );
 }

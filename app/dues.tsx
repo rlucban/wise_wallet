@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { View } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Appbar, Text, Card, FAB, Portal, Modal, TextInput, Button, Checkbox, useTheme, Chip, IconButton, SegmentedButtons, Dialog } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -640,7 +640,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         </Portal>
 
         <Portal>
-          <Dialog visible={!!payTarget} onDismiss={() => setPayTarget(null)}>
+          <Dialog visible={!!payTarget} onDismiss={() => setPayTarget(null)} style={styles.dialog}>
             <Dialog.Title style={{ textAlign: "center" }}>
               {payTarget?.type === "income" ? `Receive "${payTarget?.title}"?` : `Pay "${payTarget?.title}"?`}
             </Dialog.Title>
@@ -677,7 +677,7 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         </Portal>
 
        <Portal>
-         <Dialog visible={alertDialog.visible} onDismiss={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
+          <Dialog visible={alertDialog.visible} onDismiss={() => setAlertDialog((prev) => ({ ...prev, visible: false }))} style={styles.dialog}>
            <Dialog.Icon icon={alertDialog.title === "Error" || alertDialog.title === "Insufficient Balance" ? "alert-circle-outline" : "check-circle-outline"} />
            <Dialog.Title style={{ textAlign: "center" }}>{alertDialog.title}</Dialog.Title>
            <Dialog.Content>
@@ -756,7 +756,16 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
             style={{ position: "absolute", margin: 20, right: 0, bottom: 20, borderRadius: 20, backgroundColor: theme.colors.primary }}
             color={theme.colors.onPrimary}
            onPress={() => router.push("/add-due")}
-         />
-    </View>
-  );
+          />
+     </View>
+   );
 }
+
+// SPEC-26 v1.4 DEC-05: responsive dialog container (CON-01 tokens verbatim).
+const styles = StyleSheet.create({
+  dialog: {
+    maxWidth: 480,
+    width: "90%",
+    alignSelf: "center",
+  },
+});

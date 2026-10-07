@@ -47,25 +47,26 @@ function FloatingTabBarThemed({ state, descriptors, navigation, insets }: Bottom
     return (
         <View
             style={{
-                position: "absolute",
-                left: 16,
-                right: 16,
-                bottom: metrics.paddingBottom + 12,
-                flexDirection: "row",
                 alignItems: "center",
-                ...Platform.select({
-                    web: { alignSelf: "center", width: "100%", maxWidth: 560 },
-                    default: {},
-                }),
+                paddingHorizontal: 16,
+                paddingBottom: metrics.paddingBottom + 12,
             }}
         >
+            <View
+                style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    width: "100%",
+                    maxWidth: 560,
+                }}
+            >
             <View
                 style={{
                     flex: 1,
                     flexDirection: "row",
                     backgroundColor: theme.colors.surface,
                     borderRadius: CONTAINER_RADIUS,
-                    paddingVertical: 8,
+                    paddingVertical: 12,
                     paddingHorizontal: 8,
                     ...Platform.select({
                         web: { boxShadow: "0 8px 24px rgba(0, 0, 0, 0.12)" },
@@ -97,15 +98,15 @@ function FloatingTabBarThemed({ state, descriptors, navigation, insets }: Bottom
                                 alignItems: "center",
                                 justifyContent: "center",
                                 borderRadius: PILL_RADIUS,
-                                paddingVertical: 8,
+                                paddingVertical: 12,
                                 paddingHorizontal: 4,
-                                backgroundColor: focused ? theme.colors.primaryContainer : "transparent",
+                                backgroundColor: "transparent",
                             }}
                         >
                             <MaterialCommunityIcons
                                 name={icon}
                                 size={22}
-                                color={focused ? theme.colors.primary : theme.colors.outline}
+                                color={focused ? theme.colors.primary : theme.colors.onSurfaceVariant}
                             />
                             <Text
                                 variant="labelMedium"
@@ -113,7 +114,7 @@ function FloatingTabBarThemed({ state, descriptors, navigation, insets }: Bottom
                                     marginLeft: 4,
                                     fontSize: 12,
                                     fontWeight: "600",
-                                    color: focused ? theme.colors.primary : theme.colors.outline,
+                                    color: focused ? theme.colors.primary : theme.colors.onSurfaceVariant,
                                 }}
                             >
                                 {label}
@@ -132,6 +133,7 @@ function FloatingTabBarThemed({ state, descriptors, navigation, insets }: Bottom
                 onPress={() => router.push("/add-transaction")}
                 style={{ margin: 0, marginLeft: 12 }}
             />
+            </View>
         </View>
     );
 }

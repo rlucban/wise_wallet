@@ -35,10 +35,16 @@ function runSuite(os: "android" | "ios" | "web") {
             expect(source).not.toContain("router.back()");
         });
 
-        it("ACC-03: full history via month groups; tap opens receipt modal, not details (v1.1: ACC-07 governs)", () => {
+        it("ACC-03: full history via month groups; static rows, no modal (v1.2)", () => {
             const source = readRepo("app/transactions.tsx");
             expect(source).toContain("groupTransactionsByMonth");
-            expect(source).toContain("Transaction Receipt");
+            expect(source).not.toContain("Transaction Receipt");
+            expect(source).not.toContain("Receipt");
+            expect(source).not.toContain("Dialog");
+            expect(source).not.toContain("Modal");
+            expect(source).not.toContain("TouchableOpacity");
+            expect(source).not.toContain("Pressable");
+            expect(source).not.toContain("setSelected");
             expect(source).not.toContain("slice(0, 6)");
             expect(source).not.toContain("/transaction-details?id=");
         });

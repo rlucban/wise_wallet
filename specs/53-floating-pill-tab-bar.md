@@ -8,7 +8,7 @@
 | Owner | User (final authority) |
 | Version | 1.0 |
 
-> History: v0.1 DRAFT (full OD set open); v0.2 DRAFT amendment (OD-01 called: `+` → `/add-transaction`; Home FAB removal folded in as DEC-06/D-04). v1.0 FINAL: OD-02..OD-05 closed on DD-01..DD-05 below; DEC-05 error fallback deleted as over-engineering (single custom-bar code path).
+> History: v0.1 DRAFT (full OD set open); v0.2 DRAFT amendment (OD-01 called: `+` → `/add-transaction`; Home FAB removal folded in as DEC-06/D-04). v1.0 FINAL: OD-02..OD-05 closed on DD-01..DD-05 below; DEC-05 error fallback deleted as over-engineering (single custom-bar code path). v1.1 DRAFT (§5, pending FINAL mark): floating pill restored as canonical — SPEC-58 centering folded in, SPEC-59/61 superseded for bar layout, SPEC-62 DRAFT retired (see §5.1). No new spec number per owner order + §1.14 one-home.
 | Scope | `app/(tabs)/_layout.tsx` custom `tabBar` prop (floating rounded container, active-tab pill, separate circular `+`) + removal of the in-screen Home `+ Transaction` FAB (`app/(tabs)/index.tsx:315-321`); one new component file max |
 | Non-goals | Tab destinations/order/titles/icons; `learning-detail` `href: null`; storage keys; `wallet-api` contract; sync; new dependencies; SPEC-32 label-fit geometry unless explicitly superseded below |
 | Normative source | This file. `AGENTS.md §4` is a pointer only. File+symbol cites are normative; `:line` numbers are hints only. |
@@ -110,6 +110,144 @@ Subjective (reviewer-observed, Expo Go + web export):
 - **D-03:** `utils/floatingTabBar.test.ts` (new): ACC-01..ACC-05 + ACC-07 × android/ios/web (mapping + source-text guards; rendered pixels covered by ACC-S01..S03, not jest). `utils/tabBarMetrics.test.ts` touched only if DEC-04 says so.
 - **D-04:** `app/(tabs)/index.tsx`: delete the Home `FAB` block (`:315-321`) per DEC-06. Nothing else in the file.
 - **D-05:** Journal — `docs/savepoint.md` + `AGENTS.md` §3 entry (incl. OD calls, token sheet, and SPEC-32 disposition).
+
+## 5. v1.1 Amendment — Floating Pill, Centered, In-Flow (FINAL v1.1 per user call "final - code this for me" 2026-10-07)
+
+### 5.1 Context (overlap reconciliation per §1.13/§1.14)
+
+- User verdict chain on the same bar: floating wanted (v1.0) → "wala sa gitna ... flexible" (SPEC-58 centered it) → "pangit ... lutang" (SPEC-59 docked it) → "di natatakpan content" (SPEC-61 made it in-flow) → "dapat nga naka float" (SPEC-62 DRAFT). Standing end state: floating + centered/flexible + never covers content.
+- Canonical home for tab-bar layout is this file. SPEC-58 (centering) is folded in; SPEC-59 (docked) and SPEC-61 (in-flow docked) are superseded for bar layout; SPEC-62 (DRAFT, never FINAL) is retired — its stopped half-state in the tree is completed under this amendment and its file is deleted per D-15. No new spec number per owner order.
+- Working-tree note (2026-10-07): the stopped SPEC-62 run already applied the wrapper/row/pill hunks to `components/FloatingTabBar.tsx`; pending under this amendment: `+` `marginRight` removal, test-guard rewrite, SPEC-62 file deletion, journal.
+
+### 5.2 Decisions (FINAL v1.1 — content fixed)
+
+- **DEC-10 (wrapper, in-flow + gutters).** Outer `View`: zero `position`/`left`/`right`/`bottom`; `alignItems: "center"`, `paddingHorizontal: 16`, `paddingBottom: metrics.paddingBottom + 12`, transparent (no `backgroundColor` — screen bg shows through the gutters).
+- **DEC-11 (inner row, centered-cap).** Middle `View`: `flexDirection: "row"`, `alignItems: "center"`, `width: "100%"`, `maxWidth: 560`.
+- **DEC-12 (pill + `+`, verbatim v1.0 tokens).** Pill container `flex: 1` (`surface`, `borderRadius: 28` via `CONTAINER_RADIUS`, p8, DD-01 `Platform.select` shadows); tab mapping, labels 12/600, icons, `learning-detail` filter, `pressTab` unchanged; circular `+` keeps its single `router.push("/add-transaction")` with `marginLeft: 12` and zero `marginRight`. No new tokens.
+
+### 5.3 Acceptance criteria (FINAL v1.1)
+
+Objective (jest, `Platform.OS` = android/ios/web):
+
+| ID | Check |
+|---|---|
+| ACC-11 | Floating + in-flow: source contains `maxWidth: 560` + `borderRadius: 28` (or `CONTAINER_RADIUS`) + `boxShadow` + exactly one `router.push("/add-transaction")`; contains zero `position:` + zero `"absolute"` + zero `bottom:` + zero `borderTopWidth` |
+| ACC-12 | `npm test` 0 failed; `npm run lint` clean; `npx tsc --noEmit` clean (user-run per §1.3) |
+
+Subjective (reviewer-observed, Expo Go + web export):
+
+- **ACC-S05:** Phone + web desktop show the v1.0 floating look (detached rounded pill + separate `+`), centered on desktop / guttered on mobile.
+- **ACC-S06:** Any list scrolled to end: last row fully readable, nothing hidden behind the bar, nothing sliding under it; short screens: bar floats above the bottom edge with a clear gap.
+
+### 5.4 Deliverables (FINAL v1.1)
+
+- **D-13 (`components/FloatingTabBar.tsx`):** finish alignment per DEC-10..DEC-12 — remove the leftover `marginRight: 8` on the `+`; verify wrapper/row/pill match (already in tree from the stopped run). Nothing else in the file.
+- **D-14 (`utils/floatingTabBar.test.ts`):** rewrite the shell guards to ACC-11 × android/ios/web; all other guards retained.
+- **D-15 (delete `specs/62-floating-tab-bar-in-flow.md`):** DRAFT never FINAL, content folded into this §5, zero references elsewhere — one-home restore.
+- **D-16 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.
+
+### 5.5 Terms (amendment-local)
+
+- **Floating (in-flow):** detached rounded pill with gutters on all sides, laid out in navigator flow — looks floating, never overlays.
+- **Superseded (layout only):** SPEC-59/61 no longer govern the bar; kept as history, not implemented further.
+
+## 6. v1.2 Amendment — Taller floating bar (FINAL v1.2 per user call 2026-10-07: "SPEC-53 v1.2 FINAL, code this for me")
+
+### 6.1 Context (evidence 2026-10-07)
+
+- Phone screenshot (Expo Go, Home): the floating pill + separate `+` render, but the bar height reads too small ("super liit sa phone ng height").
+- Reference mock (2nd photo): floating rounded pill (4 tabs, soft active highlight, comfortable height) + separate circular `+` — "like this dapat yung feature design". Current structure already matches (pill + highlight + separate `+`); only the vertical size is short.
+- Proposed: pill container `paddingVertical: 8 → 12` + tab buttons `paddingVertical: 8 → 12` (≈ +8px bar height). Icons (22), labels (12/600), colors, `+` button, centering (`maxWidth: 560`), and in-flow positioning all untouched.
+
+### 6.2 Constraints (FINAL v1.2)
+
+- **CON-09 — Padding-only.** Only the two `paddingVertical` values in `components/FloatingTabBar.tsx` MAY change. Icons, labels, colors, pill radii, shadows, `+` button, centering, and in-flow shell MUST stay byte-identical. SPEC-32 geometry (standard-bar wiring) untouched. Cross-platform; `npm run lint` clean.
+
+### 6.3 Goal (FINAL v1.2)
+
+- **DEC-06:** Pill container `paddingVertical: 12`; tab `TouchableOpacity` `paddingVertical: 12`. Nothing else.
+
+Objective (jest, `Platform.OS` = android/ios/web):
+
+| ID | Check |
+|---|---|
+| ACC-12 | Pill container carries `paddingVertical: 12` and tab buttons carry `paddingVertical: 12`; icons `22`, label `12`, `maxWidth: 560`, `PILL_RADIUS` intact (source-text guards) |
+| ACC-13 | `npm test` 0 failed; `npm run lint` clean; `npx tsc --noEmit` clean (user-run per §1.3) |
+
+Subjective (reviewer-observed, Expo Go + web export):
+
+- **ACC-S07:** Phone: bar visibly taller, proportions close to the reference mock; tabs + `+` tappable, no crowding, no overlap with list content. Desktop unchanged apart from the same +8px.
+
+### 6.4 Deliverables (FINAL v1.2)
+
+- **D-17 (`components/FloatingTabBar.tsx`):** two `paddingVertical` values per DEC-06. Nothing else in the file.
+- **D-18 (`utils/floatingTabBar.test.ts`, extend):** ACC-12 guards × android/ios/web. No new test file.
+- **D-19 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.
+
+## 7. v1.3 Amendment — Fixed navy bar in both modes (FINAL v1.3 per user call 2026-10-07: "SPEC-53 v1.3 FINAL, code this for me")
+
+### 7.1 Context (evidence 2026-10-07)
+
+- Dark-mode phone screenshot: the pill follows `surface` (`#161B22` — near-black), while light mode shows white. User order: one consistent color in both modes, and not white even in light mode ("kung naka dark mode ganon din ang kulay ... kung hindi naka dark mode edi hindi puti") — read as the navy brand direction already approved for the toast (SPEC-05 §6).
+- Theme pairs (`context/ThemeContext.tsx`): light `primary #1B3F7A` + `onPrimary #FFFFFF`; dark `primary #4A90D9` + `onPrimary #001F4D`. Active pill (`primaryContainer` + `primary` icon/label) stays legible on both navies, so it is untouched.
+
+### 7.2 Constraints (FINAL v1.3)
+
+- **CON-10 — Color-only.** Only bar-background + inactive icon/label colors in `components/FloatingTabBar.tsx` MAY change. Active pill, `+` button, padding (v1.2), centering, in-flow shell MUST stay byte-identical. Active/inactive hierarchy MUST survive in both modes via theme pairs (no hardcoded hex). Cross-platform; `npm run lint` clean.
+
+### 7.3 Goal (FINAL v1.3)
+
+- **DEC-07:** Bar container `backgroundColor: theme.colors.surface → theme.colors.primary` (navy in both modes). Inactive tab icon + label `theme.colors.outline → theme.colors.onPrimary` (the theme's own on-primary pair). Everything else untouched.
+
+Objective (jest, `Platform.OS` = android/ios/web):
+
+| ID | Check |
+|---|---|
+| ACC-14 | Bar container background is `theme.colors.primary` with zero `theme.colors.surface` on the bar shell; inactive icon/label use `onPrimary`; active pill (`primaryContainer` + `primary`) retained (source-text guards) |
+| ACC-15 | `npm test` 0 failed; `npm run lint` clean; `npx tsc --noEmit` clean (user-run per §1.3) |
+
+Subjective (reviewer-observed, Expo Go + web export):
+
+- **ACC-S08:** Light + dark mode, phone + web: identical navy pill in both modes (never white, never black); active tab highlighted, inactive tabs legible, `+` unchanged.
+
+### 7.4 Deliverables (FINAL v1.3)
+
+- **D-20 (`components/FloatingTabBar.tsx`):** two color swaps per DEC-07. Nothing else in the file.
+- **D-21 (`utils/floatingTabBar.test.ts`, extend):** ACC-14 guards × android/ios/web. No new test file.
+- **D-22 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.
+
+## 8. v1.4 Amendment — Surface bar + transparent active (FINAL v1.4 per user call 2026-10-07: "final / code this for me")
+
+### 8.1 Context (evidence 2026-10-07)
+
+- v1.3 made the bar `primary` in both modes (light `#1B3F7A` navy, dark `#4A90D9` blue). User verdict with 2 phone screenshots (light Home, dark Settings): "bat mo naman iniba color ng navigation ... yung white kasi sa baba yung dapat baguhin if naging dark mode ... white lang background tas parang transparent lang pag nililipat pero may color yung icon pag pinipindot".
+- Read as: revert the v1.3 navy direction. Bar background follows `surface` (white light / `#161B22` dark); active tab has no pill fill (`transparent`), only its icon+label take the `primary` color; inactive tabs are neutral gray. Confirmed via 3-way question 2026-10-07: (1) surface White/Dark — yes; (2) transparent + colored icon — yes; (3) `+` stays `primary` — keep.
+- Canonical home for bar color is this file per §1.14. v1.3 §7 is superseded for colors only (layout/height/in-flow/`+`/SPEC-32 untouched). No new spec number.
+
+### 8.2 Constraints (FINAL v1.4)
+
+- **CON-11 — Color-only.** Only bar-background + active-pill + inactive icon/label tokens in `components/FloatingTabBar.tsx` MAY change. Padding (v1.2), `CONTAINER_RADIUS`/`PILL_RADIUS`, `maxWidth: 560`, in-flow shell, `+` button (`containerColor primary` / `iconColor onPrimary` / `marginLeft: 12`), icons, labels, `pressTab`, `learning-detail` filter, SPEC-32 wiring MUST stay byte-identical. No hardcoded hex; theme pairs only. Cross-platform; `npm run lint` clean.
+
+### 8.3 Goal (FINAL v1.4)
+
+- **DEC-08:** Bar container `backgroundColor: theme.colors.primary → theme.colors.surface` (white light, dark surface dark). Active pill `focused ? theme.colors.primaryContainer : "transparent" → "transparent"` (no fill in either state). Inactive icon + label `theme.colors.onPrimary → theme.colors.onSurfaceVariant` (readable gray on white and on dark). Focused icon + label stay `theme.colors.primary`. `+` button untouched.
+
+Objective (jest, `Platform.OS` = android/ios/web):
+
+| ID | Check |
+|---|---|
+| ACC-16 | Bar shell carries `backgroundColor: theme.colors.surface` with zero `backgroundColor: theme.colors.primary`; pill background is `"transparent"` with zero `theme.colors.primaryContainer`; inactive icon/label use `theme.colors.onSurfaceVariant`; focused icon/label retain `theme.colors.primary`; `+` keeps `containerColor={theme.colors.primary}` + `iconColor={theme.colors.onPrimary}` (source-text guards) |
+| ACC-17 | `npm test` 0 failed; `npm run lint` clean; `npx tsc --noEmit` clean (user-run per §1.3) |
+
+Subjective (reviewer-observed, Expo Go + web export):
+
+- **ACC-S09:** Light mode phone + web: white bar, active tab icon+label navy with no pill fill, inactive tabs gray. Dark mode: dark-surface bar, active tab icon+label light-blue with no fill, inactive tabs gray. `+` unchanged (navy/blue circle). No overlay, no crowding.
+
+### 8.4 Deliverables (FINAL v1.4)
+
+- **D-23 (`components/FloatingTabBar.tsx`):** color swaps per DEC-08 only (1 container line + 1 pill line + 2 inactive lines). Nothing else in the file.
+- **D-24 (`utils/floatingTabBar.test.ts`, extend):** ACC-16 guards × android/ios/web. No new test file.
+- **D-25 (journal):** `docs/savepoint.md` + `AGENTS.md` §3 entry.
 
 ## Glossary
 

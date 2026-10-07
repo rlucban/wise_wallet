@@ -12,7 +12,7 @@ import { useUserProfile } from "./UserProfileContext";
 import { useSystemAlerts } from "./SystemAlertsContext";
 import { useRepositories } from "./RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
-import { generateUUID } from "../utils/uuid";
+import { generateUUID, isUUID, LEGACY_NON_UUID_MESSAGE } from "../utils/uuid";
 import * as FileSystem from 'expo-file-system/legacy';
 import { getPrefixedKey, setItem } from "../utils/storage";
 import { updateLastSyncedAt } from "../utils/syncQueue";
@@ -172,13 +172,25 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct — no local repo, no flag gate, no queue.
+                // SPEC-36 v1.3 DEC-W4(a): re-GET after POST — the server mints ids on create
+                // (client UUIDs never reconcile), so state must carry server rows. Web-safe:
+                // context categories, zero local writes, no loading flash.
+                // SPEC-46 v1.2 DEC-04: synthetic ids ("scheduled") die on the server
+                // UUID cast — send null instead (reads back as Others per DEC-02).
                 const uploaded = await uploadReceiptIfNeeded(newTransaction);
                 const { ok, status, error } = await authFetch('transactions', {
                     method: "POST",
-                    body: JSON.stringify({ ...uploaded, categoryId: uploaded.category?.id ?? null, userId: activeUserId }),
+                    body: JSON.stringify({ ...uploaded, categoryId: isUUID(uploaded.category?.id) ? uploaded.category?.id ?? null : null, userId: activeUserId }),
                 });
                 if (!ok) {
                     throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
+                }
+                if (API_URL && activeUserId) {
+                    const { ok: reloadOk, data: remoteData } = await authFetch<Transaction[]>(`transactions?userId=${activeUserId}`);
+                    if (reloadOk && Array.isArray(remoteData)) {
+                        setTransactions(remoteData.map((t) => ({ ...t, category: resolveTransactionCategory(t, categories) })));
+                        return;
+                    }
                 }
                 setTransactions((prev) => [...prev, uploaded]);
                 return;
@@ -190,10 +202,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 return;
             }
             // Online native: API first (SPEC-45 DEC-02). No local repo, no queue.
+            // SPEC-46 v1.2 DEC-04: synthetic ids ("scheduled") die on the server
+            // UUID cast — send null instead (reads back as Others per DEC-02).
             const uploaded = await uploadReceiptIfNeeded(newTransaction);
             const { ok, status, error } = await authFetch('transactions', {
                 method: "POST",
-                body: JSON.stringify({ ...uploaded, categoryId: uploaded.category?.id ?? null, userId: activeUserId }),
+                body: JSON.stringify({ ...uploaded, categoryId: isUUID(uploaded.category?.id) ? uploaded.category?.id ?? null : null, userId: activeUserId }),
             });
             if (!ok) {
                 throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
@@ -204,7 +218,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             console.error("Error adding transaction:", error);
             throw error;
         }
-    }, [txRepo, activeUserId, uploadReceiptIfNeeded, isLocal, refreshFromApi]);
+    }, [txRepo, activeUserId, uploadReceiptIfNeeded, isLocal, refreshFromApi, categories]);
 
     const updateTransaction = useCallback(async (id: string, updates: Partial<Transaction>) => {
         try {
@@ -219,11 +233,18 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
+            // SPEC-45 v1.1 DEC-45A: legacy non-UUID ids (e.g. "9") can never be
+            // addressed by UUID-cast API routes — refuse before any API call.
+            if (!isUUID(id)) {
+                throw new Error(LEGACY_NON_UUID_MESSAGE);
+            }
+
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
             const updateBody: Record<string, unknown> = { ...updates, userId: activeUserId };
-            if (updates.category !== undefined) updateBody.categoryId = updates.category ? updates.category.id : null;
-                if (updates.category !== undefined) updateBody.categoryId = updates.category ? updates.category.id : null;
+            // SPEC-46 v1.2 DEC-04: synthetic ids ("8"/"9") die on the server UUID
+            // cast — send null instead. (Collapses a pre-existing duplicated line.)
+            if (updates.category !== undefined) updateBody.categoryId = updates.category && isUUID(updates.category.id) ? updates.category.id : null;
                 const zUpdateDate = toZIso(updateBody.date);
                 if (zUpdateDate !== null) updateBody.date = zUpdateDate;
                 const { ok, status, error } = await authFetch(`transactions/${id}`, {
@@ -266,20 +287,26 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
+            // SPEC-45 v1.1 DEC-45A: legacy non-UUID ids (e.g. "9") can never be
+            // addressed by UUID-cast API routes — refuse before any API call.
+            if (!isUUID(id)) {
+                throw new Error(LEGACY_NON_UUID_MESSAGE);
+            }
+
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
-                const { ok } = await authFetch(`transactions/${id}`, { method: "DELETE" });
+                const { ok, status, error } = await authFetch(`transactions/${id}`, { method: "DELETE" });
                 if (!ok) {
-                    throw new Error("Failed to delete transaction. Please check your connection.");
+                    throw new Error(status !== 0 && error ? error : "Failed to delete transaction. Please check your connection.");
                 }
                 setTransactions((prev) => prev.filter(t => t.id !== id));
                 return;
             }
 
             // Online native: API first (SPEC-45 DEC-02).
-            const { ok } = await authFetch(`transactions/${id}`, { method: "DELETE" });
+            const { ok, status, error } = await authFetch(`transactions/${id}`, { method: "DELETE" });
             if (!ok) {
-                throw new Error("Failed to delete transaction. Please check your connection.");
+                throw new Error(status !== 0 && error ? error : "Failed to delete transaction. Please check your connection.");
             }
             await refreshFromApi();
             return;
