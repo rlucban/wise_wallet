@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Pressable, View } from "react-native";
-import { Button, Modal, Portal, Text, useTheme } from "react-native-paper";
+import { Modal as NativeModal, Pressable, StyleSheet, View } from "react-native";
+import { Button, Text, useTheme } from "react-native-paper";
 import { evaluateCalculatorExpression } from "../utils/calculator";
 
 const ROWS: { label: string; value: string; variant?: "number" | "operator" | "action" }[][] = [
@@ -68,31 +68,29 @@ export function CalculatorDialog({ visible, onDismiss }: { visible: boolean; onD
   };
 
   return (
-    <Portal>
-      <Modal
+    <NativeModal
         visible={visible}
-        onDismiss={onDismiss}
-        contentContainerStyle={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "rgba(0, 0, 0, 0.28)",
-        }}
+        transparent
+        animationType="fade"
+        presentationStyle="overFullScreen"
+        onRequestClose={onDismiss}
       >
-        <View
-          style={{
-            width: "88%",
-            maxWidth: 340,
-            borderRadius: 28,
-            backgroundColor: theme.colors.background,
-            padding: 18,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.18,
-            shadowRadius: 16,
-            elevation: 8,
-          }}
-        >
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.28)" }}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} />
+          <View
+            style={{
+              width: "88%",
+              maxWidth: 340,
+              borderRadius: 28,
+              backgroundColor: theme.colors.background,
+              padding: 18,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.18,
+              shadowRadius: 16,
+              elevation: 8,
+            }}
+          >
           <Pressable onPress={onDismiss} style={{ alignSelf: "flex-end", marginBottom: 4 }}>
             <Text variant="labelLarge" style={{ color: theme.colors.outline }}>
               Close
@@ -150,8 +148,8 @@ export function CalculatorDialog({ visible, onDismiss }: { visible: boolean; onD
               })}
             </View>
           ))}
+          </View>
         </View>
-      </Modal>
-    </Portal>
+      </NativeModal>
   );
 }

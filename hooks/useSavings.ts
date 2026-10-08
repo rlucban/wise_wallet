@@ -37,6 +37,9 @@ function titleDeduplicate(items: SavingsItem[]): SavingsItem[] {
   });
 }
 
+// --- D-01 SPEC-60: module-level in-memory cache (survives navigation, cleared on user change) ---
+let _savingsCache: { userId: string; items: SavingsItem[] } | null = null;
+
 export function useSavings() {
     const [items, setItems] = useState<SavingsItem[]>([]);
     const [loading, setLoading] = useState(false);
@@ -46,7 +49,16 @@ export function useSavings() {
     const repos = useRepositories();
     const { showToast } = useToast();
 
+    // Seed state from module cache immediately (avoids blank flash on re-mount)
+    useEffect(() => {
+        if (activeUserId && _savingsCache?.userId === activeUserId && items.length === 0) {
+            setItems(_savingsCache.items);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeUserId]);
+
     const fetchItems = useCallback(async () => {
+
         setLoading(true);
         try {
             if (Platform.OS === "web") {
@@ -55,6 +67,7 @@ export function useSavings() {
                     const { ok, data: remoteData } = await authFetch<SavingsItem[]>(`savingsItems?userId=${activeUserId}`);
                     if (ok && Array.isArray(remoteData)) {
                         setItems(remoteData);
+                        _savingsCache = { userId: activeUserId, items: remoteData }; // D-01 SPEC-60
                     }
                 }
                 return;
@@ -63,6 +76,7 @@ export function useSavings() {
             const migrated = localData.map(migrateSavingsItem);
             const deduped = titleDeduplicate(migrated);
             setItems(deduped);
+            _savingsCache = { userId: activeUserId!, items: deduped }; // D-01 SPEC-60 (local fast path)
 
             if (!isLocal && API_URL && activeUserId) {
                 const { ok, data: remoteData } = await authFetch<SavingsItem[]>(`savingsItems?userId=${activeUserId}`);
@@ -92,6 +106,7 @@ export function useSavings() {
                         const merged = Array.from(mergedMap.values());
                         await repos.savingsItems.upsertBulk(merged);
                         setItems(merged);
+                        _savingsCache = { userId: activeUserId, items: merged }; // D-01 SPEC-60 (merged path)
 
                         if (overwrittenCount > 0) {
                             showToast(`${overwrittenCount} record(s) updated from another device.`);
@@ -108,7 +123,10 @@ export function useSavings() {
     }, [activeUserId, repos, isLocal, showToast]);
 
     useEffect(() => {
-        if (!activeUserId) return;
+        if (!activeUserId) {
+            _savingsCache = null; // D-01 SPEC-60: clear cache on logout/user change
+            return;
+        }
         fetchItems();
     }, [activeUserId, fetchItems]);
 

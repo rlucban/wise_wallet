@@ -31,6 +31,9 @@ function migrateDue(item: Due): Due {
   return item;
 }
 
+// --- D-02 SPEC-60: module-level in-memory cache (survives navigation, cleared on user change) ---
+let _duesCache: { userId: string; dues: Due[] } | null = null;
+
 export function useDues() {
   const [dues, setDues] = useState<Due[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,6 +41,14 @@ export function useDues() {
   const isLocal = useIsLocalAccount();
   const repos = useRepositories();
   const { showToast } = useToast();
+
+  // Seed state from module cache immediately (avoids blank flash on re-mount)
+  useEffect(() => {
+    if (activeUserId && _duesCache?.userId === activeUserId && dues.length === 0) {
+      setDues(_duesCache.dues);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUserId]);
 
   const fetchDues = useCallback(async (opts: { skipCache?: boolean } = {}) => {
     setLoading(true);
@@ -48,6 +59,7 @@ export function useDues() {
           const { ok, data: remoteData } = await authFetch(`dues`, {}, opts);
           if (ok && Array.isArray(remoteData)) {
             setDues(remoteData);
+            _duesCache = { userId: activeUserId, dues: remoteData as Due[] }; // D-02 SPEC-60
           }
         }
         return;
@@ -55,6 +67,7 @@ export function useDues() {
       const localData = await repos.dues.getAll();
       const migrated = localData.map(migrateDue);
       setDues(migrated);
+      _duesCache = { userId: activeUserId!, dues: migrated }; // D-02 SPEC-60 (local fast path)
 
       if (!isLocal && API_URL && activeUserId) {
         const { ok, data: remoteData } = await authFetch(`dues`);
@@ -71,7 +84,9 @@ export function useDues() {
               }
             }
             const merged = await repos.dues.getAll();
-            setDues(merged.map(migrateDue));
+            const mergedMigrated = merged.map(migrateDue);
+            setDues(mergedMigrated);
+            _duesCache = { userId: activeUserId, dues: mergedMigrated }; // D-02 SPEC-60 (merged path)
             if (overwrittenCount > 0) {
               showToast(`${overwrittenCount} record(s) updated from another device.`);
             }
@@ -87,7 +102,10 @@ export function useDues() {
   }, [activeUserId, repos, isLocal, showToast]);
 
   useEffect(() => {
-    if (!activeUserId) return;
+    if (!activeUserId) {
+      _duesCache = null; // D-02 SPEC-60: clear cache on logout/user change
+      return;
+    }
     fetchDues();
   }, [activeUserId, fetchDues]);
 

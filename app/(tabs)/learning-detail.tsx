@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { View, ScrollView, StyleSheet } from "react-native";
 import { Text, Appbar, Card, IconButton, useTheme } from "react-native-paper";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import * as Speech from "expo-speech";
 import { prefetchFemaleVoice, speakWithFemaleVoice } from "../../utils/speechVoice";
 
@@ -126,8 +126,16 @@ export default function LearningDetail() {
 
     useEffect(() => {
         prefetchFemaleVoice();
-        return () => { Speech.stop(); };
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            return () => {
+                Speech.stop();
+                setIsPlaying(false);
+            };
+        }, [])
+    );
 
     const handlePlayAudio = async () => {
         if (!topic) return;

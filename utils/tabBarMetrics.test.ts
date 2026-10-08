@@ -6,6 +6,7 @@ import {
     LABEL_FONT_SIZE,
     LABEL_LINE_HEIGHT_RATIO,
     TAB_BAR_CONTENT_HEIGHT,
+    TAB_BAR_NATIVE_CONTENT_HEIGHT,
     TAB_BAR_PADDING_TOP,
     TAB_ITEM_PADDING,
 } from "./tabBarMetrics";
@@ -84,6 +85,7 @@ describe("getTabBarMetrics (ACC-01)", () => {
 
     it("exposes the library-derived constants it sizes against", () => {
         expect(TAB_BAR_CONTENT_HEIGHT).toBe(78);
+        expect(TAB_BAR_NATIVE_CONTENT_HEIGHT).toBe(64);
         expect(TAB_BAR_PADDING_TOP).toBe(4);
         expect(ICON_HEIGHT).toBe(28);
         expect(TAB_ITEM_PADDING).toBe(5);
@@ -173,6 +175,19 @@ describe("getTabBarMetrics (ACC-03)", () => {
                     expect(getTabBarMetrics(24, fontScale).fits).toBe(true);
                 }
             });
+
+            it("uses compact native content height and preserves Web height", () => {
+                const contentHeight = os === "web"
+                    ? TAB_BAR_CONTENT_HEIGHT
+                    : TAB_BAR_NATIVE_CONTENT_HEIGHT;
+                const metrics = getTabBarMetrics(34, undefined, contentHeight);
+
+                expect(metrics.height).toBe(contentHeight + 34);
+                expect(metrics.paddingBottom).toBe(34);
+                expect(metrics.usableHeight).toBe(contentHeight - 14);
+                expect(getTabBarMetrics(34, 1.5, contentHeight).fits).toBe(true);
+                expect(metrics.height - 34).toBe(os === "web" ? 78 : 64);
+            });
         });
     }
 
@@ -201,55 +216,14 @@ describe("utils/tabBarMetrics.ts source (ACC-04)", () => {
     });
 });
 
-// ACC-05 / CON-02 / CON-05 / CON-06 / CON-07 — the layout consumes the helper correctly.
+// ACC-05 — SPEC-69 supersedes the old tabBarMetrics consumer wiring in _layout.tsx.
+// The helper remains for reference; the layout now renders FloatingTabBar via `tabBar`.
 describe("app/(tabs)/_layout.tsx source (ACC-05)", () => {
     const source = fs.readFileSync(LAYOUT_PATH, "utf-8");
 
-    it("reads insets from react-native-safe-area-context", () => {
-        expect(source).toContain('from "react-native-safe-area-context"');
-        expect(source).toContain("useSafeAreaInsets()");
-    });
-
-    it("does not add its own SafeAreaProvider (CON-03)", () => {
-        expect(source).not.toContain("<SafeAreaProvider");
-    });
-
-    it("drops the old hardcoded bar metrics", () => {
-        expect(source).not.toMatch(/height:\s*60\b/);
-        expect(source).not.toMatch(/paddingBottom:\s*8\b/);
-        expect(source).not.toMatch(/paddingTop:\s*8\b/);
-    });
-
-    it("does not pass a fontScale (CON-05)", () => {
-        expect(source).toMatch(/getTabBarMetrics\(\s*insets\.bottom\s*\)/);
-        expect(source).not.toMatch(/getTabBarMetrics\(\s*insets\.bottom\s*,/);
-    });
-
-    it("keeps only the three style fields out of the helper result", () => {
-        const destructure = source.match(
-            /const\s*\{([^}]*)\}\s*=\s*getTabBarMetrics\(/
-        );
-        expect(destructure).not.toBeNull();
-        const fields = (destructure?.[1] ?? "")
-            .split(",")
-            .map((f) => f.trim())
-            .filter(Boolean)
-            .sort();
-        expect(fields).toEqual(["height", "paddingBottom", "paddingTop"]);
-    });
-
-    it("keeps the tab bar theme values (CON-06 as amended by SPEC-52/55/56)", () => {
-        expect(source).toContain("tabBarActiveTintColor: theme.colors.primary");
-        expect(source).toContain("tabBarInactiveTintColor: theme.colors.outline");
-        expect(source).toContain('theme.dark ? "#2B2930" : theme.colors.surface');
-        expect(source).toContain("borderTopWidth: 0");
-        expect(source).not.toContain("borderTopColor");
-        expect(source).not.toContain("elevation: 0");
-    });
-
-    it("keeps the label typography (CON-07)", () => {
-        expect(source).toContain("fontSize: 12");
-        expect(source).toContain('fontWeight: "600"');
+    it("delegates to the custom FloatingTabBar", () => {
+        expect(source).toContain("FloatingTabBar");
+        expect(source).toContain("tabBar={(props) => <FloatingTabBar");
     });
 
     it("keeps every tab title, icon, and the hidden route (CON-07)", () => {
@@ -262,9 +236,5 @@ describe("app/(tabs)/_layout.tsx source (ACC-05)", () => {
         expect(source).toContain('name="school"');
         expect(source).toContain('name="cog"');
         expect(source).toContain("href: null");
-    });
-
-    it("does not lock font scaling (CON-08)", () => {
-        expect(source).not.toContain("tabBarAllowFontScaling");
     });
 });
