@@ -762,3 +762,25 @@ describe("empty period charts (CON-18)", () => {
         expect(html).not.toContain("undefined");
     });
 });
+
+// Option A — every Reports section uses the same filtered transactions.
+describe.each(["android", "ios", "web"])("reports selected-range scope (%s)", () => {
+    const REPORTS_SCREEN_PATH = path.resolve(__dirname, "../app/(tabs)/reports.tsx");
+
+    function readReportsScreen(): string {
+        return fs.readFileSync(REPORTS_SCREEN_PATH, "utf8");
+    }
+
+    it("uses the same filtered transactions for exports", () => {
+        const source = readReportsScreen();
+        expect(source).toContain("const filteredTransactions");
+        expect(source).toContain("exportToCSV(filteredTransactions)");
+        expect(source).toContain("exportToPDF(filteredTransactions, formatAmount, currentRange.label)");
+    });
+
+    it("renders all six selected-range captions", () => {
+        const source = readReportsScreen();
+        expect(source).toContain("const rangeCaption = `For selected period: ${currentRange.label}`;");
+        expect(source.match(/\{rangeCaption\}/g)).toHaveLength(6);
+    });
+});

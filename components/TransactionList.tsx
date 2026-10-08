@@ -39,6 +39,8 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
+        borderWidth: 1,
+        borderColor: theme.colors.outlineVariant,
         flexDirection: "row",
         alignItems: "center",
         ...Platform.select({
@@ -56,7 +58,7 @@ export function TransactionList({ transactions }: { transactions: Transaction[] 
       <View style={{
         width: 48,
         height: 48,
-        borderRadius: 12,
+        borderRadius: 16,
         backgroundColor: theme.colors.surfaceVariant,
         justifyContent: "center",
         alignItems: "center",

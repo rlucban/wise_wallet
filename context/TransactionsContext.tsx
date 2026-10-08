@@ -280,9 +280,9 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
 
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
-                const { ok } = await authFetch(`transactions/${id}`, { method: "DELETE" });
+                const { ok, status, error } = await authFetch(`transactions/${id}`, { method: "DELETE" });
                 if (!ok) {
-                    throw new Error("Failed to delete transaction. Please check your connection.");
+                    throw new Error(status !== 0 && error ? error : "Failed to delete transaction. Please check your connection.");
                 }
                 await pruneDueLinks(id, activeUserId);
                 setTransactions((prev) => prev.filter(t => t.id !== id));
@@ -290,9 +290,9 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             }
 
             // Online native: API first (SPEC-45 DEC-02).
-            const { ok } = await authFetch(`transactions/${id}`, { method: "DELETE" });
+            const { ok, status, error } = await authFetch(`transactions/${id}`, { method: "DELETE" });
             if (!ok) {
-                throw new Error("Failed to delete transaction. Please check your connection.");
+                throw new Error(status !== 0 && error ? error : "Failed to delete transaction. Please check your connection.");
             }
             await refreshFromApi();
             await pruneDueLinks(id, activeUserId);

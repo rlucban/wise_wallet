@@ -150,6 +150,7 @@ export default function ReportsScreen() {
   }, [combinedSegments]);
 
   const totalAll = expense + income;
+  const rangeCaption = `For selected period: ${currentRange.label}`;
 
   const trend = useMemo(() => {
     const base = offsetDate;
@@ -228,7 +229,7 @@ export default function ReportsScreen() {
         >
           <Menu.Item onPress={() => { setPeriod("weekly"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Weekly" leadingIcon="calendar-week" />
           <Menu.Item onPress={() => { setPeriod("monthly"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Monthly" leadingIcon="calendar-month" />
-          <Menu.Item onPress={() => { setPeriod("annually"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Yearly" leadingIcon="calendar-year" />
+          <Menu.Item onPress={() => { setPeriod("annually"); setOffsetDate(new Date()); setMenuVisible(false); }} title="Yearly" leadingIcon="calendar-range" />
         </Menu>
       </Appbar.Header>
 
@@ -255,7 +256,8 @@ export default function ReportsScreen() {
         ) : (
         <>
         {/* 3-Column Summary Cards */}
-        <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingTop: 16, gap: 10 }}>
+        <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, paddingHorizontal: 16, paddingTop: 16, marginBottom: 8 }}>{rangeCaption}</Text>
+        <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingTop: 0, gap: 10 }}>
           {/* Expense Card */}
           <View style={{ flex: 1, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
             <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: EXPENSE_COLOR_DARK, justifyContent: "center", alignItems: "center", marginBottom: 10 }}>
@@ -288,7 +290,8 @@ export default function ReportsScreen() {
 
         {/* Monthly Expense by Month (Bar Graph) */}
         <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <Text variant="titleMedium" style={{ marginBottom: 16, fontWeight: "700", color: theme.colors.onSurface }}>Monthly Expense by Month</Text>
+          <Text variant="titleMedium" style={{ marginBottom: 4, fontWeight: "700", color: theme.colors.onSurface }}>Monthly Expense by Month</Text>
+          <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>{rangeCaption}</Text>
           <MonthlyTrendChart
             labels={trend.labels}
             income={trend.income}
@@ -300,9 +303,10 @@ export default function ReportsScreen() {
 
         {/* Income vs Expenses (Pie graph) */}
         <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, alignItems: "center", ...CARD_SHADOW }}>
-          <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurface, marginBottom: 16, alignSelf: "flex-start" }}>
+          <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurface, marginBottom: 4, alignSelf: "flex-start" }}>
             Income vs Expenses
           </Text>
+          <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12, alignSelf: "flex-start" }}>{rangeCaption}</Text>
 
           <DonutChart
             data={donutData}
@@ -326,6 +330,7 @@ export default function ReportsScreen() {
               </View>
               <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurface }}>Expense Categories</Text>
             </View>
+            <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>{rangeCaption}</Text>
 
             {expenseBreakdown.map((item, i) => {
               const pct = expense > 0 ? ((item.value / expense) * 100) : 0;
@@ -359,6 +364,7 @@ export default function ReportsScreen() {
               </View>
               <Text variant="titleMedium" style={{ fontWeight: "700", color: theme.colors.onSurface }}>Income Sources</Text>
             </View>
+            <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>{rangeCaption}</Text>
 
             {incomeBreakdown.map((item, i) => {
               const pct = income > 0 ? ((item.value / income) * 100) : 0;
@@ -385,7 +391,8 @@ export default function ReportsScreen() {
 
         {/* Export */}
         <View style={{ marginHorizontal: 16, marginTop: 16, backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <Text variant="titleMedium" style={{ marginBottom: 12, fontWeight: "700", color: theme.colors.onSurface }}>Export Data</Text>
+          <Text variant="titleMedium" style={{ marginBottom: 4, fontWeight: "700", color: theme.colors.onSurface }}>Export Data</Text>
+          <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>{rangeCaption}</Text>
           <View style={{ flexDirection: "row", gap: 12 }}>
             <TouchableOpacity
               style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: theme.colors.surfaceVariant, alignItems: "center" }}

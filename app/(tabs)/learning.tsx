@@ -9,7 +9,7 @@ import { useThemeData } from "../../context/ThemeContext";
 import { LEARNING_RESOURCES } from "../../utils/learningData";
 import { prefetchFemaleVoice, speakWithFemaleVoice } from "../../utils/speechVoice";
 
-const UNIFIED_FILTERS = ["All", "For Students", "For Workers", "Budgeting", "Savings", "Debt"] as const;
+const UNIFIED_FILTERS = ["All", "For Students", "For Workers", "Budgeting", "Savings", "Debt", "App Guide"] as const;
 type UnifiedFilter = (typeof UNIFIED_FILTERS)[number];
 
 export default function LearningScreen() {

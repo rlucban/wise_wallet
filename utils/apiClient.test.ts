@@ -108,6 +108,19 @@ describe("SPEC-43 / T-05 error message fallback", () => {
         const res = await authFetch("/transactions/1");
         expect(res.error).toContain("Non-JSON response");
     });
+
+    it("treats an empty-body HTTP 204 DELETE as success", async () => {
+        mockFetch.mockResolvedValue({
+            ok: true,
+            status: 204,
+            json: async (): Promise<any> => { throw new Error("Unexpected end of JSON input"); },
+            text: async (): Promise<string> => "",
+        });
+        const res = await authFetch("/transactions/43ba1a0d-4555-439e-b9e0-f81a4fb061c8", { method: "DELETE" });
+        expect(res.ok).toBe(true);
+        expect(res.status).toBe(204);
+        expect(res.error).toBeUndefined();
+    });
 });
 
 describe("SPEC-44 / 401 warning dedupe", () => {

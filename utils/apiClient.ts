@@ -170,15 +170,24 @@ export async function authFetch<T = unknown>(
     }
 
     let body: unknown;
+    let rawText = "";
     try {
-      body = await response.json();
+      rawText = await response.text();
     } catch {
-      const text = await response.text().catch(() => '');
-      return {
-        ok: false,
-        status: response.status,
-        error: text ? `Non-JSON response: ${text.slice(0, 200)}` : `HTTP ${response.status} (empty body)`,
-      };
+      rawText = "";
+    }
+    if (!rawText) {
+      body = undefined;
+    } else {
+      try {
+        body = JSON.parse(rawText) as unknown;
+      } catch {
+        return {
+          ok: false,
+          status: response.status,
+          error: `Non-JSON response: ${rawText.slice(0, 200)}`,
+        };
+      }
     }
 
     // json() is typed `unknown`; narrow to the fields actually read.

@@ -1,9 +1,9 @@
 import { View, TouchableOpacity, Platform } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { FAB, Text, Card, IconButton } from "react-native-paper";
+import { Text, Card, IconButton } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useFocusEffect } from "expo-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { startOfWeek, endOfWeek, isWithinInterval, format } from "date-fns";
 import { useThemeData } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
@@ -20,6 +20,7 @@ import { CloudLinkBanner } from "../../components/CloudLinkBanner";
 import { SmartInsights } from "../../components/SmartInsights";
 import { Transaction } from "../../types";
 import EmptyState from "../../components/EmptyState";
+import { CalculatorDialog } from "../../components/CalculatorDialog";
 
 const renderCategoryIcon = (category?: string, title?: string, type?: string): string => {
   const text = `${category || ''} ${title || ''}`.toLowerCase();
@@ -64,6 +65,7 @@ export default function Dashboard() {
   const { activeUserId } = useAuth();
 
   const loading = txLoading;
+  const [calculatorVisible, setCalculatorVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -119,6 +121,8 @@ export default function Dashboard() {
           padding: 16,
           marginBottom: 12,
           marginHorizontal: 16,
+          borderWidth: 1,
+          borderColor: theme.colors.outlineVariant,
           flexDirection: "row",
           alignItems: "center",
           ...Platform.select({
@@ -136,7 +140,7 @@ export default function Dashboard() {
         <View style={{
           width: 48,
           height: 48,
-          borderRadius: 12,
+          borderRadius: 16,
           backgroundColor: theme.colors.surfaceVariant,
           justifyContent: "center",
           alignItems: "center",
@@ -269,6 +273,11 @@ export default function Dashboard() {
             </Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <IconButton
+              icon="calculator-variant-outline"
+              size={24}
+              onPress={() => setCalculatorVisible(true)}
+            />
             <View style={{ position: "relative" }}>
               <IconButton
                 icon="bell-outline"
@@ -309,14 +318,8 @@ export default function Dashboard() {
         contentContainerStyle={{ paddingBottom: 160 }}
         showsVerticalScrollIndicator={false}
       />
-
-      <FAB
-        icon="plus"
-        label="Transaction"
-        style={{ position: "absolute", margin: 20, right: 0, bottom: 160, borderRadius: 20, backgroundColor: theme.colors.primary }}
-        color="#fff"
-        onPress={() => router.push("/add-transaction")}
-      />
+      <CalculatorDialog visible={calculatorVisible} onDismiss={() => setCalculatorVisible(false)} />
     </View>
+
   );
 }

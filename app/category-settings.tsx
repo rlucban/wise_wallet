@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { safeGoBack } from "../utils/backNavigation";
 import { useCategoriesData, useCategoriesActions } from "../context/CategoriesContext";
 import { TransactionType, Category } from "../types";
+import { sortCategories, CategorySortMode } from "../utils/categorySort";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function CategorySettings() {
@@ -13,6 +14,7 @@ export default function CategorySettings() {
   const { categories } = useCategoriesData();
   const { addCategory, deleteCategory } = useCategoriesActions();
   const [type, setType] = useState<TransactionType>("expense");
+  const [sortBy, setSortBy] = useState<CategorySortMode>("name");
   const [modalVisible, setModalVisible] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
@@ -23,7 +25,11 @@ export default function CategorySettings() {
     setDeleteTarget(null);
   };
 
-  const filteredCategories = categories.filter((c) => c.type === type);
+  const normalizedCategories = categories.map((c) => ({
+    ...c,
+    type: String(c.type).toLowerCase().trim() as TransactionType,
+  }));
+  const filteredCategories = sortCategories(normalizedCategories.filter((c) => c.type === type), sortBy);
 
   const handleAdd = async () => {
     if (newCatName.trim()) {
@@ -54,6 +60,16 @@ export default function CategorySettings() {
             { value: "income", label: "Income" },
           ]}
         />
+        <View style={{ marginTop: 12 }}>
+          <SegmentedButtons
+            value={sortBy}
+            onValueChange={(v) => setSortBy(v as CategorySortMode)}
+            buttons={[
+              { value: "name", label: "Name" },
+              { value: "type", label: "Type" },
+            ]}
+          />
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>
@@ -128,7 +144,7 @@ export default function CategorySettings() {
 
       <FAB
         icon="plus"
-        style={{ position: "absolute", margin: 16, right: 0, bottom: 0, backgroundColor: theme.colors.primary }}
+        style={{ position: "absolute", margin: 24, right: 0, bottom: 24, borderRadius: 999, backgroundColor: theme.colors.primary }}
         color={theme.colors.onPrimary}
         onPress={() => setModalVisible(true)}
       />

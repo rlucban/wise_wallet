@@ -10,14 +10,15 @@ function runSuite(os: "android" | "ios" | "web"): void {
     describe(`SPEC-52 floating tab bar on ${os}`, () => {
         it("ACC-01: pill geometry, overlay, SPEC-32 values intact", () => {
             const layout = readRepo("app/(tabs)/_layout.tsx");
-            expect(layout).toContain("marginHorizontal: 16");
+            expect(layout).toContain("marginLeft: 16");
+            expect(layout).toContain("marginRight: 72");
             expect(layout).toContain("marginBottom: 32");
             expect(layout).toContain("borderTopWidth: 0");
             expect(layout).not.toContain("borderTopColor");
             // SPEC-56: overlay (reverses the old in-flow rule).
             expect(layout).toContain('position: "absolute"');
             const positions = layout.match(/position: "absolute"/g) ?? [];
-            expect(positions.length).toBe(1);
+            expect(positions.length).toBe(2);
             // SPEC-32 metric wiring untouched.
             expect(layout).toContain("useSafeAreaInsets()");
             expect(layout).toContain("getTabBarMetrics(insets.bottom)");
@@ -79,7 +80,7 @@ function runSuite(os: "android" | "ios" | "web"): void {
 
         it("SPEC-56: overlay clearance on all tab screens + FAB", () => {
             expect(readRepo("app/(tabs)/index.tsx")).toContain("paddingBottom: 160");
-            expect(readRepo("app/(tabs)/index.tsx")).toContain("bottom: 160");
+            expect(readRepo("app/(tabs)/_layout.tsx")).toContain("bottom: 32 + Math.max(0, (height - 56) / 2)");
             expect(readRepo("app/(tabs)/index.tsx")).not.toContain("bottom: 20");
             expect(readRepo("app/(tabs)/reports.tsx")).toContain("paddingBottom: 160");
             expect(readRepo("app/(tabs)/learning.tsx")).toContain("paddingBottom: 160");
