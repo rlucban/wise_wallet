@@ -158,14 +158,14 @@ export default function NotificationsScreen() {
               style={{
                 width: 48,
                 height: 48,
-                borderRadius: 12,
-                backgroundColor: "#DC2626",
+                borderRadius: 16,
+                backgroundColor: theme.colors.errorContainer,
                 justifyContent: "center",
                 alignItems: "center",
                 marginRight: 16,
               }}
             >
-              <MaterialCommunityIcons name="alert-circle" size={24} color="#FFFFFF" />
+              <MaterialCommunityIcons name="alert-circle" size={24} color={theme.colors.error} />
             </View>
 
             <View style={{ flex: 1 }}>
@@ -227,15 +227,15 @@ export default function NotificationsScreen() {
           onPress={() => router.push("/dues")}
           activeOpacity={0.7}
           style={{
-            backgroundColor: isUrgent ? "#FEF2F2" : theme.colors.surface,
-            borderRadius: 16,
+            backgroundColor: isUrgent ? theme.colors.errorContainer : theme.colors.surface,
+            borderRadius: 18,
             padding: 16,
             marginBottom: 12,
             marginHorizontal: 16,
             flexDirection: "row",
-            alignItems: "flex-start",
-            borderLeftWidth: isUrgent ? 4 : 0,
-            borderLeftColor: isUrgent ? "#EF4444" : "transparent",
+            alignItems: "center",
+            borderWidth: 1,
+            borderColor: isUrgent ? theme.colors.error : theme.colors.outlineVariant,
             ...Platform.select({
               web: { boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.05)" },
               default: {
@@ -252,8 +252,8 @@ export default function NotificationsScreen() {
             style={{
               width: 48,
               height: 48,
-              borderRadius: 12,
-              backgroundColor: isUrgent ? "#FEE2E2" : badge.color,
+              borderRadius: 16,
+              backgroundColor: isUrgent ? theme.colors.error : badge.color,
               justifyContent: "center",
               alignItems: "center",
               marginRight: 16,
@@ -262,29 +262,29 @@ export default function NotificationsScreen() {
             <MaterialCommunityIcons
               name={isUrgent ? "alert-circle" : badge.icon}
               size={24}
-              color={isUrgent ? "#DC2626" : "#FFFFFF"}
+              color="#FFFFFF"
             />
           </View>
 
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-              <Text
-                variant="bodyMedium"
-                style={{
-                  fontWeight: "700",
-                  color: isUrgent ? "#DC2626" : theme.colors.onSurface,
-                  fontSize: 14,
-                }}
-                numberOfLines={2}
-              >
+                <Text
+                  variant="bodyMedium"
+                  style={{
+                    fontWeight: "700",
+                    color: isUrgent ? theme.colors.error : theme.colors.onSurface,
+                    fontSize: 14,
+                  }}
+                  numberOfLines={2}
+                >
                 {title}
               </Text>
               {isUrgent && (
                 <View style={{
-                  backgroundColor: isOverdue ? "#DC2626" : "#F97316",
-                  borderRadius: 6,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
+                  backgroundColor: isOverdue ? theme.colors.error : theme.colors.tertiary,
+                  borderRadius: 999,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
                 }}>
                   <Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "700" }}>
                     {isOverdue ? "OVERDUE" : "DUE TODAY"}
@@ -303,22 +303,22 @@ export default function NotificationsScreen() {
               {formattedDate}
             </Text>
             {isUrgent && (
-              <TouchableOpacity
-                onPress={() => router.push("/dues")}
-                style={{
-                  marginTop: 10,
-                  backgroundColor: "#DC2626",
-                  borderRadius: 8,
-                  paddingVertical: 8,
-                  paddingHorizontal: 16,
-                  alignSelf: "flex-start",
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "700" }}>
-                  Pay Now
-                </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push("/dues")}
+                  style={{
+                    marginTop: 10,
+                    backgroundColor: theme.colors.primary,
+                    borderRadius: 999,
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    alignSelf: "flex-start",
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: theme.colors.onPrimary, fontSize: 12, fontWeight: "700" }}>
+                    Pay Now
+                  </Text>
+                </TouchableOpacity>
             )}
           </View>
         </TouchableOpacity>
@@ -329,7 +329,14 @@ export default function NotificationsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <Appbar.Header elevated style={{ backgroundColor: theme.colors.surface }}>
+      <Appbar.Header
+        style={{
+          backgroundColor: theme.colors.background,
+          elevation: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.colors.outlineVariant,
+        }}
+      >
         <Appbar.BackAction onPress={() => safeGoBack(router)} />
         <Appbar.Content
           title="Notifications"
@@ -369,22 +376,33 @@ export default function NotificationsScreen() {
         </Menu>
       </Appbar.Header>
 
-      <FlashList
-        data={notificationItems}
-        renderItem={renderItem}
-        keyExtractor={(item: NotificationItem) =>
-          item.type === "system_alert" ? `alert_${item.data.id}` : `due_${item.data.id}`
-        }
-        ListEmptyComponent={
-          <EmptyState
-            icon="bell-outline"
-            title="No notifications"
-            subtitle="You're all caught up on alerts and dues!"
-          />
-        }
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
-      />
+      {showSkeletons ? (
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          <ListRowsSkeleton rows={5} />
+        </View>
+      ) : (
+        <FlashList
+          data={notificationItems}
+          renderItem={renderItem}
+          keyExtractor={(item: NotificationItem) =>
+            item.type === "system_alert" ? `alert_${item.data.id}` : `due_${item.data.id}`
+          }
+          refreshing={isRefreshing}
+          onRefresh={() => {
+            void refetchDues();
+            void refetchAlerts();
+          }}
+          ListEmptyComponent={
+            <EmptyState
+              icon="bell-outline"
+              title="No notifications"
+              subtitle="You're all caught up on alerts and dues!"
+            />
+          }
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 }

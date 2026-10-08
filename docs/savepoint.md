@@ -992,3 +992,21 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - 2026-10-07 follow-up all-order: `utils/calculator.ts` + calculator tests and `components/CalculatorDialog.tsx` added, wired from dashboard header calculator icon; transaction rows got themed border/icon boxes; scheduled edit/delete verified already present; Reports `calendar-year` remains fixed; dark dashboard `surfaceVariant` aligned. `specs/63...` amended as v1.1. No commit.
 - Verified user-run pending: lint/jest/tsc + manual matrix. Uncommitted per standing instruction; no git commit performed.
 
+---
+
+## 2026-10-08 — Transaction-delete 204 false negative fixed
+
+- HAR showed the web `DELETE /transactions/43ba1a0d-4555-439e-b9e0-f81a4fb061c8` succeeded with HTTP 204, but `authFetch` called `response.json()` and then treated the empty body as a failure.
+- `utils/apiClient.ts` now reads response text once, accepts an empty body, and preserves real non-JSON server errors.
+- `context/TransactionsContext.tsx` web/native delete paths now propagate `status`/`error` instead of always showing the generic connection message.
+- `utils/apiClient.test.ts` adds an empty-body HTTP 204 DELETE regression test.
+- Verified: lint clean, focused API test 26/26, full Jest 32/712, `tsc` clean. No commit.
+
+---
+
+## 2026-10-08 — Notifications initial-load skeleton + iOS-style rows
+
+- `app/notifications.tsx` shows `ListRowsSkeleton` while dues/alerts load and the list is empty; pull-to-refresh wired to both feeds.
+- Notification rows use theme-backed iOS-style grouped surfaces, pill badges, and primary CTA styling; header flattened with outline divider.
+- Verified: lint clean, full Jest 32/712, `tsc` clean. No commit.
+
