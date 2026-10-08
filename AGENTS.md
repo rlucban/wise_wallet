@@ -489,6 +489,7 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-08 — Transaction-delete 204 false negative fixed.** Web HAR showed HTTP 204 success; `authFetch` now treats empty-body 204 as success and `deleteTransaction` surfaces real server errors. Regression test added. Verified lint/Jest/tsc clean. See `docs/savepoint.md`.
 - **2026-10-08 — Notifications initial-load skeleton + iOS-style rows.** Initial load shows skeleton rows; pull-to-refresh wired; theme-backed grouped surfaces/pill badges/CTA. Verified lint/Jest/tsc clean. See `docs/savepoint.md`.
+- **2026-10-08 — Add-transaction saving indicator.** `app/add-transaction.tsx` shows a non-dismissable “Saving transaction…” dialog while saving; Save/back are disabled until it finishes. Verified lint/tsc clean. See `docs/savepoint.md`.
 
 ---
 

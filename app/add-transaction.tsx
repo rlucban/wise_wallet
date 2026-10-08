@@ -15,6 +15,7 @@ import {
   Card,
   HelperText,
   Dialog,
+  ActivityIndicator,
 } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { safeGoBack } from "../utils/backNavigation";
@@ -230,7 +231,7 @@ export default function AddTransaction() {
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
             <Appbar.Header>
-                <Appbar.BackAction onPress={() => safeGoBack(router)} />
+                <Appbar.BackAction onPress={() => { if (!loading) safeGoBack(router); }} disabled={loading} />
                 <Appbar.Content title="Add Transaction" />
             </Appbar.Header>
 
@@ -431,6 +432,24 @@ export default function AddTransaction() {
         </Button>
 
         <View style={{ height: 40 }} />
+
+        <Portal>
+          <Dialog
+            visible={loading}
+            dismissable={false}
+            style={{ maxWidth: 300, alignSelf: "center", borderRadius: 20 }}
+          >
+            <Dialog.Content>
+              <View
+                testID="add-transaction-saving-indicator"
+                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+              >
+                <ActivityIndicator animating size="large" />
+                <Text variant="bodyLarge">Saving transaction…</Text>
+              </View>
+            </Dialog.Content>
+          </Dialog>
+        </Portal>
 
         <Portal>
           <Modal

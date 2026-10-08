@@ -1010,3 +1010,11 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - Notification rows use theme-backed iOS-style grouped surfaces, pill badges, and primary CTA styling; header flattened with outline divider.
 - Verified: lint clean, full Jest 32/712, `tsc` clean. No commit.
 
+---
+
+## 2026-10-08 — Add-transaction saving indicator
+
+- `app/add-transaction.tsx` now shows a non-dismissable “Saving transaction…” dialog with an activity indicator while `loading` is true.
+- Save button remains disabled during save, and header back navigation is disabled until the save finishes.
+- Verified: lint clean, `tsc` clean. No commit.
+
