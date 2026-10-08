@@ -1012,6 +1012,15 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
+## 2026-10-08 — Reports selected-range captions
+
+- `app/(tabs)/reports.tsx` now renders `For selected period: <range>` captions on summary, trend, donut, breakdown, and export sections.
+- No reporting calculations, transaction filtering, chart aggregation, or export behavior changed.
+- `utils/reportFormat.test.ts` now checks the shared filtered-transaction source and all six captions across Android/iOS/Web.
+- Verified: lint clean, focused report test 91/91, full Jest 32/718, `tsc` clean. No commit.
+
+---
+
 ## 2026-10-08 — Add-transaction saving indicator
 
 - `app/add-transaction.tsx` now shows a non-dismissable “Saving transaction…” dialog with an activity indicator while `loading` is true.

@@ -3,6 +3,7 @@ import { View, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 import { Appbar, Text, Card, useTheme } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { safeGoBack } from "../utils/backNavigation";
 import { useTransactions } from "../hooks/useTransactions";
 import { useCurrencyActions } from "../context/CurrencyContext";
@@ -28,6 +29,7 @@ const renderCategoryIcon = (category?: string, title?: string, type?: string): s
 export default function TransactionDetails() {
   const router = useRouter();
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { transactions, deleteTransaction } = useTransactions();
   const { formatAmount } = useCurrencyActions();
@@ -62,7 +64,16 @@ export default function TransactionDetails() {
   }
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop: insets.top,
+          paddingLeft: 16 + insets.left,
+          paddingRight: 16 + insets.right,
+        },
+      ]}
+    >
       <Appbar.Header
         style={{
           backgroundColor: theme.colors.surface,
@@ -75,10 +86,19 @@ export default function TransactionDetails() {
       >
         <View style={styles.appbarLeft}>
           <Appbar.BackAction onPress={() => safeGoBack(router)} />
-          <Appbar.Content title="Transaction Details" titleStyle={{ fontWeight: "700" }} />
+          <Appbar.Content
+            title={
+              <Text
+                numberOfLines={1}
+                style={{ fontWeight: "700", color: theme.colors.onSurface }}
+              >
+                Transaction Details
+              </Text>
+            }
+          />
         </View>
-        <View style={styles.appbarRight}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={[styles.appbarRight, { flexShrink: 0, marginLeft: 8 }]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0 }}>
             <TouchableOpacity
               style={{
                 width: 40,
@@ -202,6 +222,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   appbarLeft: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
   },
