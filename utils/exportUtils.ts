@@ -95,14 +95,29 @@ export const exportToPDF = async (
         const result = await Print.printToFileAsync({ html: htmlContent });
         if (!result || !result.uri) return;
 
-        const reportUri = `${requireDocumentDirectory()}${buildReportFileName(rangeLabel)}`;
-        await FileSystem.deleteAsync(reportUri, { idempotent: true });
-        await FileSystem.copyAsync({ from: result.uri, to: reportUri });
-        await Sharing.shareAsync(reportUri, {
-            mimeType: PDF_MIME_TYPE,
-            UTI: PDF_UTI,
-            dialogTitle: "Share transaction report",
-        });
+        let shareUri = result.uri;
+        try {
+            const reportUri = `${requireDocumentDirectory()}${buildReportFileName(rangeLabel)}`;
+            await FileSystem.deleteAsync(reportUri, { idempotent: true });
+            await FileSystem.copyAsync({ from: result.uri, to: reportUri });
+            shareUri = reportUri;
+        } catch (copyError) {
+            if (process.env.EXPO_PUBLIC_ADMIN_TOGGLE === "true") {
+                console.warn("Report copy unavailable, sharing print file directly:", copyError);
+            }
+        }
+        try {
+            await Sharing.shareAsync(shareUri, {
+                mimeType: PDF_MIME_TYPE,
+                UTI: PDF_UTI,
+                dialogTitle: "Share transaction report",
+            });
+        } catch (shareError) {
+            if (process.env.EXPO_PUBLIC_ADMIN_TOGGLE === "true") {
+                console.warn("Report share unavailable, opening print dialog:", shareError);
+            }
+            await Print.printAsync({ html: htmlContent });
+        }
     } catch (error) {
         console.error("Error exporting to PDF:", error);
         throw error;

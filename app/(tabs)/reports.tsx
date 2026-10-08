@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import { View, ScrollView, Dimensions, Platform, TouchableOpacity } from "react-native";
+import { View, ScrollView, Dimensions, Platform, TouchableOpacity, Alert } from "react-native";
 import { Appbar, Text, useTheme, Menu } from "react-native-paper";
 import { useFocusEffect } from "expo-router";
 import { useTransactions } from "../../hooks/useTransactions";
@@ -151,6 +151,14 @@ export default function ReportsScreen() {
 
   const totalAll = expense + income;
   const rangeCaption = `For selected period: ${currentRange.label}`;
+
+  const handleExportPDF = useCallback(async () => {
+    try {
+      await exportToPDF(filteredTransactions, formatAmount, currentRange.label);
+    } catch {
+      Alert.alert("Export Failed", "Could not export the PDF report. Please try again.");
+    }
+  }, [filteredTransactions, formatAmount, currentRange]);
 
   const trend = useMemo(() => {
     const base = offsetDate;
@@ -403,7 +411,7 @@ export default function ReportsScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: theme.colors.surfaceVariant, alignItems: "center" }}
-              onPress={() => exportToPDF(filteredTransactions, formatAmount, currentRange.label)}
+              onPress={handleExportPDF}
             >
               <MaterialCommunityIcons name="file-pdf-box" size={22} color={theme.colors.error} />
               <Text variant="labelSmall" style={{ fontWeight: "700", color: theme.colors.error, marginTop: 4 }}>PDF</Text>
