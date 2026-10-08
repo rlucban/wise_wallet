@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { View, ScrollView, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import { Text, Card, Appbar, IconButton, Chip, TextInput } from "react-native-paper";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import * as Speech from "expo-speech";
 import { FinancialTip } from "../../components/FinancialTip";
@@ -25,8 +25,16 @@ export default function LearningScreen() {
 
     useEffect(() => {
         prefetchFemaleVoice();
-        return () => { Speech.stop(); };
     }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            return () => {
+                Speech.stop();
+                setActiveArticleId(null);
+            };
+        }, [])
+    );
 
     const toggleBookmark = (id: string) => {
         setBookmarkedIds((prev) => {
@@ -244,7 +252,7 @@ export default function LearningScreen() {
 
 const styles = StyleSheet.create({
     screen: { flex: 1 },
-    scrollContent: { paddingBottom: 160, width: "100%" },
+    scrollContent: { paddingBottom: 110, width: "100%" },
     container: {
         width: "100%",
         flex: 1,

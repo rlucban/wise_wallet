@@ -245,7 +245,7 @@ export default function ReportsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 160 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 110 }}>
         {loading && transactions.length === 0 ? (
           <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
             <CardSkeleton height={110} />

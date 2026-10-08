@@ -4,9 +4,9 @@
 |---|---|
 | ID | SPEC-57 |
 | Title | "Enter PIN to Clear Data" dialog stays visible above the mobile software keypad |
-| Status | **FINAL** v0.1 (marked by user 2026-10-07; implementable per AGENTS.md §1.1) |
+| Status | **v0.1 FINAL; v1.1 DRAFT; v1.2 FINAL; v1.3 FINAL** (v1.3 marked by user 2026-10-08) |
 | Owner | User (final authority) |
-| Version | v0.1 FINAL; v1.1 DRAFT amendment appended below (needs FINAL per §1.1) |
+| Version | v0.1 FINAL; v1.1 existing DRAFT; v1.2 wrapper/centering FINAL; v1.3 native-modal-host FINAL |
 | Scope | `showPinPrompt` dialog only in `app/(tabs)/settings.tsx` (KeyboardAvoidingView wrap) + one guard test + journal |
 | Non-goals | All other PIN dialogs (verify-sync, delete-account, change-passcode — user said "first"; each gets its own spec); app.json `softInputMode`; auth logic, copy, styling beyond the wrap |
 | Normative source | This file (once marked FINAL). File+symbol cites are normative; `:line` numbers are hints only. |
@@ -123,6 +123,151 @@ Subjective (reviewer-observed, Expo Go + web export):
 
 - **showPinPrompt:** the "Enter PIN to Clear Data" dialog state + JSX in `app/(tabs)/settings.tsx`.
 - **KeyboardAvoidingView:** RN component that shrinks/shifts its subtree when the software keypad appears.
+
+---
+
+## Amendment v1.2 — Modal centering integration (DRAFT, needs FINAL)
+
+> v0.1 remains FINAL except where v1.2 explicitly supersedes CON-57-02 and
+> ACC-01/02 for the Clear Data PIN wrapper structure. Existing v1.1 remains a
+> separate DRAFT and is unchanged. v1.2 was marked FINAL by the user on
+> 2026-10-08.
+
+### Context
+
+SPEC-66 D-01 requires the Clear Data PIN card to be centered within the
+available viewport. The current Paper `Dialog` wrapper contract in v0.1
+conflicts with that selected layout change, and `utils/clearDataKeyboard.test.ts`
+currently guards the old tree shape. SPEC-66 owns card centering; this spec
+continues to own the Clear Data PIN keyboard-avoidance behavior.
+
+### Constraints (delta, normative only after FINAL)
+
+- **CON-57-21 — Centering ownership.** The card's viewport position MUST
+  follow SPEC-66 CON-03. This amendment MUST NOT introduce a second centering
+  rule or alter SPEC-66's cross-platform requirement.
+- **CON-57-22 — Integrated wrapper.** The Clear Data PIN surface MUST remain
+  conditionally mounted under `showPinPrompt`. A Paper `Modal` MUST provide
+  the centered transparent viewport container, and exactly one
+  `KeyboardAvoidingView` MUST be inside that Modal and wrap the existing card.
+  The wrapper MUST retain
+  `behavior={Platform.OS === "ios" ? "padding" : "height"}`. It MUST NOT add a
+  full-height flex layer outside the Modal. All dialog content, controls,
+  callbacks, and PIN behavior MUST remain unchanged.
+- **CON-57-23 — Cross-platform keyboard behavior.** Android MUST retain
+  keyboard avoidance via `height`, iOS via `padding`, and Web MUST retain
+  conditional mounting with no keyboard-driven visual change. No
+  platform-specific tree or dependency may be added.
+- **CON-57-24 — Guard integrity.** The source guard MUST be updated to assert
+  the new conditional Modal → KeyboardAvoidingView → card structure, the exact
+  behavior ternary, the PIN title and Clear Data action inside the wrapper,
+  and exactly one wrapper. It MUST NOT merely remove the old assertions.
+
+### Decision
+
+- **DEC-57-06:** SPEC-66 governs centering for this card; SPEC-57 continues to
+  govern its keyboard avoidance. The KAV remains inside the centered Modal,
+  around the existing card.
+
+### Acceptance (delta)
+
+Objective:
+
+- **ACC-21:** `utils/clearDataKeyboard.test.ts` passes for
+  `Platform.OS` `android`, `ios`, and `web`, asserting the conditional Modal,
+  one inner KeyboardAvoidingView, the exact behavior ternary, and the PIN form
+  and action inside that wrapper.
+- **ACC-22:** Existing scope guard continues to prove no other Settings dialog
+  gains a KeyboardAvoidingView; keyboard-sensitive content and clear action
+  remain within the one conditional wrapper.
+
+Subjective:
+
+- **ACC-S21:** On Android and iOS Expo Go, open Clear Data, focus PIN, and
+  verify the PIN field and both actions remain visible and tappable while the
+  card stays centered per SPEC-66.
+- **ACC-S22:** On Web, verify the conditional modal does not block Settings
+  scrolling or taps when closed, and the open dialog remains centered.
+
+### Deliverables (delta)
+
+- **D-57-21:** Update `utils/clearDataKeyboard.test.ts` to guard ACC-21/22
+  against the integrated wrapper in CON-57-22. Keep all unaffected SPEC-57
+  assertions and platform parameterization.
+
+### References (delta)
+
+- `specs/66-center-requested-dialog-layouts.md` (centering owner)
+- `utils/clearDataKeyboard.test.ts` (existing wrapper guard)
+
+---
+
+## Amendment v1.3 — Native Modal Host Integration (DRAFT, needs FINAL)
+
+> v0.1, v1.2, and the unrelated v1.1 DRAFT remain unchanged except where this
+> FINAL amendment supersedes v1.2 CON-57-22 and ACC-21/22 for the modal host.
+
+### Context
+
+SPEC-66 v1.2 proposes a React Native built-in `Modal` host for the selected
+dialogs after repeated Paper Modal layout variants remained bottom-stuck on
+iPhone. Clear Data PIN must use the same host while retaining the mobile
+keyboard avoidance behavior owned by SPEC-57.
+
+### Constraints (delta, normative only after FINAL)
+
+- **CON-57-31 — Native host.** The conditionally mounted `showPinPrompt` MUST
+  use React Native's built-in `Modal`, configured for a transparent,
+  full-screen overlay and fade transition. Android back MUST route through
+  `onRequestClose` to the existing dismiss action.
+- **CON-57-32 — Backdrop behavior.** The dim backdrop MUST dismiss the dialog
+  on outside press; presses inside the card MUST NOT dismiss it. PIN content,
+  buttons, callbacks, and validation MUST remain unchanged.
+- **CON-57-33 — Keyboard avoidance.** Exactly one
+  `KeyboardAvoidingView` MUST remain inside the native Modal and wrap the card
+  with `behavior={Platform.OS === "ios" ? "padding" : "height"}`. It MUST
+  remain conditionally mounted with `showPinPrompt`; no always-mounted
+  full-screen layer or new platform-specific tree is allowed.
+- **CON-57-34 — Cross-platform.** Android, iOS, and Web MUST retain the same
+  conditional structure and clear-data behavior. The implementation MUST be
+  Expo Go-safe and Web-exportable with no new dependency.
+
+### Decision
+
+- **DEC-57-07 (DRAFT):** The native React Native Modal supplies the full-screen
+  viewport; the existing KAV remains inside it around the unchanged PIN card.
+
+### Acceptance (delta)
+
+Objective:
+
+- **ACC-31:** `utils/clearDataKeyboard.test.ts` passes for Android, iOS, and
+  Web, asserting conditional native Modal mounting, fade/transparent settings,
+  `onRequestClose`, one inner KAV with the exact behavior ternary, PIN title,
+  and Clear Data action inside the wrapper.
+- **ACC-32:** The guard asserts a backdrop press dismisses and an inner card
+  press does not; no other Settings dialog gains a KAV.
+
+Subjective:
+
+- **ACC-S31:** On Android and iOS Expo Go, focus PIN and verify the field and
+  actions remain visible; confirm full-screen centering, outside dismissal,
+  and Android back dismissal.
+- **ACC-S32:** On Web export, verify centered layout, outside dismissal, and
+  Settings remains scrollable/tappable while the dialog is closed.
+
+### Deliverables (delta)
+
+- **D-57-31:** Update the `showPinPrompt` outer host and backdrop only as
+  required by CON-57-31..34; preserve all PIN content and actions.
+- **D-57-32:** Update `utils/clearDataKeyboard.test.ts` for ACC-31/32,
+  retaining the platform matrix, conditional-mount check, and exactly-one-KAV
+  guard.
+
+### References (delta)
+
+- `specs/66-center-requested-dialog-layouts.md` v1.2 (centering host)
+- `utils/clearDataKeyboard.test.ts` (existing keyboard guard)
 
 ---
 

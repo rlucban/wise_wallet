@@ -41,8 +41,8 @@ const renderCategoryIcon = (category?: string, title?: string, type?: string): s
 
 export default function Dashboard() {
   const router = useRouter();
-  const { isLoading: profileLoading } = useUserProfile();
-  const { transactions, loading: txLoading, refetch: refetchTx } = useTransactions();
+  const { profile, isLoading: profileLoading } = useUserProfile();
+  const { transactions, refetch: refetchTx } = useTransactions();
   const { items: savingsItems, refetch: refetchSavings } = useSavings();
   const { dues, refetch: refetchDues } = useDues();
   const { unreadCount, refetchAlerts } = useSystemAlerts();
@@ -64,7 +64,6 @@ export default function Dashboard() {
   );
   const { activeUserId } = useAuth();
 
-  const loading = txLoading;
   const [calculatorVisible, setCalculatorVisible] = useState(false);
 
   useFocusEffect(
@@ -258,7 +257,7 @@ export default function Dashboard() {
 
   if (!activeUserId) return null;
 
-  if (profileLoading || (loading && transactions.length === 0)) {
+  if (!profile && profileLoading) {
     return <DashboardSkeleton />;
   }
 
@@ -315,7 +314,7 @@ export default function Dashboard() {
         keyExtractor={(item: Transaction) => item.id}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={<EmptyState icon="receipt" title="No transactions yet" subtitle="Tap + to add your first transaction" />}
-        contentContainerStyle={{ paddingBottom: 160 }}
+        contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
       />
       <CalculatorDialog visible={calculatorVisible} onDismiss={() => setCalculatorVisible(false)} />

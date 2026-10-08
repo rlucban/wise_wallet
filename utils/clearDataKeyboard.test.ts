@@ -14,11 +14,25 @@ function runSuite(os: "android" | "ios" | "web"): void {
             // scroll and taps (reported 2026-10-07). It MUST be gated on the
             // dialog being open.
             expect(settings).toContain("{showPinPrompt && (");
-            expect(settings).toContain("<KeyboardAvoidingView");
+            const start = settings.indexOf("{showPinPrompt && (");
+            const modalOpen = settings.indexOf("<NativeModal", start);
+            const modalClose = settings.indexOf("</NativeModal>", modalOpen);
+            expect(modalOpen).toBeGreaterThan(start);
+            expect(modalClose).toBeGreaterThan(modalOpen);
+            const modal = settings.slice(modalOpen, modalClose);
+            expect(modal).toContain("visible={showPinPrompt}");
+            expect(modal).toContain("transparent");
+            expect(modal).toContain('animationType="fade"');
+            expect(modal).toContain('presentationStyle="overFullScreen"');
+            expect(modal).toContain("onRequestClose={() => setShowPinPrompt(false)}");
             expect(settings).toContain(
                 'behavior={Platform.OS === "ios" ? "padding" : "height"}'
             );
-            expect(settings).toContain("style={{ flex: 1 }}");
+            expect(modal).toContain('backgroundColor: "rgba(0, 0, 0, 0.32)"');
+            expect(modal).toContain('justifyContent: "center"');
+            expect(modal).toContain('alignItems: "center"');
+            expect(modal).toContain("<KeyboardAvoidingView");
+            expect(modal).toContain("<Pressable style={StyleSheet.absoluteFill}");
         });
 
         it("ACC-02: exactly one wrapper, and it closes the showPinPrompt dialog", () => {
@@ -26,13 +40,15 @@ function runSuite(os: "android" | "ios" | "web"): void {
             const wrappers = settings.match(/<KeyboardAvoidingView/g) ?? [];
             expect(wrappers.length).toBe(1);
             const start = settings.indexOf("{showPinPrompt && (");
-            const open = settings.indexOf("<KeyboardAvoidingView", start);
+            const modalOpen = settings.indexOf("<NativeModal", start);
+            const modalClose = settings.indexOf("</NativeModal>", modalOpen);
+            const open = settings.indexOf("<KeyboardAvoidingView", modalOpen);
             const close = settings.indexOf("</KeyboardAvoidingView>", open);
-            expect(open).toBeGreaterThan(start);
+            expect(open).toBeGreaterThan(modalOpen);
             expect(close).toBeGreaterThan(open);
-            // The dialog and its gate button sit between the wrapper's tags.
+            expect(close).toBeLessThan(modalClose);
+            // The centered Modal hosts the keyboard wrapper and PIN card.
             const inside = settings.slice(open, close);
-            expect(inside).toContain("visible={showPinPrompt}");
             expect(inside).toContain("Enter PIN to Clear Data");
             expect(inside).toContain("onPress={handleClearData}");
             // No stray closing tag outside the conditional.
@@ -42,8 +58,7 @@ function runSuite(os: "android" | "ios" | "web"): void {
 
         it("SPEC-57 scope: no other dialog gained a wrapper", () => {
             const settings = readRepo("app/(tabs)/settings.tsx");
-            // v0.1 wrapped the clear-data PIN dialog only; other PIN dialogs
-            // (verify-sync, delete-account, change-passcode) are untouched.
+            // Only the Clear Data PIN card is wrapped by a KeyboardAvoidingView.
             const dialogs = settings.match(/<Dialog visible=/g) ?? [];
             expect(dialogs.length).toBeGreaterThan(3);
             // One open tag + one close tag only (import + comment don't count).

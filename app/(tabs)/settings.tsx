@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
-import { View, ScrollView, Platform, StyleSheet, KeyboardAvoidingView } from "react-native";
-import { Appbar, List, Text, Card, Switch, Divider, Button, Avatar, Portal, Dialog, TextInput, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
+import { View, ScrollView, Platform, StyleSheet, KeyboardAvoidingView, Modal as NativeModal, Pressable } from "react-native";
+import { Appbar, List, Text, Card, Switch, Divider, Button, Avatar, Portal, Surface, Dialog, TextInput, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
@@ -117,6 +117,7 @@ const styles = StyleSheet.create({
     maxWidth: 480,
     width: "90%",
     alignSelf: "center",
+    marginHorizontal: 0,
   },
   dialogContent: {
     alignItems: "center",
@@ -1265,7 +1266,7 @@ if (!serverOk && !localOk) {
         <Appbar.Content title="Settings" titleStyle={{ fontWeight: "700" }} />
       </Appbar.Header>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 160 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 110 }}>
         {/* User Profile Section */}
         <Card style={{ marginBottom: 16 }}>
           <Card.Content>
@@ -1466,7 +1467,16 @@ if (!serverOk && !localOk) {
       </ScrollView>
 
       <Portal>
-        <Dialog visible={showDeleteDialog} onDismiss={closeDeleteDialog} style={styles.dialog}>
+        <NativeModal
+          visible={showDeleteDialog}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={closeDeleteDialog}
+        >
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.32)" }}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeDeleteDialog} />
+            <Surface elevation={3} style={styles.dialog}>
           <Dialog.Title>Delete Account</Dialog.Title>
           <Dialog.Content>
             <Text style={{ color: paperTheme.colors.error, fontWeight: "700" }}>
@@ -1535,7 +1545,9 @@ if (!serverOk && !localOk) {
               Delete Permanently
             </Button>
           </Dialog.Actions>
-        </Dialog>
+            </Surface>
+          </View>
+        </NativeModal>
 
         <ConfirmDialog
               visible={showRepairConfirm}
@@ -1643,11 +1655,20 @@ if (!serverOk && !localOk) {
         {/* SPEC-57: conditional mount — an always-mounted KeyboardAvoidingView
             renders a full-height flex layer on web and swallows scroll/taps. */}
         {showPinPrompt && (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1 }}
+        <NativeModal
+          visible={showPinPrompt}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={() => setShowPinPrompt(false)}
         >
-        <Dialog visible={showPinPrompt} onDismiss={() => setShowPinPrompt(false)} style={styles.dialog}>
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.32)" }}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowPinPrompt(false)} />
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={{ width: "100%", alignItems: "center" }}
+            >
+            <Surface elevation={3} style={styles.dialog}>
           <Dialog.Title style={{ textAlign: "center" }}>Enter PIN to Clear Data</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16, textAlign: "center" }}>This action cannot be undone. All local data will be permanently deleted.</Text>
@@ -1664,11 +1685,22 @@ if (!serverOk && !localOk) {
             <Button mode="outlined" onPress={() => setShowPinPrompt(false)}>Cancel</Button>
             <Button mode="contained" buttonColor={paperTheme.colors.error} textColor="#fff" onPress={handleClearData} loading={isSyncing} disabled={isSyncing}>Clear Data</Button>
           </Dialog.Actions>
-        </Dialog>
-        </KeyboardAvoidingView>
+            </Surface>
+            </KeyboardAvoidingView>
+          </View>
+        </NativeModal>
         )}
 
-        <Dialog visible={showDeleteConfirmation} onDismiss={() => setShowDeleteConfirmation(false)} style={styles.dialog}>
+        <NativeModal
+          visible={showDeleteConfirmation}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={() => setShowDeleteConfirmation(false)}
+        >
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.32)" }}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowDeleteConfirmation(false)} />
+            <Surface elevation={3} style={styles.dialog}>
           <Dialog.Title style={{ textAlign: "center" }}>Are you absolutely sure?</Dialog.Title>
           <Dialog.Content style={styles.dialogContent}>
             <Text style={{ marginBottom: 16, textAlign: "center", alignSelf: "center", width: "100%" }}>
@@ -1688,9 +1720,20 @@ if (!serverOk && !localOk) {
               CLEAR EVERYTHING
             </Button>
           </Dialog.Actions>
-        </Dialog>
+            </Surface>
+          </View>
+        </NativeModal>
 
-        <Dialog visible={showChangePasscodeDialog} onDismiss={closeChangePasscodeDialog} style={styles.dialog}>
+        <NativeModal
+          visible={showChangePasscodeDialog}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={closeChangePasscodeDialog}
+        >
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.32)" }}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeChangePasscodeDialog} />
+            <Surface elevation={3} style={styles.dialog}>
           {isPasscodeEnabled ? (
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
               <Dialog.Title>{pinStep === 1 ? "Change Passcode" : "Enter New Passcode"}</Dialog.Title>
@@ -1895,7 +1938,9 @@ if (!serverOk && !localOk) {
               </Button>
             )}
           </Dialog.Actions>
-        </Dialog>
+            </Surface>
+          </View>
+        </NativeModal>
 
         {/* SPEC-58 D-58-03: last Portal child, so this shared success/error
             dialog always paints above whichever dialog raised it. */}
