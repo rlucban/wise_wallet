@@ -16,16 +16,19 @@
  */
 
 /**
- * Height of the tab bar excluding the bottom safe-area inset.
+ * Default/Web height of the tab bar excluding the bottom safe-area inset.
  *
  * Sized so the stacked icon+label block clears `usableHeight` with real margin:
  * `usableHeight = 78 - 4 - (5 * 2) = 64` against `requiredHeight = 28 + 15 = 43` at the
  * default font scale (21px spare), and 50 at fontScale 1.5 (14px spare).
  *
- * SPEC-55 (CON-55-04): raised 68 → 78 so the floating pill reads as a larger,
- * more prominent navbar. The fit invariant only gets safer (64 ≥ 43/50).
+ * SPEC-55 (CON-55-04): Web/default height is 78. SPEC-68 selects the compact
+ * native height below while retaining this value on Web.
  */
 export const TAB_BAR_CONTENT_HEIGHT = 78;
+
+/** Compact Android/iOS content height selected by the tab layout (SPEC-68 v1.1). */
+export const TAB_BAR_NATIVE_CONTENT_HEIGHT = 64;
 
 /** Space between the bar's top border and the tab item's own box. */
 export const TAB_BAR_PADDING_TOP = 4;
@@ -81,16 +84,20 @@ export interface TabBarMetrics {
  * Resolves the tab bar's height and vertical padding.
  *
  * `insetsBottom` is the bottom safe-area inset (home indicator / gesture bar). It is
- * the only platform-specific input: it is non-zero on edge-to-edge Android and on notched
- * iOS, and zero on web. The function is otherwise platform-agnostic and pure, so it
- * returns identical numbers on every platform.
+ * non-zero on edge-to-edge Android and on notched iOS, and zero on web. The optional
+ * `contentHeight` selects the native compact or Web/default bar height; the function
+ * remains platform-agnostic and pure.
  *
  * `fontScale` is an explicit argument rather than a read of the system font scale so the
  * result stays deterministic under test. Callers use the default; the parameter exists so
  * the fit invariant can be checked across the scaling range Android actually applies.
  */
-export function getTabBarMetrics(insetsBottom: number, fontScale = 1): TabBarMetrics {
-    const height = TAB_BAR_CONTENT_HEIGHT + insetsBottom;
+export function getTabBarMetrics(
+    insetsBottom: number,
+    fontScale = 1,
+    contentHeight = TAB_BAR_CONTENT_HEIGHT
+): TabBarMetrics {
+    const height = contentHeight + insetsBottom;
     const paddingTop = TAB_BAR_PADDING_TOP;
     const paddingBottom = insetsBottom;
     const usableHeight =

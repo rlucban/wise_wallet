@@ -1012,6 +1012,44 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
+## 2026-10-08 — Add-transaction saving indicator
+
+- `app/add-transaction.tsx` now shows a non-dismissable “Saving transaction…” dialog with an activity indicator while `loading` is true.
+- Save button remains disabled during save, and header back navigation is disabled until the save finishes.
+- Verified: lint clean, `tsc` clean. No commit.
+
+---
+
+## 2026-10-08 — SPEC-64 Learning read-aloud stops on navigation
+
+- `app/(tabs)/learning.tsx` and `app/(tabs)/learning-detail.tsx` now stop speech and reset playback UI when their Expo Router route loses focus; prefetch and in-screen playback behavior are unchanged.
+- `utils/learningSpeechLifecycle.test.ts` adds Android/iOS/Web regression guards for blur cleanup on both screens.
+- Editor diagnostics are clean. User-run Jest, lint, TypeScript, Expo Go, and web-export checks remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-08 — SPEC-65 dialog width overflow fixed; vertical centering still open
+
+- **Fixed (Finding A).** Paper applies its own `marginHorizontal: Math.max(left, right, 26)` to the dialog Surface (`Dialog.tsx:121`), which is the same node SPEC-26's `style` prop targets. On a 390pt iPhone that made the card `351 + 52 = 403pt` inside a 390pt box, clipping both edges. `app/(tabs)/settings.tsx` `styles.dialog` and `components/ConfirmDialog.tsx` now also set `marginHorizontal: 0`, added by style merge order. `maxWidth: 480` / `width: "90%"` / `alignSelf: "center"` are unchanged, so SPEC-26's visual intent and web behavior are preserved.
+- **Reviewed, untouched.** All 17 Paper `<Dialog>` instances in 8 files were reviewed. Only the 2 SPEC-26 sites set a percent width; the other 8 use Paper's default auto width and cannot overflow, so they stay byte-identical per `AGENTS.md` §1.11. `components/CalculatorDialog.tsx` centers its sheet via `contentContainerStyle={{ flex: 1 }}` and was explicitly out of scope.
+- **Still open (Finding B) — no speculative fix.** The reported vertical defect (dialogs render in the lower part of an iPhone screen on Settings → Delete Account and Dues → Pay, seen in Expo Go) has **no established root cause**: Paper's `Modal` wrapper is `absoluteFill` + `justifyContent: 'center'` (`Modal.tsx:237-241`), so nothing in app code should bottom-anchor a card. Per SPEC-65 CON-03 no `contentContainerStyle`, inset, transform, or `Platform` branch was added. Evidence required before a fix may be specified (SPEC-65 CON-04): (1) an **uncropped** full-screen iOS screenshot in which the tab bar is visible — the supplied shots showed no tab bar and may be cropped; (2) the result of opening the same dialog on **web** (`npm run web`) — centered or not; (3) the iPhone model and Expo Go version.
+- `utils/dialogSurfaceWidth.test.ts` adds ACC-01..03 guards parameterized by `Platform.OS` (android/ios/web): both SPEC-26 sites neutralize the margin while keeping the three original values, no `<Dialog>`/`<Modal>` style in `app/` or `components/` pairs a percent width without `marginHorizontal`, and the overflow arithmetic that documents the defect.
+- `specs/26-responsive-dialogs-and-clear-data-flow.md` CON-01 amended with a pointer to SPEC-65 as the canonical home for the `marginHorizontal: 0` requirement (§1.14).
+- Verified: editor diagnostics clean. **User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (Expo Go iOS/Android + web export) remain pending per `AGENTS.md` §1.3. No commit.**
+
+---
+
+## 2026-10-08 — SPEC-60 Instant Display In-Memory Caching implemented
+
+- **D-01 `hooks/useSavings.ts`** — module-level `_savingsCache: { userId, items } | null` added above `useSavings()`. A `useEffect([activeUserId])` seeds local state from cache if userId matches and state is empty (instant re-mount, no blank flash). `fetchItems` writes cache at three points: web API path, native local-only fast path, and native merged path. Cache cleared (`null`) when `activeUserId` is falsy (logout/user change).
+- **D-02 `hooks/useDues.ts`** — same pattern: `_duesCache: { userId, dues } | null` with identical seed-useEffect and three write-points in `fetchDues`. Cache cleared on logout.
+- **D-03 `app/(tabs)/index.tsx`** — `DashboardSkeleton` gate relaxed from `profileLoading || (loading && transactions.length === 0)` to `!profile && profileLoading`. Skeleton only appears on first-ever load (before `profile` is populated); focus-triggered background refetches no longer reset the screen to a skeleton.
+- **D-04** — `app/savings.tsx` and `app/archived-allocations.tsx` EmptyState guards were already correct (`loading && items.length === 0 ? skeleton : items.length === 0 ? EmptyState : list`). No code changes needed.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, Expo Go, and web export checks remain pending per `AGENTS.md §1.3`. No commit.
+
+
+---
+
 ## 2026-10-08 — Reports selected-range captions
 
 - `app/(tabs)/reports.tsx` now renders `For selected period: <range>` captions on summary, trend, donut, breakdown, and export sections.
@@ -1021,9 +1059,9 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
-## 2026-10-08 — Add-transaction saving indicator
+## 2026-10-08 — Spec 69 FINAL + implemented (SPEC-69 Custom Floating Tab Bar)
 
-- `app/add-transaction.tsx` now shows a non-dismissable “Saving transaction…” dialog with an activity indicator while `loading` is true.
-- Save button remains disabled during save, and header back navigation is disabled until the save finishes.
-- Verified: lint clean, `tsc` clean. No commit.
-
+- **D-01..D-04** — `app/(tabs)/index.tsx`, `settings.tsx`, `reports.tsx`, `learning.tsx`: ScrollView/FlashList `contentContainerStyle.paddingBottom` set to `110` to clear the floating dock (SPEC-69 CON-01).
+- **D-05** — `components/FloatingTabBar.tsx` (new): custom dock. Pill container `paddingHorizontal: 10` / `paddingVertical: 8` / `gap: 4`; each tab item `borderRadius: 20` / `paddingHorizontal: 4` / `paddingVertical: 8`, active background `#E8DEF8`; FAB docked beside the pill in a `flexDirection: "row"` / `alignItems: "center"` / `gap: 12` wrapper (CON-02..CON-04, CON-06).
+- **D-06** — `app/(tabs)/_layout.tsx` rewritten: `tabBar={(props) => <FloatingTabBar {...props} />}`; previous `tabBarStyle`, `tabBarButton`, `useSafeAreaInsets`, `getTabBarMetrics`, and the absolute FAB removed (CON-05).
+- **D-07** — `utils/tabBarFloat.test.ts` rewritten to guard SPEC-69 (android/ios/web); `utils/tabBarMetrics.test.ts` ACC-05 block repointed (old `_layout` tabBarMetrics pins SPEC-32/52/55/56/68 superseded).

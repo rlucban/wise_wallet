@@ -41,7 +41,7 @@ to be interpreted as described in RFC 2119. Informative prose is non-normative u
 
 ## 2. Constraints
 
-- **CON-01**: Dialogs in `app/(tabs)/settings.tsx` and `components/ConfirmDialog.tsx` MUST include responsive container styling with `maxWidth: 480`, `width: '90%'`, and `alignSelf: 'center'`.
+- **CON-01**: Dialogs in `app/(tabs)/settings.tsx` and `components/ConfirmDialog.tsx` MUST include responsive container styling with `maxWidth: 480`, `width: '90%'`, and `alignSelf: 'center'`. **Amended by `specs/65-dialog-width-overflow-and-centering-diagnosis.md` (FINAL 2026-10-08):** these styles MUST also set `marginHorizontal: 0`, because Paper applies its own `marginHorizontal: Math.max(left, right, 26)` to the same node (`Dialog.tsx:121`), which overflowed a 390pt phone box by 13pt and clipped both edges. Canonical home for that requirement is SPEC-65 (§1.14).
 - **CON-02**: In `handleClearData`, advancing to the confirmation modal MUST dismiss the PIN prompt (`setShowPinPrompt(false)`).
 - **CON-03**: In `executeClearData`, `showDeleteConfirmation` and `showPinPrompt` MUST both be closed, and remote cloud deletions MUST be gated on `!isLocal`.
 - **CON-04**: Dialog action buttons in `showPinPrompt`, `showDeleteConfirmation`, and `showDeleteDialog` MUST have tangible button styling:
