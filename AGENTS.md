@@ -496,7 +496,7 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 - **2026-10-08 — Reports selected-range captions.** `app/(tabs)/reports.tsx` shows `For selected period: <range>` on summary, trend, donut, breakdown, and export sections. Verified lint/Jest/tsc clean. See `docs/savepoint.md`.
 
 
-- **2026-10-08 — Spec 69 FINAL + implemented.** `specs/69-custom-floating-tab-bar.md`: D-01..D-04 `paddingBottom: 110` on all four tab screens; D-05 new `components/FloatingTabBar.tsx` (pill `paddingHorizontal:16/paddingVertical:8/gap:8`, active tab `#E8DEF8` pill, FAB docked beside the pill in a `row`/`alignItems:center`/`gap:12` wrapper); D-06 `_layout.tsx` delegates via `tabBar={(props) => <FloatingTabBar ...` and drops `tabBarStyle`/`tabBarButton`/absolute FAB; D-07 `utils/tabBarFloat.test.ts` rewritten + `tabBarMetrics.test.ts` ACC-05 repointed. Old `_layout` tabBarMetrics pins (SPEC-32/52/55/56/68) superseded. See `docs/savepoint.md`.
+- **2026-10-08 — Spec 69 FINAL + implemented.** `specs/69-custom-floating-tab-bar.md`: D-01..D-04 `paddingBottom: 110` on all four tab screens; D-05 new `components/FloatingTabBar.tsx` (pill `paddingHorizontal:10/paddingVertical:8/gap:4`, active tab `#E8DEF8` pill `borderRadius:20/paddingHorizontal:4/paddingVertical:8`, FAB docked beside the pill in a `row`/`alignItems:center`/`gap:12` wrapper); D-06 `_layout.tsx` delegates via `tabBar={(props) => <FloatingTabBar ...` and drops `tabBarStyle`/`tabBarButton`/absolute FAB; D-07 `utils/tabBarFloat.test.ts` rewritten + `tabBarMetrics.test.ts` ACC-05 repointed. Old `_layout` tabBarMetrics pins (SPEC-32/52/55/56/68) superseded. See `docs/savepoint.md`.
 
 ---
 
