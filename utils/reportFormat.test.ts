@@ -530,7 +530,13 @@ describe("module boundaries (ACC-05, CON-13)", () => {
 
         expect(exportUtils).toContain('Platform.OS === "web"');
         expect(exportUtils).not.toMatch(/document\.body\.innerHTML/);
-        expect(exportUtils).not.toMatch(/Print\.printAsync/);
+        // CON-13a (amended 2026-10-08): Print.printAsync is allowed in the NATIVE
+        // fallback only — it must not appear before the web early-return
+        // (expo-print is never called on web, §1.2).
+        const webEarlyReturn = exportUtils.indexOf("printReportInIframe(htmlContent);");
+        const printAsyncUse = exportUtils.indexOf("Print.printAsync");
+        expect(webEarlyReturn).toBeGreaterThan(-1);
+        expect(printAsyncUse).toBeGreaterThan(webEarlyReturn);
     });
 });
 
