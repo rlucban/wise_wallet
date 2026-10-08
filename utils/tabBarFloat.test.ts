@@ -1,103 +1,60 @@
 import * as fs from "fs";
 import * as path from "path";
-import { getTabBarMetrics } from "./tabBarMetrics";
 
 function readRepo(relativePath: string): string {
     return fs.readFileSync(path.resolve(__dirname, "..", relativePath), "utf8");
 }
 
 function runSuite(os: "android" | "ios" | "web"): void {
-    describe(`SPEC-52 floating tab bar on ${os}`, () => {
-        it("ACC-01: pill geometry, overlay, SPEC-32 values intact", () => {
-            const layout = readRepo("app/(tabs)/_layout.tsx");
-            expect(layout).toContain("marginLeft: 16");
-            expect(layout).toContain("marginRight: 72");
-            expect(layout).toContain("marginBottom: 32");
-            expect(layout).toContain("borderTopWidth: 0");
-            expect(layout).not.toContain("borderTopColor");
-            // SPEC-56: overlay (reverses the old in-flow rule).
-            expect(layout).toContain('position: "absolute"');
-            const positions = layout.match(/position: "absolute"/g) ?? [];
-            expect(positions.length).toBe(2);
-            // SPEC-32 metric wiring untouched.
-            expect(layout).toContain("useSafeAreaInsets()");
-            expect(layout).toContain("getTabBarMetrics(insets.bottom)");
-            expect(layout).toContain("tabBarLabelStyle");
-            expect(layout).toContain("fontSize: 12");
+    describe(`SPEC-69 custom floating tab bar on ${os}`, () => {
+        it("ACC-01: every tab screen leaves bottom clearance", () => {
+            expect(readRepo("app/(tabs)/index.tsx")).toContain("paddingBottom: 110");
+            expect(readRepo("app/(tabs)/settings.tsx")).toContain("paddingBottom: 110");
+            expect(readRepo("app/(tabs)/reports.tsx")).toContain("paddingBottom: 110");
+            expect(readRepo("app/(tabs)/learning.tsx")).toContain("paddingBottom: 110");
         });
 
-        it("ACC-03: platform shadow selection, web emits no shadow props", () => {
-            const layout = readRepo("app/(tabs)/_layout.tsx");
-            expect(layout).toContain("Platform.select({");
-            expect(layout).toContain("shadowColor");
-            expect(layout).toContain("shadowRadius: 16");
-            expect(layout).toContain("shadowOpacity: 0.25");
-            expect(layout).toContain("height: 6");
-            expect(layout).toContain("elevation: 8");
-            expect(layout).toContain("default: {},");
-            expect(layout).not.toContain("boxShadow");
+        it("ACC-02: pill interior spacing + active-pill styling", () => {
+            const bar = readRepo("components/FloatingTabBar.tsx");
+            expect(bar).toContain("gap: 4");
+            expect(bar).toContain("paddingHorizontal: 10");
+            expect(bar).toContain("paddingVertical: 8");
+            expect(bar).toContain('backgroundColor: "#E8DEF8"');
+            expect(bar).toContain("borderRadius: 20");
+            expect(bar).toContain("paddingHorizontal: 4");
+            expect(bar).toContain("numberOfLines={1}");
+            expect(bar).toContain("fontSize: 11");
         });
 
-        it("ACC-11: eased press, JS driver, a11y passthrough", () => {
-            const layout = readRepo("app/(tabs)/_layout.tsx");
-            expect(layout).toContain("tabBarButton:");
-            expect(layout).toContain("AnimatedTabButton");
-            expect(layout).toContain("Animated.timing");
-            expect(layout).toContain("Easing.out(Easing.quad)");
-            expect(layout).toContain("useNativeDriver: false");
-            expect(layout).toContain("dip(0.85, 120)");
-            expect(layout).toContain("dip(1, 180)");
-            // Library-faithful passthrough (BottomTabBarButtonProps shape).
-            expect(layout).toContain("testID={testID}");
-            expect(layout).toContain("role={role}");
-            expect(layout).toContain("aria-label={ariaLabel}");
-            expect(layout).toContain("style={style}");
+        it("ACC-03: FAB docked beside the pill in a row", () => {
+            const bar = readRepo("components/FloatingTabBar.tsx");
+            expect(bar).toContain('flexDirection: "row"');
+            expect(bar).toContain('alignItems: "center"');
+            expect(bar).toContain("gap: 12");
+            expect(bar).toContain("<FAB");
         });
 
-        it("ACC-12: dark pill uses the M3-baseline lift literal, theme file untouched", () => {
+        it("ACC-04: layout delegates to FloatingTabBar; old bar styling gone", () => {
             const layout = readRepo("app/(tabs)/_layout.tsx");
-            expect(layout).toContain(
-                'theme.dark ? "#2B2930" : theme.colors.surface'
-            );
-            expect(layout).not.toContain("isDarkMode");
-            const theme = readRepo("context/ThemeContext.tsx");
-            expect(theme).toContain("...MD3DarkTheme");
-            expect(theme).toContain("...MD3LightTheme");
+            expect(layout).toContain("FloatingTabBar");
+            expect(layout).toContain("tabBar={(props) => <FloatingTabBar");
+            expect(layout).not.toContain("tabBarStyle");
+            expect(layout).not.toContain("tabBarButton");
+            expect(layout).not.toContain("AnimatedTabButton");
+            expect(layout).not.toContain("useSafeAreaInsets");
         });
 
-        it("ACC-13: capsule radius = height / 2 at every inset", () => {
+        it("ACC-05: tab titles, icons, and hidden route preserved", () => {
             const layout = readRepo("app/(tabs)/_layout.tsx");
-            expect(layout).toContain("borderRadius: height / 2");
-            expect(layout).not.toContain("borderRadius: 24");
-            // 78 + insets.bottom, halved: 39 / 51 / 56.
-            for (const inset of [0, 24, 34]) {
-                expect(getTabBarMetrics(inset).height / 2).toBe((78 + inset) / 2);
-            }
-            expect(getTabBarMetrics(0).height / 2).toBe(39);
-            expect(getTabBarMetrics(24).height / 2).toBe(51);
-            expect(getTabBarMetrics(34).height / 2).toBe(56);
-        });
-
-        it("SPEC-56: overlay clearance on all tab screens + FAB", () => {
-            expect(readRepo("app/(tabs)/index.tsx")).toContain("paddingBottom: 160");
-            expect(readRepo("app/(tabs)/_layout.tsx")).toContain("bottom: 32 + Math.max(0, (height - 56) / 2)");
-            expect(readRepo("app/(tabs)/index.tsx")).not.toContain("bottom: 20");
-            expect(readRepo("app/(tabs)/reports.tsx")).toContain("paddingBottom: 160");
-            expect(readRepo("app/(tabs)/learning.tsx")).toContain("paddingBottom: 160");
-            expect(readRepo("app/(tabs)/learning-detail.tsx")).toContain("paddingBottom: 160");
-            expect(readRepo("app/(tabs)/settings.tsx")).toContain("paddingBottom: 160");
-        });
-
-        it("SPEC-54 guards preserved: no blur dep, no web-only props", () => {
-            const layout = readRepo("app/(tabs)/_layout.tsx");
-            expect(layout).not.toContain("expo-blur");
-            expect(layout).not.toContain("backdropFilter");
-            expect(layout).not.toContain("boxShadow");
-            expect(layout).not.toContain("TabBarVeil");
-            expect(layout).not.toContain("tabBarBackground");
-            expect(layout).not.toContain("expo-linear-gradient");
-            const pkg = readRepo("package.json");
-            expect(pkg).not.toContain("expo-blur");
+            expect(layout).toContain('title: "Home"');
+            expect(layout).toContain('title: "Reports"');
+            expect(layout).toContain('title: "Learning"');
+            expect(layout).toContain('title: "Settings"');
+            expect(layout).toContain('name="home-variant"');
+            expect(layout).toContain('name="chart-bar"');
+            expect(layout).toContain('name="school"');
+            expect(layout).toContain('name="cog"');
+            expect(layout).toContain("href: null");
         });
     });
 }

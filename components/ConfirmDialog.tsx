@@ -30,7 +30,7 @@ export default function ConfirmDialog({
     <Dialog
       visible={visible}
       onDismiss={loading ? undefined : onCancel}
-      style={{ maxWidth: 480, width: "90%", alignSelf: "center" }}
+      style={{ maxWidth: 480, width: "90%", alignSelf: "center", marginHorizontal: 0 }}
     >
       <Dialog.Icon icon={icon} />
       <Dialog.Title style={{ textAlign: "center" }}>{title}</Dialog.Title>
