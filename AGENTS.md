@@ -498,6 +498,16 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-08 — Spec 69 FINAL + implemented.** `specs/69-custom-floating-tab-bar.md`: D-01..D-04 `paddingBottom: 110` on all four tab screens; D-05 new `components/FloatingTabBar.tsx` (pill `paddingHorizontal:10/paddingVertical:8/gap:4`, active tab `#E8DEF8` pill `borderRadius:20/paddingHorizontal:4/paddingVertical:8`, FAB docked beside the pill in a `row`/`alignItems:center`/`gap:12` wrapper); D-06 `_layout.tsx` delegates via `tabBar={(props) => <FloatingTabBar ...` and drops `tabBarStyle`/`tabBarButton`/absolute FAB; D-07 `utils/tabBarFloat.test.ts` rewritten + `tabBarMetrics.test.ts` ACC-05 repointed. Old `_layout` tabBarMetrics pins (SPEC-32/52/55/56/68) superseded. See `docs/savepoint.md`.
 
+- **2026-10-10 — Spec 70 FINAL + implemented.** `specs/70-manage-categories-header-sort.md`: D-01 `app/category-settings.tsx` — body sort row deleted, header sort `Appbar.Action` + Paper `Menu` (Name/Type/Recent, default Name, active checked); filter + `sortCategories` path untouched; D-02 new `utils/manageCategoriesHeaderSort.test.ts` ACC-01..04 × android/ios/web (ordering stays canonical in SPEC-63/`categorySort.test.ts`). See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 70 v1.1 FINAL + implemented.** Name sort direction: `Name A-Z` (down arrow) / `Name Z-A` (up arrow) menu items, Name-only `sortDir` (`asc` default); helper gains additive optional `dir` (type/recent ignore it); guards extended ACC-05..07 × android/ios/web, `categorySort.test.ts` byte-identical. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 70 v1.2 FINAL + implemented.** Direction-only menu: `A-Z` (down arrow) / `Z-A` (up arrow); Type/Recent/Name-prefix removed, `sortBy` state deleted (literal `"name"` call-site); helper + its tests untouched. Guards ACC-08..10 × android/ios/web. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 71 FINAL + implemented.** `specs/71-change-passcode-modal-rounded-corners.md`: D-01 shared `styles.dialog` gains `borderRadius: 16` + `overflow: "hidden"` (Clear Data, Delete Account, Change Passcode + all consumers rounded, zero JSX change); D-02 new `utils/settingsModalRadius.test.ts` ACC-01..03 × android/ios/web; SPEC-26/65 documents untouched (§1.14 split). See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 72 FINAL + implemented.** `specs/72-hide-repair-duplicates-section.md`: D-01 Repair button guard → `{false && (` + comment (button JSX, repair flow, confirm dialog byte-identical — one-line revert restores); D-02 new `utils/hideRepairSection.test.ts` ACC-01..03 × android/ios/web; SPEC-45 untouched (runbook still NOT YET RUN). See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode
