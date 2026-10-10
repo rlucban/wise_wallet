@@ -97,6 +97,13 @@ async function processSingleItem(item: SyncQueueItem): Promise<SyncResult> {
     } else if (apiResult.status === 401) {
       return { success: false, error: 'Unauthorized - session expired' };
     } else if (apiResult.status === 404) {
+      if (item.entity === 'savingsItems') {
+        // SPEC-73 CON-06: a savingsItems rejection is never silently dequeued — surface + retry.
+        console.warn(
+          `[Sync] savingsItems ${item.operation} rejected by server (404): ${apiResult.error}. Marking failed — will retry.`
+        );
+        return { success: false, error: apiResult.error || `HTTP ${apiResult.status}` };
+      }
       if (isVerboseSyncLogging) {
         console.error(
           `[Sync] Endpoint ${endpoint} returned 404 — server may not support ${item.entity}. Dequeuing.`,
@@ -116,6 +123,13 @@ async function processSingleItem(item: SyncQueueItem): Promise<SyncResult> {
       }
       return { success: true };
     } else if (apiResult.status === 400) {
+      if (item.entity === 'savingsItems') {
+        // SPEC-73 CON-06: a savingsItems rejection is never silently dequeued — surface + retry.
+        console.warn(
+          `[Sync] savingsItems ${item.operation} rejected by server (400): ${apiResult.error}. Marking failed — will retry.`
+        );
+        return { success: false, error: apiResult.error || `HTTP ${apiResult.status}` };
+      }
       if (isVerboseSyncLogging) {
         console.error(
           `[Sync] ${item.entity} ${item.operation} rejected by server (400): ${apiResult.error}. Dequeuing.`,

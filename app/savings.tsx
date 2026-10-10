@@ -464,7 +464,7 @@ export default function SavingsScreen() {
                     <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                         <Card.Content style={{ padding: 20 }}>
                             <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Transfer Money In</Text>
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>This creates an expense transaction \u2014 money leaves your main balance.</Text>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Allocated money deducted and reserved from your main balance.</Text>
                             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
                                 Available Balance: {formatAmount(availableBalance)}
                             </Text>
@@ -501,7 +501,7 @@ export default function SavingsScreen() {
                                 <Text variant="titleLarge" style={{ color: theme.colors.onSurface }}>Transfer Money Out</Text>
                                 <IconButton icon="close" size={24} onPress={closeTransferOutModal} />
                             </View>
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>This creates an income transaction \u2014 money returns to your main balance.</Text>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>Allocated money returns to your main balance.</Text>
                             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
                                 Available balance: {formatAmount(selectedItem?.balance || 0)}
                             </Text>

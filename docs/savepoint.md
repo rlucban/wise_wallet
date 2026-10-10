@@ -1101,3 +1101,39 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-02 `utils/learningGuideContent.test.ts`.** Added SPEC-72 ACC-01..03 guards inside the existing × android/ios/web `runSuite`: the guide block (slice from `id: "wisewallet_app_guide"`) contains no `audience`, the interface declares `audience?:`, `audience:` count == 6, and `learning.tsx` retains both filter branches + badge guard. ACC-04 (SPEC-71 outline/single-source ACCs) already covered by the pre-existing suites.
 - **D-03** this entry + `AGENTS.md` §3.
 - User-run verification pending per §1.3 (agent does not run CLIs): `npm test` (jest), `npm run lint`, `npx tsc --noEmit`, plus Expo Go (Android + iOS) + web export badge/filter check (ACC-05).
+
+---
+
+## 2026-10-10 — Spec 73 FINAL v1.0 + implementation (Allocation Archive Persistence)
+
+- **Spec.** `specs/73-fix-allocation-archive-persistence.md` FINAL per user call. Four user decisions: (DEC-01) `isArchived` becomes a synced cloud field; (DEC-02) migration also adds `target_amount` + `updatedAt` for real server LWW; (DEC-04) failures surface — no silent success; (DEC-05) forward-only, no heal of already-bounced allocations.
+- **Root cause (already documented).** `savingsItems` had no `isArchived` (nor `target_amount`/`updatedAt`); archive PUTs sent a partial `{ isArchived, userId }`; `syncProcessor` dequeued 400/404 as success; web refetch replaced state verbatim; `updateItem` swallowed errors. `G5`/`G6` pinned the defective behavior.
+- **D-01 `supabase/schema.sql`.** `savingsItems` DDL gains `target_amount NUMERIC`, `isArchived BOOLEAN NOT NULL DEFAULT FALSE`, `updatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW()` (additive, ACC-01) + a SPEC-73 Migration Runbook block: idempotent live-DB `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` ×3 + `UPDATE ... SET "updatedAt" = NOW() WHERE "updatedAt" IS NULL` backfill + `DROP COLUMN` rollback.
+- **D-02 `hooks/useSavings.ts`.** (a) full-record sync: web PUT body = `{ ...current, ...updates, updatedAt: current?.updatedAt || nowTimestamp(), userId }`; native syncData = `{ ...existing, ...updates, updatedAt: existing?.updatedAt || nowTimestamp(), userId }` (CON-04 — partial `{ ...updates }` body gone); (b) `updateItem` catch now `console.error` + `throw error` (CON-06 — `savings.tsx`/`archived-allocations.tsx` handlers were already try/catch'd, their Alert/toasts now fire truthfully); (c) web refetch field-union guard via new `itemsRef` (no new `fetchItems` dep — avoids a focus-refetch loop): remote rows missing `isArchived`/`target_amount` keep the local value; (d) native LWW remote-wins branch same field-union (CON-05, ACC-04/ACC-05).
+- **D-03 `utils/syncProcessor.ts`.** 400 and 404 branches return `{ success: false, error }` for `item.entity === 'savingsItems'` (surface + retry via existing `markSyncFailed`/`nextRetryAt`); every other entity keeps the existing silent-success dequeue (CON-06, ACC-04). No other sync semantics changed.
+- **D-04 `utils/savingsArchive.test.ts`.** `G5` inverted (requires log + `throw error`), `G6` rewritten (no partial body; `updatedAt` full-record paths present), new `G7` (syncProcessor entity branch ×2 + failure return + other-entity success retained), `G8` (native merge union), `G9` (web `setItems(guarded)`, no `setItems(remoteData)`). G1..G4 unchanged; suite still × android/ios/web.
+- **D-05** `app/savings.tsx` + `app/archived-allocations.tsx` byte-identical by design (existing try/catch handlers + G1/G2/G3 filters already correct).
+- **D-06** this entry + `AGENTS.md` §3.
+- **Backend scope (`D-B-01..D-B-03`, outside this repo).** User-implemented in `rlucban/wallet-api`: run the migration runbook; GET must echo `isArchived`/`target_amount`/`updatedAt`, PUT upserts the full body and bumps `updatedAt`, rejections return non-20x with a message; deploy before the client (CON-08). Client merge guard keeps behavior safe if the client ships early.
+- User-run verification pending per §1.3 (agent does not run CLIs): `npm test` (jest), `npm run lint`, `npx tsc --noEmit`, plus backend deploy + Expo Go (Android + iOS) + web export matrix (ACC-07..ACC-10).
+
+---
+
+## 2026-10-10 — Spec 74 FINAL v1.0 + implementation (Savings cache write-through)
+
+- **Spec.** `specs/74-savings-cache-write-through.md` FINAL per user instruction ("Just fix it", reproduced stale-seed trace). After an allocation mutation the change "didn't show immediately" because `_savingsCache` (SPEC-60/66) is only written by `fetchItems` — `addItem`/`updateItem`/`deleteItem` updated React state optimistically but never the module cache, so the next mount (e.g. opening the Archived screen after archiving) seeded stale data and depended on the focus `refetch()`; on web a slow/failed GET meant only a reload (which wipes the module cache) showed the truth.
+- **D-74-01 `hooks/useSavings.ts`.** Write-through at all six mutation sites (web + native × add/update/delete): after the optimistic `setItems`, `itemsRef.current` is recomputed (concat/map/filter) and `_savingsCache` is replaced with `{ userId: activeUserId, items: itemsRef.current }` when `activeUserId` is present. No lifecycle/seed/refetch/SPEC-73 guard changes; the functional `setItems` lines stay byte-identical (G4's count of 2 preserved). CON-01..CON-04.
+- **D-74-02 `utils/savingsArchive.test.ts`.** New `G10` guard: 6 cache-write lines, 2 concat / 2 map / 2 filter `itemsRef` writes — × android/ios/web.
+- **D-74-03** this entry + `AGENTS.md` §3.
+- **Adjacent rot (out of scope, noted):** `hooks/useDues.ts` and any other module-cache hooks (SPEC-60 pattern) have the same write-through gap; that is its own spec. SPEC-62's 60s GET cache is *not* the culprit for this symptom (a successful mutation already calls `invalidateGetCache("savingsItems")`).
+- User-run verification pending per §1.3 (agent does not run CLIs): `npm test` (jest), `npm run lint`, `npx tsc --noEmit`, plus Expo Go (Android + iOS) + web export ACC-04/ACC-05 (archive→immediately-open Archived; restore→immediately-open Savings, first frame, no reload).
+
+---
+
+## 2026-10-10 — Spec 75 FINAL v1.0 + implementation (Savings instances react to shared cache writes)
+
+- **Spec.** `specs/75-savings-instances-react-to-cache-writes.md` FINAL per user call ("use the same fix on the active allocations"; confirmed surface = Active list on Savings screen). SPEC-74 fixed the **next mount** seeding stale data, but a `useSavings` instance that is already mounted (Savings screen while `archived-allocations`/`add-allocation` run on top, Dashboard tab's own instance) never observes the `_savingsCache` replacement — it only converged via the focus `refetch()` (async, network-bound on web) or a reload.
+- **D-75-01 `hooks/useSavings.ts`.** Module-level `_savingsCacheListeners = new Set<() => void>()` + `notifySavingsCacheChanged()`; each hook instance subscribes via a `useEffect([activeUserId])` that, on notify (guard `_savingsCache?.userId === activeUserId`), sets `itemsRef.current = _savingsCache.items` and `setItems(_savingsCache.items)`, removing the listener on cleanup; `notifySavingsCacheChanged();` emitted as the final line of all six SPEC-74 write-through blocks. Idempotent for the mutating instance (already current — CON-02); inert when signed out (CON-03); fetch/seed/focus-refetch/g G1..G10 untouched (CON-04, ACC-03).
+- **D-75-02 `utils/savingsArchive.test.ts`.** New `G11` guard (ACC-01/ACC-02): 6 `notifySavingsCacheChanged();` + 1 listener-set + 1 notifier + add/delete subscription + re-seed regex — × android/ios/web.
+- **D-75-03** this entry + `AGENTS.md` §3.
+- User-run verification pending per §1.3 (agent does not run CLIs): `npm test` (jest), `npm run lint`, `npx tsc --noEmit`, plus Expo Go (Android + iOS) + web export ACC-04..ACC-06 (restore in Archived → Savings Active list immediately; add-allocation → Savings immediately; archive on Savings → Dashboard summary drops the allocation immediately, no tab refetch wait).

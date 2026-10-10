@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Platform } from "react-native";
 import { SavingsItem } from "../types";
 import { useAuthData } from "../context/AuthContext";
@@ -40,9 +40,20 @@ function titleDeduplicate(items: SavingsItem[]): SavingsItem[] {
 // --- D-01 SPEC-60: module-level in-memory cache (survives navigation, cleared on user change) ---
 let _savingsCache: { userId: string; items: SavingsItem[] } | null = null;
 
+// --- D-75-01 SPEC-75: module notifier — mounted instances re-seed on shared cache writes ---
+const _savingsCacheListeners = new Set<() => void>();
+function notifySavingsCacheChanged(): void {
+    _savingsCacheListeners.forEach((l) => l());
+}
+
 export function useSavings() {
     const [items, setItems] = useState<SavingsItem[]>([]);
     const [loading, setLoading] = useState(false);
+
+    const itemsRef = useRef<SavingsItem[]>([]);
+    useEffect(() => {
+        itemsRef.current = items;
+    }, [items]);
 
     const { activeUserId } = useAuthData();
     const isLocal = useIsLocalAccount();
@@ -57,6 +68,21 @@ export function useSavings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeUserId]);
 
+    // D-75-01 SPEC-75 CON-01/CON-03: subscribed instances re-seed from the shared cache on notify
+    useEffect(() => {
+        if (!activeUserId) return;
+        const listener = () => {
+            if (_savingsCache?.userId === activeUserId) {
+                itemsRef.current = _savingsCache.items;
+                setItems(_savingsCache.items);
+            }
+        };
+        _savingsCacheListeners.add(listener);
+        return () => {
+            _savingsCacheListeners.delete(listener);
+        };
+    }, [activeUserId]);
+
     const fetchItems = useCallback(async () => {
 
         setLoading(true);
@@ -66,8 +92,22 @@ export function useSavings() {
                 if (API_URL && activeUserId) {
                     const { ok, data: remoteData } = await authFetch<SavingsItem[]>(`savingsItems?userId=${activeUserId}`);
                     if (ok && Array.isArray(remoteData)) {
-                        setItems(remoteData);
-                        _savingsCache = { userId: activeUserId, items: remoteData }; // D-01 SPEC-60
+                        // SPEC-73 CON-05: field-union guard — preserve local isArchived / target_amount
+                        // a pre-migration server omits, so archives and goals survive the refetch.
+                        const localMap = new Map(itemsRef.current.map((g) => [g.id, g]));
+                        const guarded = remoteData.map((remote) => {
+                            const local = localMap.get(remote.id);
+                            if (!local) return remote;
+                            return {
+                                ...remote,
+                                isArchived:
+                                    remote.isArchived === undefined ? local.isArchived : remote.isArchived,
+                                target_amount:
+                                    remote.target_amount === undefined ? local.target_amount : remote.target_amount,
+                            };
+                        });
+                        setItems(guarded);
+                        _savingsCache = { userId: activeUserId, items: guarded }; // D-01 SPEC-60
                     }
                 }
                 return;
@@ -99,6 +139,15 @@ export function useSavings() {
                                 mergedMap.set(localItem.id, localItem);
                                 await enqueueAndTrigger('savingsItems', 'update', localItem.id, localItem as unknown as Record<string, unknown>);
                             } else if (remoteItem && (remoteItem.updatedAt || 0) > (localItem.updatedAt || 0)) {
+                                // SPEC-73 CON-05: field-union — preserve local fields a
+                                // pre-migration server omits instead of letting remote-wins revert them.
+                                mergedMap.set(localItem.id, {
+                                    ...remoteItem,
+                                    isArchived:
+                                        remoteItem.isArchived === undefined ? localItem.isArchived : remoteItem.isArchived,
+                                    target_amount:
+                                        remoteItem.target_amount === undefined ? localItem.target_amount : remoteItem.target_amount,
+                                });
                                 overwrittenCount++;
                             }
                         }
@@ -149,12 +198,22 @@ export function useSavings() {
                     throw new Error("Failed to save allocation. Please check your connection.");
                 }
                 setItems((prev) => [...prev, newItem]);
+                // SPEC-74 CON-01: write through so the next mount seeds the new item.
+                itemsRef.current = [...itemsRef.current, newItem];
+                if (activeUserId) _savingsCache = { userId: activeUserId, items: itemsRef.current };
+                // D-75-01 SPEC-75 CON-01: broadcast so mounted instances re-seed immediately.
+                notifySavingsCacheChanged();
                 return;
             }
             const newItem = { ...item, id: generateUUID() } as SavingsItem;
 
             await repos.savingsItems.upsert(newItem);
             setItems((prev) => [...prev, newItem]);
+            // SPEC-74 CON-01: write through so the next mount seeds the new item.
+            itemsRef.current = [...itemsRef.current, newItem];
+            if (activeUserId) _savingsCache = { userId: activeUserId, items: itemsRef.current };
+            // D-75-01 SPEC-75 CON-01: broadcast so mounted instances re-seed immediately.
+            notifySavingsCacheChanged();
 
             if (!isLocal) {
                 const autoBackup = await getSetting('autoBackup');
@@ -173,14 +232,26 @@ export function useSavings() {
         try {
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
+                // SPEC-73 CON-04: full-record body so isArchived / target_amount survive the server.
+                const current = itemsRef.current.find((g) => g.id === id);
                 const { ok } = await authFetch(`savingsItems/${id}`, {
                     method: "PUT",
-                    body: JSON.stringify({ ...updates, userId: activeUserId }),
+                    body: JSON.stringify({
+                        ...(current as SavingsItem),
+                        ...updates,
+                        updatedAt: current?.updatedAt || nowTimestamp(),
+                        userId: activeUserId,
+                    }),
                 });
                 if (!ok) {
                     throw new Error("Failed to save changes. Please check your connection.");
                 }
                 setItems((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
+                // SPEC-74 CON-01: write through so the next mount seeds the update.
+                itemsRef.current = itemsRef.current.map((g) => (g.id === id ? { ...g, ...updates } : g));
+                if (activeUserId) _savingsCache = { userId: activeUserId, items: itemsRef.current };
+                // D-75-01 SPEC-75 CON-01: broadcast so mounted instances re-seed immediately.
+                notifySavingsCacheChanged();
                 return;
             }
             const existing = await repos.savingsItems.getById(id);
@@ -188,16 +259,29 @@ export function useSavings() {
                 await repos.savingsItems.upsert({ ...existing, ...updates } as SavingsItem);
             }
             setItems((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
+            // SPEC-74 CON-01: write through so the next mount seeds the update.
+            itemsRef.current = itemsRef.current.map((g) => (g.id === id ? { ...g, ...updates } : g));
+            if (activeUserId) _savingsCache = { userId: activeUserId, items: itemsRef.current };
+            // D-75-01 SPEC-75 CON-01: broadcast so mounted instances re-seed immediately.
+            notifySavingsCacheChanged();
 
             if (!isLocal) {
                 const autoBackup = await getSetting('autoBackup');
                 if (API_URL && autoBackup !== 'false') {
-                    const syncData = { ...updates, userId: activeUserId };
-                    await enqueueAndTrigger('savingsItems', 'update', id, syncData);
+                    // SPEC-73 CON-04: full-record sync payload (never partial { ...updates })
+                    // so isArchived / target_amount / updatedAt survive the server round-trip.
+                    const syncData = {
+                        ...(existing as SavingsItem),
+                        ...updates,
+                        updatedAt: existing?.updatedAt || nowTimestamp(),
+                        userId: activeUserId,
+                    } as SavingsItem;
+                    await enqueueAndTrigger('savingsItems', 'update', id, syncData as unknown as Record<string, unknown>);
                 }
             }
         } catch (error) {
             console.error("Error updating savings item:", error);
+            throw error;
         }
     };
 
@@ -210,10 +294,20 @@ export function useSavings() {
                     throw new Error("Failed to delete allocation. Please check your connection.");
                 }
                 setItems((prev) => prev.filter((g) => g.id !== id));
+                // SPEC-74 CON-01: write through so the next mount seeds the deletion.
+                itemsRef.current = itemsRef.current.filter((g) => g.id !== id);
+                if (activeUserId) _savingsCache = { userId: activeUserId, items: itemsRef.current };
+                // D-75-01 SPEC-75 CON-01: broadcast so mounted instances re-seed immediately.
+                notifySavingsCacheChanged();
                 return;
             }
             await repos.savingsItems.deleteById(id);
             setItems((prev) => prev.filter((g) => g.id !== id));
+            // SPEC-74 CON-01: write through so the next mount seeds the deletion.
+            itemsRef.current = itemsRef.current.filter((g) => g.id !== id);
+            if (activeUserId) _savingsCache = { userId: activeUserId, items: itemsRef.current };
+            // D-75-01 SPEC-75 CON-01: broadcast so mounted instances re-seed immediately.
+            notifySavingsCacheChanged();
 
             if (!isLocal) {
                 const autoBackup = await getSetting('autoBackup');
