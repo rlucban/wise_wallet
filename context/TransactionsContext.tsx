@@ -17,6 +17,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { getPrefixedKey, setItem } from "../utils/storage";
 import { updateLastSyncedAt } from "../utils/syncQueue";
 import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
+import { getManilaMonthKey } from "../utils/notifications";
 import { resolveTransactionCategory } from "../utils/transactionCategory";
 import { attachDueLinks, recordDueLink, pruneDueLinks } from "../utils/dueTxLinks";
 
@@ -149,7 +150,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         }
     }, [activeUserId, txRepo, isLocal, refreshFromApi, categories]);
 
-    const { checkNegativeBalance } = useSystemAlerts();
+    const { checkNegativeBalance, checkOverspending } = useSystemAlerts();
 
     useEffect(() => {
         if (!activeUserId) return;
@@ -168,7 +169,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         const balance = initialBalance + income - expense;
 
         checkNegativeBalance(balance);
-    }, [activeUserId, profile, transactions, loading, checkNegativeBalance]);
+        const monthKey = getManilaMonthKey(Date.now());
+        const monthlyIncome = transactions
+            .filter((t) => t.type === "income" && t.note !== "Initial account setup" && t.category?.id !== OPENING_BALANCE_CATEGORY_ID && getManilaMonthKey(Date.parse(t.date)) === monthKey)
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+        checkOverspending(transactions, monthlyIncome, initialBalance);
+    }, [activeUserId, profile, transactions, loading, checkNegativeBalance, checkOverspending]);
 
         const addTransaction = useCallback(async (transaction: Omit<Transaction, "id">) => {
             try {
