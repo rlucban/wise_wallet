@@ -502,6 +502,10 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-10 — Spec 70 v1.1 + implemented (D-01..D-06, verification pending).** Plan-fix run `20261010-1200-spec70-pdf-auto-download.md`: v1.1 amendment (web blob+anchor withdrawn — no dep-free way to mint real PDF bytes, so iframe print-to-PDF retained; native success dialog with filename + user-invoked Share; return-widening) + implementation. Native PDF/CSV silent-save to `documentDirectory` (share/print fallback-only; total failure → dialog), web PDF path byte-identical, `reports.tsx` CSV awaited + success dialogs, new `utils/exportDownload.test.ts` (ACC-01..05 × android/ios/web). No deps/routes/storage change; SPEC-34 frozen. Open: user-run jest/lint/tsc + ACC-S01..S03. See `docs/savepoint.md`.
 
+- **2026-10-10 — Spec 71 FINAL v1.0 + implemented.** `specs/71-financial-literacy-app-guide-redo.md` on branch `fix/pdf-multiplatform-download`: redo of SPEC-63's Financial Literacy App Guide (supersedes D-03/D-04 in this branch only). Single existing article expanded into an 11-section docked outline (`utils/learningGuideContent.ts`, structure first, rich prose = deferred D-02); list order/chips/UI byte-identical; full TTS + bookmark parity; `Platform.OS`-parameterized jest guard (`learningGuideContent.test.ts`) + Expo Go/web-export matrix. Open: user-run jest/lint/tsc + ACC-S01..S03 manual. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 72 FINAL v1.0 + implemented (verification pending).** `specs/72-app-guide-audience-tag-removed.md`: the WiseWallet App Guide card no longer shows a Students/Workers audience badge and appears only under `All` + `App Guide` (it was wrongly tagged `audience: "Students"`). `learningData.ts` `audience` now optional + tag dropped from `wisewallet_app_guide` only; `learning.tsx` byte-identical (badge/filters degrade safely); existing 6 articles unchanged; SPEC-71 body/intact; new SPEC-72 ACC-01..03 guards × android/ios/web. Open: user-run jest/lint/tsc + ACC-05 visual. See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

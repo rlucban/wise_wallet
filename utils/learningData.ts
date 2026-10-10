@@ -11,7 +11,7 @@ export interface LearningResource {
   icon: string;
   topic: ArticleTopic;
   minutes: number;
-  audience: AudienceType;
+  audience?: AudienceType;
 }
 
 export const LEARNING_RESOURCES: LearningResource[] = [
@@ -76,6 +76,5 @@ export const LEARNING_RESOURCES: LearningResource[] = [
     icon: "rocket-launch-outline",
     topic: "App Guide",
     minutes: 4,
-    audience: "Students",
   },
 ];
