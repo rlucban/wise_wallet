@@ -1065,3 +1065,21 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-05** — `components/FloatingTabBar.tsx` (new): custom dock. Pill container `paddingHorizontal: 10` / `paddingVertical: 8` / `gap: 4`; each tab item `borderRadius: 20` / `paddingHorizontal: 4` / `paddingVertical: 8`, active background `#E8DEF8`; FAB docked beside the pill in a `flexDirection: "row"` / `alignItems: "center"` / `gap: 12` wrapper (CON-02..CON-04, CON-06).
 - **D-06** — `app/(tabs)/_layout.tsx` rewritten: `tabBar={(props) => <FloatingTabBar {...props} />}`; previous `tabBarStyle`, `tabBarButton`, `useSafeAreaInsets`, `getTabBarMetrics`, and the absolute FAB removed (CON-05).
 - **D-07** — `utils/tabBarFloat.test.ts` rewritten to guard SPEC-69 (android/ios/web); `utils/tabBarMetrics.test.ts` ACC-05 block repointed (old `_layout` tabBarMetrics pins SPEC-32/52/55/56/68 superseded).
+
+---
+
+## 2026-10-10 — Spec 70 FINAL v1.0 (PDF/CSV Auto-Download, Format Frozen)
+
+- `specs/70-pdf-auto-download-to-default-directory.md` marked **FINAL v1.0** per user call (Option A; status promotion only, no normative change).
+- Contract: web PDF blob+anchor auto-download (no `expo-print` on web); native silent-save to `documentDirectory` with share/print fallback-only; CSV parity; SPEC-34 layout byte-identical; no new deps; awaited errors only (CON-01..08, DEC-01..04, ACC-01..05 + ACC-S01..S03, D-01..D-06).
+- Implementation NOT started per §1.2 (awaiting explicit user go-ahead).
+
+## 2026-10-10 — Spec 70 v1.1 amendment (plan-fix) + implementation
+
+- **v1.1 amendment (slice 1).** `specs/70-pdf-auto-download-to-default-directory.md` amended per plan-run `20261010-1200-spec70-pdf-auto-download.md`: web PDF blob+anchor primary withdrawn (browsers cannot mint genuine PDF bytes from HTML without a library — CON-02 forbids one; an HTML blob named `.pdf` is a corrupt file) → CON-04/D-01 revert to the retained iframe print-to-PDF dialog; native success now surfaces a confirmation dialog with the saved filename + a user-invoked Share action (DEC-05, unknown-2/Discovery Option A); CON-08 return-widening (`exportToPDF`/`exportToCSV` resolve the saved uri, `null` on web-dialog path). Layout, columns, filenames frozen throughout.
+- **D-01/D-02/D-03 (slice 2) `utils/exportUtils.ts`.** PDF native silent-save primary → `printToFileAsync` → idempotent `deleteAsync` + `copyAsync` to `documentDirectory/WiseWallet_Report_<slug>.pdf` → resolves the saved uri (zero sheets); write failure → exactly one share of the print-file uri, then OS print dialog only if share rejects, then throw-to-dialog. Web PDF path byte-identical (`printReportInIframe`, no `expo-print`, no blob download). CSV native silent-save primary with cache-file share fallback; web CSV blob-anchor unchanged. Builders/format untouched. New `shareSavedReport(uri, kind)` for the dialog's Share action.
+- **D-04 (slice 3) `app/(tabs)/reports.tsx`.** CSV `onPress` now `handleExportCSV` (awaited, `Alert` catch); native success shows `Report Saved`/`Data Exported` with filename + Share button; `Export Failed` dialogs preserved.
+- **D-05 (slice 4) `utils/exportDownload.test.ts` (new).** ACC-01..05 guards × android/ios/web: silent-success zero-share + saved-uri resolution; copy-failure → share → print chain; total-failure rethrow; web iframe-only (no blob/anchor/`expo-print`); byte-identical `buildReportHtml` passed to the printer; CSV parity + fallback; awaited call-site source scans.
+- **D-06 (slice 5) docs** — this entry + AGENTS.md §3.
+- **Repair (post-review):** `tsconfig.test.json` `lib` gains `"DOM"` — the new `exportDownload.test.ts` pulls `utils/exportUtils.ts` into the ts-jest program, whose web paths touch `document`; the app tsconfig (expo base) already includes DOM, the test program did not. Test-only flag, zero runtime change; mock casts strengthened to `as unknown as jest.Mock` per `speechVoice.test.ts` pattern. Second repair: `exportDownload.test.ts` spies `console.error` to silence the intentional rethrow logs from failure-path guards (ACC-03).
+- User-run verification pending per §1.3 (agent does not run CLIs): `npm test` (jest), `npm run lint`, `npx tsc --noEmit`, plus Expo Go + `expo export --platform web` matrix (ACC-S01..S03).

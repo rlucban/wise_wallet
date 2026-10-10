@@ -498,6 +498,10 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-08 — Spec 69 FINAL + implemented.** `specs/69-custom-floating-tab-bar.md`: D-01..D-04 `paddingBottom: 110` on all four tab screens; D-05 new `components/FloatingTabBar.tsx` (pill `paddingHorizontal:10/paddingVertical:8/gap:4`, active tab `#E8DEF8` pill `borderRadius:20/paddingHorizontal:4/paddingVertical:8`, FAB docked beside the pill in a `row`/`alignItems:center`/`gap:12` wrapper); D-06 `_layout.tsx` delegates via `tabBar={(props) => <FloatingTabBar ...` and drops `tabBarStyle`/`tabBarButton`/absolute FAB; D-07 `utils/tabBarFloat.test.ts` rewritten + `tabBarMetrics.test.ts` ACC-05 repointed. Old `_layout` tabBarMetrics pins (SPEC-32/52/55/56/68) superseded. See `docs/savepoint.md`.
 
+- **2026-10-10 — Spec 70 FINAL v1.0 (not yet implemented).** `specs/70-pdf-auto-download-to-default-directory.md`: PDF/CSV silent-first delivery, SPEC-34 format frozen. Web blob+anchor download; native `documentDirectory` silent-save with share/print fallback-only; no new deps; awaited errors. D-01..D-06 pending user go-ahead per §1.2. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 70 v1.1 + implemented (D-01..D-06, verification pending).** Plan-fix run `20261010-1200-spec70-pdf-auto-download.md`: v1.1 amendment (web blob+anchor withdrawn — no dep-free way to mint real PDF bytes, so iframe print-to-PDF retained; native success dialog with filename + user-invoked Share; return-widening) + implementation. Native PDF/CSV silent-save to `documentDirectory` (share/print fallback-only; total failure → dialog), web PDF path byte-identical, `reports.tsx` CSV awaited + success dialogs, new `utils/exportDownload.test.ts` (ACC-01..05 × android/ios/web). No deps/routes/storage change; SPEC-34 frozen. Open: user-run jest/lint/tsc + ACC-S01..S03. See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode
