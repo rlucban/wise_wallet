@@ -528,6 +528,12 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-10 — Spec 84 FINAL + implemented.** `specs/84-adopt-server-transaction-ids.md`: D-02 adopt-POST-row-id + exact due-link remap on both paths (validation/repull untouched), D-03 `utils/serverIdAdopt.test.ts` ACC-01..03 × android/ios/web; pasted-body gate outstanding, device proof doubles as retroactive gate (disclosed). See `docs/savepoint.md`.
 
+- **2026-10-10 — Spec 85 FINAL + implemented.** `specs/85-delete-edit-success-toasts.md`: D-01 delete → toasts + catch (red-box fixed), D-02 edit save → toasts (validations intact); D-03 `utils/mutationFeedback.test.ts` ACC-01..03 × android/ios/web; ToastContext untouched. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 85 v1.1 FINAL + implemented.** Screenshot-style result dialogs on delete + edit (icon/title/message/single OK; OK → back / stay); toast wiring removed; D-06 guards ACC-04/05 × android/ios/web. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 85 v1.2 FINAL + implemented.** Lookup keeps stale row while result dialog shows (success dialog never preempted); D-09 ACC-06 guard; edit screen needed nothing. See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

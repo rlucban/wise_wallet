@@ -1210,6 +1210,16 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-03** — new `utils/syntheticCategoryId.test.ts`: ACC-01 (uuid/upper passthrough; nil/blank/sentinels/titles/numerics → null), ACC-02 (4 helper uses, no bare wire expressions left), ACC-03 (same-layer import, sanitize + dues fallback intact) × android/ios/web.
 - Adjacent rot noted (§1.11, not fixed — needs its own spec): the PUT body lines were already duplicated verbatim pre-change (two identical `updateBody.categoryId` assignments); preserved as-is.
 - Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (web-first: repay the same uncategorized due) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 85 FINAL + implemented (Delete/edit toasts)
+
+- **D-01** — `app/transaction-details.tsx` ONLY: `handleDelete` gains try/catch — success toasts `Deleted successfully` then back; failure closes confirm, stays, toasts the error (fixes the uncaught-throw red box). `useToast` wiring only addition.
+- **D-02** — `app/edit-transaction.tsx` ONLY: save success toasts `Saved successfully` then back; failure toasts (same generic, new surface) with loading reset; pre-submit native validation `Alert`s + `Alert` import intact.
+- **D-03** — new `utils/mutationFeedback.test.ts`: ACC-01/02 (exact toast copy, catch/fallbacks, validation Alerts intact), ACC-03 (no Platform in either file) × android/ios/web. Pins pre-verified on disk.
+- ToastContext/provider untouched (SPEC-05 mechanism reused as-is). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export, incl. forced-failure-no-redbox) remain pending per `AGENTS.md` §1.3. No commit.
 - Retroactive gate PASSED (user-verified 2026-10-10): fresh build + legacy row still 404'd (expected — no backfill by design), then the SAME row deleted fine after navigate-away-and-back. Proves (a) legacy rows heal via GET-replace exactly as spec'd, (b) the failure mode is the pre-fix id divergence, not a new defect. No code change. No commit.
 
 ---
@@ -1231,3 +1241,22 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-03** — new `utils/serverIdAdopt.test.ts`: ACC-01 (extraction + adopt + remap pins ×2 paths), ACC-02 (live remap move/no-op suite on real AsyncStorage), ACC-03 (surroundings + same-layer imports) × android/ios/web.
 - Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (web-first: add → immediate edit + delete; dues-pay → refetch → lock holds) remain pending per `AGENTS.md` §1.3. No commit.
 - Repair (guard migration, user-pasted full jest 819/825): `utils/transactionCategory.test.ts` ACC-01/ACC-01b pinned the exact SPEC-46 wire expressions that D-02 replaced by design (6 failures = 2 pins × 3 platforms; all 819 others green, so implementation already matched the FINAL spec). Rewrote both pins to the helper norm; all other pins untouched. D-03 wording extended to name this file (same intent — scoping miss, not new scope). No commit.
+
+---
+
+## 2026-10-10 — Spec 85 v1.1 FINAL + implemented (Screenshot dialogs)
+
+- **D-04** — `app/transaction-details.tsx` ONLY: result `Dialog` (ConfirmDialog-identical responsive style, icon/title/message/single OK) + `handleDelete` shows it on both outcomes (`Deleted Successfully` / `Delete Failed`; OK → back / stay); `useToast` wiring removed.
+- **D-05** — `app/edit-transaction.tsx` ONLY: same contract (`Saved Successfully` / `Save Failed`, loading reset, OK → back / stay); pre-submit validation `Alert`s + `Alert` import intact; `useToast` wiring removed.
+- **D-06** — `utils/mutationFeedback.test.ts` rewritten to ACC-04/05 (dialog design pins, exact copy, zero `showToast`/`ToastContext` in both files) × android/ios/web. Pins pre-verified on disk.
+- ToastContext/provider untouched (still serves its own callers). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S03/S04 (Expo Go Android/iOS + web export, screenshot-design match) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 85 v1.2 FINAL + implemented (Dialog survives row removal)
+
+- Root cause (my v1.1 bug, user-reported): successful delete nulled the row → lookup effect → early-return "not found" view preempted the success dialog before back-nav. Failure path never hit it (row intact).
+- **D-08** — `app/transaction-details.tsx` ONLY: lookup effect keeps the stale row while `resultDialog.visible` (deps extended — otherwise `exhaustive-deps` lint flags it). Genuine not-found rows still render the text.
+- **D-09** — ACC-06 guard (effect guard + deps + text branch intact). Self-caught pre-run ×2: a stray no-op edit joined two test lines (read back, repaired, verified), and the ACC-06 insert anchor was ambiguous (verified end-placement by read-back).
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S05/S06 (Expo Go Android/iOS + web export: success dialog, never not-found text) remain pending per `AGENTS.md` §1.3. No commit.

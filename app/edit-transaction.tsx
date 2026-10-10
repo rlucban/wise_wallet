@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { View, ScrollView, Alert } from "react-native";
 import { Image } from "expo-image";
-import { Appbar, TextInput, Button, SegmentedButtons, Text, Chip, IconButton, useTheme, Card, Portal, Modal } from "react-native-paper";
+import { Appbar, TextInput, Button, SegmentedButtons, Text, Chip, IconButton, useTheme, Card, Portal, Modal, Dialog } from "react-native-paper";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { safeGoBack } from "../utils/backNavigation";
 import * as ImagePicker from "expo-image-picker";
@@ -48,6 +48,7 @@ export default function EditTransaction() {
   const [date, setDate] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resultDialog, setResultDialog] = useState({ visible: false, ok: true, message: "" });
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
 
   useEffect(() => {
@@ -159,11 +160,21 @@ export default function EditTransaction() {
         receiptUrl: receiptImage || undefined,
       });
       setLoading(false);
-      safeGoBack(router);
-    } catch {
+      setResultDialog({ visible: true, ok: true, message: "Your changes have been saved." });
+    } catch (e) {
       setLoading(false);
-      Alert.alert("Error", "Failed to save changes. Please check your connection.");
+      setResultDialog({
+        visible: true,
+        ok: false,
+        message: e instanceof Error && e.message ? e.message : "Failed to save changes. Please check your connection.",
+      });
     }
+  };
+
+  const handleResultOk = () => {
+    const wasOk = resultDialog.ok;
+    setResultDialog({ ...resultDialog, visible: false });
+    if (wasOk) safeGoBack(router);
   };
 
   const theme = useTheme();
@@ -342,6 +353,28 @@ export default function EditTransaction() {
               </Button>
             </Card>
           </Modal>
+        </Portal>
+        <Portal>
+          <Dialog
+            visible={resultDialog.visible}
+            onDismiss={handleResultOk}
+            style={{ maxWidth: 480, width: "90%", alignSelf: "center", marginHorizontal: 0 }}
+          >
+            <Dialog.Icon icon={resultDialog.ok ? "check-circle-outline" : "alert-circle-outline"} />
+            <Dialog.Title style={{ textAlign: "center" }}>
+              {resultDialog.ok ? "Saved Successfully" : "Save Failed"}
+            </Dialog.Title>
+            <Dialog.Content>
+              <Text variant="bodyMedium" style={{ textAlign: "center" }}>
+                {resultDialog.message}
+              </Text>
+            </Dialog.Content>
+            <Dialog.Actions style={{ justifyContent: "center" }}>
+              <Button mode="contained" onPress={handleResultOk}>
+                OK
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
         </Portal>
         </ScrollView>
     </View>
