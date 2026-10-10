@@ -55,6 +55,7 @@ export default function SavingsScreen() {
     const [transferAmount, setTransferAmount] = useState("");
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [feedback, setFeedback] = useState<{ title: string; message: string; severity: "success" | "error" } | null>(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -225,15 +226,20 @@ export default function SavingsScreen() {
         setDeleteTarget(null);
         if (!item) return;
 
-        await deleteItem(id);
+        try {
+            await deleteItem(id);
+            setFeedback({ title: "Success", message: "Allocation deleted", severity: "success" });
+        } catch {
+            setFeedback({ title: "Error", message: "Failed to delete allocation. Please try again.", severity: "error" });
+        }
     };
 
     const handleArchiveItem = async (id: string) => {
         try {
             await updateItem(id, { isArchived: true });
-            setToastMessage("Allocation archived");
+            setFeedback({ title: "Success", message: "Allocation archived", severity: "success" });
         } catch {
-            Alert.alert("Error", "Failed to archive allocation.");
+            setFeedback({ title: "Error", message: "Failed to archive allocation.", severity: "error" });
         }
     };
 
@@ -536,6 +542,18 @@ export default function SavingsScreen() {
                     confirmLabel="Delete & Transfer"
                     onConfirm={confirmDelete}
                     onCancel={() => setDeleteTarget(null)}
+                />
+
+                <ConfirmDialog
+                    visible={!!feedback}
+                    title={feedback?.title ?? ""}
+                    message={feedback?.message ?? ""}
+                    confirmLabel="OK"
+                    hideCancel
+                    icon={feedback?.severity === "error" ? "alert-circle-outline" : "check-circle-outline"}
+                    confirmColor={feedback?.severity === "error" ? theme.colors.error : theme.colors.primary}
+                    onConfirm={() => setFeedback(null)}
+                    onCancel={() => setFeedback(null)}
                 />
             </Portal>
 

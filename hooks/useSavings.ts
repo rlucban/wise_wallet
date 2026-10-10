@@ -317,6 +317,7 @@ export function useSavings() {
             }
         } catch (error) {
             console.error("Error deleting savings item:", error);
+            throw error;
         }
     };
 
