@@ -8,6 +8,7 @@ import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { useTransactions } from "../hooks/useTransactions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 import { useUserProfile } from "../context/UserProfileContext";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -24,7 +25,9 @@ export default function SavingsScreen() {
     const totalReserved = useMemo(() => items.reduce((sum, g) => sum + g.balance, 0), [items]);
     const availableBalance = useMemo(() => {
         const initialBalance = Number(profile?.initialBalance || 0);
-        const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+        const totalIncome = transactions
+            .filter((t) => t.type === "income" && t.note !== "Initial account setup" && t.category?.id !== OPENING_BALANCE_CATEGORY_ID)
+            .reduce((s, t) => s + t.amount, 0);
         const totalExpense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
         return initialBalance + totalIncome - totalExpense - totalReserved;
     }, [profile, transactions, totalReserved]);

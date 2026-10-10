@@ -8,12 +8,13 @@ import { useCurrencyActions } from "../context/CurrencyContext";
 import { useUserProfile } from "../context/UserProfileContext";
 import { useTransactions } from "../hooks/useTransactions";
 import { formatNumberInput, MAX_AMOUNT } from "../utils/amount";
+import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 import { useToast } from "../context/ToastContext";
 
 export default function AddAllocation() {
     const router = useRouter();
     const theme = useTheme();
-    const { addItem } = useSavings();
+    const { addItem, items } = useSavings();
     const { formatAmount } = useCurrencyActions();
     const { transactions } = useTransactions();
     const { profile } = useUserProfile();
@@ -26,9 +27,12 @@ export default function AddAllocation() {
 
     const availableBalance = (() => {
         const initialBalance = Number(profile?.initialBalance || 0);
-        const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+        const totalIncome = transactions
+            .filter((t) => t.type === "income" && t.note !== "Initial account setup" && t.category?.id !== OPENING_BALANCE_CATEGORY_ID)
+            .reduce((s, t) => s + t.amount, 0);
         const totalExpense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
-        return initialBalance + totalIncome - totalExpense;
+        const totalReserved = items.reduce((s, g) => s + g.balance, 0);
+        return initialBalance + totalIncome - totalExpense - totalReserved;
     })();
 
     const initialBalanceNum = parseFloat(balance.toString().replace(/[^0-9.]/g, "")) || 0;
