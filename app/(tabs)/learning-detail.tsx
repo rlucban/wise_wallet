@@ -13,7 +13,7 @@ const LEARNING_CONTENT: Record<string, { title: string; content: string }> = {
 Getting Started:
 1. Open the Dashboard and review your Available to Spend balance.
 2. Tap the circle + button beside the tab bar to add a transaction.
-3. Choose income or expense, amount, category, date, and payment method.
+3. Choose income or expense, amount, category, date, and payment source.
 4. Use Reports to check your cash flow and category trends.
 5. Use Scheduled to track upcoming bills and payment reminders.
 6. Use Allocations for savings goals and progress.

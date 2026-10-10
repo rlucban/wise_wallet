@@ -504,6 +504,26 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-10 — Spec 76 v1.1 FINAL + implemented.** Income-basis ratio (income + positive start), top-1 alert only with auto-clear; `balance` removed from the rule (structural fix for the negative-balance multi-fire report); D-07/D-08 re-signed evaluator/trigger/contexts, D-09 tests ACC-04/05 × android/ios/web. See `docs/savepoint.md`.
 
+- **2026-10-10 — Spec 77 FINAL + implemented.** `specs/77-completed-dues-filter-and-header.md`: D-01 two-option filter defaulting This Month + static `TOTAL COMPLETED` (dead fallthrough removed); D-02 new `utils/completedDuesFilter.test.ts` ACC-01..03 × android/ios/web; SPEC-32 untouched. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 77 v1.1 FINAL + implemented.** Overall list (segments, state, branches, orphan memos removed); D-05 guards rewritten ACC-04/05/06 × android/ios/web (v1.0 pins superseded in full). See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 79 FINAL + implemented.** `specs/79-pay-chip-grid-styling.md`: D-01 pay-dialog theme chips (selected `#1E3A8A` + check) + centered label + rounded dialog, behavior byte-identical; D-02 new `utils/payChipStyling.test.ts` ACC-01..03 × android/ios/web; SPEC-47/65/63 untouched. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 79 v1.1 FINAL + implemented.** Add-due-exact chips in a 2-col grid (custom colors deleted, theme-default selection via indigo primaries); `selectedColor` guard exception reverted; D-05 guards ACC-04/05/06 × android/ios/web. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 79 v1.2 FINAL + implemented.** Bottom-sheet method cards (handle, title+X, full-width cards with indigo selected border, stacked Confirm/Cancel); D-09 guards ACC-07/08 × android/ios/web; behavior + SPEC-47 untouched. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 79 folded v1.2 FINAL + implemented.** Wrapper-anchored flush sheet (24 top / flat bottom, pb-32); folded from v1.3, no v1.3 section. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 80 FINAL + implemented.** `specs/80-payment-source-rename-and-fetch-open.md`: D-01 Payment Source copy at 7 sites (identifiers/API/routes/files untouched); D-02 `openPayDialog` fetch-then-open (selection identical, no loading UI); D-03 `utils/paySourceRename.test.ts` ACC-01..03 × android/ios/web; SPEC-47 untouched. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 80 v1.1 FINAL + implemented.** Fixed 5-option source list (fetch/FALLBACK/orphans deleted, opener sync); D-06 guards ACC-04/05 × android/ios/web (fetch pins superseded); folded from deleted SPEC-81. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 80 v1.2 FINAL + implemented.** Subtitle → `Amount: ₱X.XX` (title echo dropped); D-09 ACC-06 guard; homed in SPEC-80 per user call, SPEC-79 untouched. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 82 FINAL + implemented.** `specs/82-synthetic-category-id-uuid-gate.md`: D-01 `toApiCategoryId` helper, D-02 both POSTs + PUT route through it (sanitize/display intact), D-03 `utils/syntheticCategoryId.test.ts` ACC-01..03 × android/ios/web. See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

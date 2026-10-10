@@ -244,7 +244,7 @@ export default function EditTransaction() {
           style={{ marginBottom: 16 }}
         />
 
-        <Text variant="labelLarge" style={{ marginBottom: 8 }}>Payment Method</Text>
+        <Text variant="labelLarge" style={{ marginBottom: 8 }}>Payment Source</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
           {PAYMENT_METHODS.map((method) => (
             <Chip

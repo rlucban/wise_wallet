@@ -1104,4 +1104,110 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-08** — `context/SystemAlertsContext.tsx` re-signed entry; `context/TransactionsContext.tsx` effect computes month-filtered `monthlyIncome` via its own predicate (single site) + `getManilaMonthKey` import (no cycle — utils imports types only); passes `(transactions, monthlyIncome, initialBalance)`. SPEC-10 untouched.
 - **D-09** — `utils/overspendAlerts.test.ts` rewritten to ACC-04/05 (income-basis, initial add/ignore, top-1, tie-break, migration downgrade, SPEC-10 survival, denom handoff) × android/ios/web. Self-caught pre-run: first migration draft seeded a Food alert with no Food transactions (would delete 2, not 1) — corrected seed before any run. No commit.
 - Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S03/S04 (Expo Go Android/iOS + web export, incl. no-multi-fire proof) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 77 FINAL + implemented (Completed dues filter + header)
+
+- **D-01** — `app/completed-dues.tsx` ONLY: state → `useState<"week" | "month">("month")` + narrowed cast; `All` button deleted; dead `return items` fallthrough collapsed (week branch + month fallthrough — self-caught pre-run: first edit duplicated the month filter, immediately repaired and read-back verified); header → static `TOTAL COMPLETED`. Windows/sort/skeleton/refresh/rows byte-identical.
+- **D-02** — new `utils/completedDuesFilter.test.ts`: ACC-01 (narrowed state/default/order, no `all` remnants), ACC-02 (static header, no interpolation/fallthrough), ACC-03 (windows/sort/skeleton intact, no Platform) × android/ios/web. Absence pins pre-verified against the unread file tail.
+- SPEC-32's document untouched (§1.14 — segment slice superseded here). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
 - Repair (test-only, user-pasted jest 15/18): the ACC-03/05 wiring pin asserted the literal `checkOverspending(transactions: ...)` but the interface declares the `name: (args)` shape — all 15 behavior tests were already green, implementation untouched. Pin split into the exact interface + impl signatures. No commit.
+
+---
+
+## 2026-10-10 — Spec 77 v1.1 FINAL + implemented (Overall list)
+
+- **D-04** — `app/completed-dues.tsx` ONLY: `SegmentedButtons` block, `filter` state/cast, week/month predicate branches, and orphaned `now`/week/month memos all removed (plus now-unused `useState`/`SegmentedButtons` imports); list = kept sorted-all expression; `TOTAL COMPLETED` card and everything else byte-identical.
+- **D-05** — `utils/completedDuesFilter.test.ts` rewritten to ACC-04 (no segments/state, sorted-all list), ACC-05 (no orphans, live overall total), ACC-06 (sort/skeleton/refresh/rows/empty intact, no Platform) × android/ios/web. Absence pins pre-verified on disk.
+- Spec-text correction disclosed: the v1.1 amendment as first written carried ACC-03/S01/S02 forward, contradicting CON-11's memo deletion — corrected to full supersession (ACC-04/05/06, S03/S04) before any run; same normative intent.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S03/S04 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 79 FINAL + implemented (Pay chip grid + modal polish)
+
+- **D-01** — `app/dues.tsx` pay dialog ONLY: chips get theme-aware states (unselected `#F3F4F6` light / `surfaceVariant` dark + `outlineVariant` border + `onSurfaceVariant` text; selected `#1E3A8A` + white text + selected-only `check` icon + `selectedColor`, `outlined` kept); label centered; dialog gains `borderRadius: 16` + `overflow: "hidden"` (width untouched). Container already row/wrap/center/gap-8 — pinned, not reshaped. Fetch/validation/busy/`recordTransaction`/dismiss byte-identical.
+- **D-02** — new `utils/payChipStyling.test.ts`: ACC-01 (grid container, no scrollview/nowrap), ACC-02 (chip state literals), ACC-03 (dialog radius, centered label, behavior lines intact) × android/ios/web.
+- SPEC-47/65/63 documents untouched (§1.14 — styling-only home). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS light+dark + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 79 repair (themeColors guard vs selected white)
+
+- User-pasted full jest: 798/801 green; only `utils/themeColors.test.js` failed (3/3 platforms) on `app/dues.tsx:669` `selectedColor="#ffffff"`. All three SPEC-79 suites passed — implementation matches the FINAL spec; the conflict is spec-vs-standing-guard, not a code defect.
+- Root cause: the guard flags any hex literal on lines without a theme token. The other new literals (`#1E3A8A`, `#F3F4F6`) share lines with theme tokens (exempt); line 669 stands alone. A theme token CANNOT replace it: no token is white in both Paper themes, and the selected background is fixed navy in both — fixed white is the only readable choice (same rationale as the existing hardcoded FAB `color="#fff"`, which sits outside the guard's file list).
+- Fix (guard accommodation, same normative intent — spec stays v1.0 FINAL): `ALLOWED_EXCEPTIONS` gains a documented `selectedColor` entry (prop-scoped, SPEC-79-cited; general rule intact — contrast with SPEC-27, which refused to weaken the guard because tokens existed there). CON-04 annotated accordingly. Zero app-code change. No commit.
+- Still open: user-run rerun (`npx jest utils/themeColors.test.js`), lint result (output was cut at `eslint .`), tsc, ACC-S01/S02 matrix. No commit.
+
+---
+
+## 2026-10-10 — Spec 79 v1.1 FINAL + implemented (Add-due chips, 2-col grid)
+
+- User call: v1.0 custom styling "does not match the system" — match add-due chips (verified pattern `dues.tsx:573-618`), 2 columns, keep indigo direction. Reconciled without literals: app primaries are indigo-family (`#1B3F7A`/`#4A90D9`), so theme-default selected chips read indigo automatically.
+- **D-04** — `app/dues.tsx` pay dialog ONLY: chips add-due-exact (`outlined`, `borderRadius: 16`, plain names) + `flexBasis: "48%"`/`flexGrow: 1` in a row/wrap/gap-6 container (no centering); label → semibold left (reverses v1.0 centering); all custom colors/icon deleted. Dialog box radius from v1.0 kept.
+- **D-05** — `utils/payChipStyling.test.ts` rewritten to ACC-04/05/06. Self-caught pre-run: first draft asserted no `justifyContent: "center" }}>` in the dialog block, but `Dialog.Actions` legitimately centers that way — re-scoped to pin the old chip-container string gone instead.
+- **D-06** — `utils/themeColors.test.js` `selectedColor` exception removed (guard byte-identical to pre-SPEC-79; verified zero matches). The pre-existing `dues.tsx:733` Calendar `selectedColor: theme.colors.primary` is untouched (theme-token line, always exempt).
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S03/S04 (Expo Go Android/iOS light+dark + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 79 v1.2 FINAL + implemented (Bottom-sheet account cards)
+
+- User call with screenshot (bottom-sheet "Select account" picker): true bottom sheet, Confirm kept, indigo border, no icons. Four scoping calls answered before drafting.
+- **D-08** — `app/dues.tsx` pay `Dialog` → bottom-sheet Paper `Modal` (bottom-anchored, surface, 28pt top corners, handle pill, title+X row, amount subtitle, full-width method cards with 2px primary / 1px outlineVariant borders, stacked full-width Confirm + tonal Cancel). Dynamic copy + `recordTransaction` flow byte-identical; `Pressable` added (RN core); `Chip`/`Dialog` imports kept (used elsewhere). Zero hardcoded colors.
+- **D-09** — `utils/payChipStyling.test.ts` rewritten to ACC-07/08. Self-caught pre-run: first draft pinned no `icon=` in the block, but the X close legitimately carries `icon="close"` — re-scoped to the chip-icon pattern + positive X pin. No spec intent change (CON-15 already required the X).
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S05/S06 (Expo Go Android/iOS light+dark + web export, screenshot-shape match) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 79 folded v1.2 FINAL + implemented (Wrapper anchoring, 24/0, pb-32)
+
+- User call: fold v1.3 into v1.2 (no new version) — done; v1.3 section deleted, substance merged into v1.2 (CON-15, DEC-13/14/15, ACC-07, S05).
+- **D-08 folded** — `app/dues.tsx`: Modal wrapper `style` (flex-end + zeroed margins, `contentContainerStyle` deleted), radii 24 top / explicit 0 bottom, `paddingBottom: 32`. Replaces the pre-fold D-08 (28 radii via contentContainerStyle).
+- **D-09** — ACC-07 rewritten to the folded pins (ACC-08 stands).
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S05/S06 (Expo Go Android/iOS incl. gesture-bar devices + web export) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (test-only, user-pasted jest 3/6): the `paySheetBlock` extractor sliced from the `visible=` prop, excluding the `<Modal` tag it then asserted — the dump proved the implementation block otherwise fully green. Slice now starts at the tag via `lastIndexOf`. No spec/code change. No commit.
+- Repair (test-only, user-pasted jest 6/9): ACC-05 asserted `overflow: hidden` but the source reads `overflow: "hidden"` (quoted) — the received-string dump proved every other pin green and the implementation correct. One-quote fix, no spec/code change. No commit.
+
+---
+
+## 2026-10-10 — Spec 80 FINAL + implemented (Payment Source + fetch-then-open)
+
+- **D-01** — copy-only rename at all 7 inventoried sites (edit label, methods title/dialog/delete-message, details section label, literacy copy, chart title); identifiers, `paymentMethods` API/field, route + file/component names, comments, console strings untouched (verified zero old-literal matches on disk).
+- **D-02** — `app/dues.tsx` `openPayDialog`: fetch resolves first, `setPayTarget(due)` moved last (disk order verified: fetch `:244` → open `:256`); selection rules identical per branch; no loading UI (sheet appears when ready; double-tap idempotent, accepted).
+- **D-03** — new `utils/paySourceRename.test.ts`: ACC-01 (new copy + old literals gone + identifiers/API/files intact), ACC-02 (fetch-before-open ordering + selection lines), ACC-03 (flow/fallback/behavior lines) × android/ios/web. Absence pins pre-verified on disk.
+- SPEC-47's document untouched (§1.14 — instant-open slice superseded here). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export, incl. no-blink + offline fallback) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 80 v1.1 FINAL + implemented (Fixed source options)
+
+- Folded from the SPEC-81 draft (deleted unimplemented); v1.0 fetch-then-open superseded days later with it — recorded honestly.
+- **D-05** — `app/dues.tsx`: new `PAY_SOURCE_OPTIONS` const (5 labels); sheet maps over it; `openPayDialog` sync (reset Cash + open); deleted `FALLBACK_PAY_METHODS` + comment, `payMethods` state, `PaymentMethodInfo` + `authFetch` imports (all verified orphaned — zero matches on disk). `payMethod` default/selection + Confirm flow byte-identical in behavior.
+- **D-06** — `utils/paySourceRename.test.ts` extended: superseded ACC-02/ACC-03-fetch pins replaced with ACC-04 (static set + render + default) and ACC-05 (fetch/fallback/orphans gone, sync opener); ACC-01 rename + surviving ACC-03 pins stand. Absence pins pre-verified on disk.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export, incl. offline-identical) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 80 v1.2 FINAL + implemented (Subtitle Amount copy)
+
+- **D-08** — `app/dues.tsx` ONLY: sheet subtitle → `` `Amount: ${formatAmount(payTarget.amount)}` `` (title echo dropped). Ternary guard + all other lines byte-identical.
+- **D-09** — `utils/paySourceRename.test.ts` extended with ACC-06 (exact template + old-pattern absence + title row intact). Self-caught pre-run: the insert consumed ACC-03's `it(` header — restored immediately, structure read-back verified.
+- Homed in SPEC-80 per user direction ("to 80"); SPEC-79 untouched. No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (guard migration, user-pasted full jest 807/813): `utils/duePayment.test.ts` ACC-02a/b pinned the SPEC-47 fetch/fallback behavior that v1.1 D-05 deleted by design (6 failures = 2 pins × 3 platforms; all 807 others green, so implementation already matched the FINAL spec). Rewrote both pins to the v1.1 norm (static 5 labels, sync opener, orphans gone); all other pins (incl. REG-01..06) untouched. D-06 wording extended to name this file (same intent — it was a scoping miss, not new scope). Verified zero fetch/fallback remnants on disk. No commit.
+
+---
+
+## 2026-10-10 — Spec 82 FINAL + implemented (Synthetic categoryId uuid gate)
+
+- **D-01** — `utils/uuid.ts`: new pure `toApiCategoryId` (uuid-shape passthrough, everything else → `null`; no new imports).
+- **D-02** — `context/TransactionsContext.tsx` ONLY: both POST bodies + the PUT body route through the helper (+ its import); sanitize/display echoes byte-identical, so local `Add Scheduled`/`Others` labels survive and web keeps them verbatim.
+- **D-03** — new `utils/syntheticCategoryId.test.ts`: ACC-01 (uuid/upper passthrough; nil/blank/sentinels/titles/numerics → null), ACC-02 (4 helper uses, no bare wire expressions left), ACC-03 (same-layer import, sanitize + dues fallback intact) × android/ios/web.
+- Adjacent rot noted (§1.11, not fixed — needs its own spec): the PUT body lines were already duplicated verbatim pre-change (two identical `updateBody.categoryId` assignments); preserved as-is.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (web-first: repay the same uncategorized due) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (guard migration, user-pasted full jest 819/825): `utils/transactionCategory.test.ts` ACC-01/ACC-01b pinned the exact SPEC-46 wire expressions that D-02 replaced by design (6 failures = 2 pins × 3 platforms; all 819 others green, so implementation already matched the FINAL spec). Rewrote both pins to the helper norm; all other pins untouched. D-03 wording extended to name this file (same intent — scoping miss, not new scope). No commit.
