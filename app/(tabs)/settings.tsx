@@ -283,6 +283,9 @@ export default function SettingsScreen() {
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [repairPreview, setRepairPreview] = useState<{ upload: Transaction[]; delIds: string[]; queued: number } | null>(null);
   const [showRepairConfirm, setShowRepairConfirm] = useState(false);
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [renameInput, setRenameInput] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
 
   // Web-only ref for hidden file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1147,6 +1150,28 @@ if (!serverOk && !localOk) {
     if (onClose) onClose();
   };
 
+  const openRenameDialog = () => {
+    setRenameInput(profile?.name || "");
+    setShowRenameDialog(true);
+  };
+
+  const handleSaveRename = async () => {
+    const next = renameInput.trim();
+    if (!next) return;
+    setIsRenaming(true);
+    try {
+      await updateProfile({ name: next });
+      setShowRenameDialog(false);
+      showMessage("success", "Name Updated", "Your display name has been updated.");
+    } catch (e) {
+      console.error("Rename failed:", e);
+      setShowRenameDialog(false);
+      showMessage("error", "Update Failed", "Couldn't update your name. Please check your connection and try again.");
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
   const executeDelete = async () => {
     if (!activeUserId) return;
     setIsSyncing(true);
@@ -1276,12 +1301,20 @@ if (!serverOk && !localOk) {
                 label={profile?.name?.substring(0, 2).toUpperCase() || "US"}
                 style={{ backgroundColor: paperTheme.colors.primary }}
               />
-               <View style={{ marginLeft: 16 }}>
+               <View style={{ marginLeft: 16, flex: 1 }}>
                  <Text variant="titleMedium">{profile?.name || "Wise User"}</Text>
                  <Text variant="bodySmall" style={{ color: paperTheme.colors.outline }}>
                      {isLocal ? "Local-only account — stored on this device" : autoBackup ? "Cloud Sync Enabled" : "Cloud account — no local backup"}
                  </Text>
                </View>
+              {!isLocal && (
+                <IconButton
+                  icon="pencil-outline"
+                  size={20}
+                  onPress={openRenameDialog}
+                  accessibilityLabel="Rename display name"
+                />
+              )}
             </View>
           </Card.Content>
         </Card>
@@ -1941,6 +1974,39 @@ if (!serverOk && !localOk) {
             </Surface>
           </View>
         </NativeModal>
+
+        {/* SPEC-80: rename display name (Cloud accounts only). */}
+        <Dialog
+          visible={showRenameDialog}
+          onDismiss={isRenaming ? undefined : () => setShowRenameDialog(false)}
+          style={styles.dialog}
+        >
+          <Dialog.Title style={{ textAlign: "center" }}>Change Name</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              label="Display Name"
+              value={renameInput}
+              onChangeText={setRenameInput}
+              mode="outlined"
+              autoCapitalize="words"
+              maxLength={50}
+              disabled={isRenaming}
+            />
+          </Dialog.Content>
+          <Dialog.Actions style={{ justifyContent: "center" }}>
+            <Button mode="outlined" onPress={() => setShowRenameDialog(false)} disabled={isRenaming}>
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleSaveRename}
+              loading={isRenaming}
+              disabled={isRenaming || !renameInput.trim()}
+            >
+              Save
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
 
         {/* SPEC-58 D-58-03: last Portal child, so this shared success/error
             dialog always paints above whichever dialog raised it. */}

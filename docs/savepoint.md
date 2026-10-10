@@ -1186,3 +1186,43 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
   - No red-box crash on any platform.
 - User-run verification pending per §1.3: `npm test` (jest), `npm run lint`, `npx tsc --noEmit`.
 - **Acceptance:** ACC-01..ACC-05 objective (jest × android/ios/web) + ACC-06 manual (three-platform visual).
+
+---
+
+## 2026-10-11 — Spec 79 FINAL v1.0 + implementation (Onboarding skip to dashboard)
+
+- **Spec.** `specs/79-onboarding-skip-to-dashboard.md` FINAL per user call. Trigger (user): "onboarding must have a skip button so users could proceed to the home dashboard without needing to insert an account name." Clarified decisions: DEC-01 discard both fields; DEC-02 permanent `isFirstRun = false`; DEC-03 confirm dialog first; DEC-04 onboarding-only (Intro untouched); DEC-05 Android/iOS/Web; DEC-06 keep existing "Wise User" blank-name fallback; DEC-07 same persistence/error path as Get Started; DEC-08 text button under Get Started; DEC-09 jest guards + manual matrix.
+- **Gap.** `validate()` required a non-empty name (`app/onboarding.tsx:26-28`) and `handleGetStarted` returned early on failure (`:39`); the only way to clear `isFirstRun` was a validated `completeSetup` (`:48`), and the nav guard keeps `isFirstRun` users on Intro/Onboarding (`app/_layout.tsx:195-203`) — so no name meant no dashboard.
+- **D-01 `app/onboarding.tsx`.** Added `showSkipDialog` state; a `mode="text"` "Skip" button (`testID="skip-button"`) below "Get Started" that opens the dialog; `handleSkip` shares `busyRef`/`loading`/`setupError` with `handleGetStarted` and on confirm calls `completeSetup("", 0)` then `router.replace("/")` with **no** opening-balance transaction (no `validate`, no `addTransaction`/`buildOpeningBalancePayload`); on API failure it closes the dialog, surfaces the re-triable `setupError`, and does not navigate; a `ConfirmDialog` (reused unchanged) with title "Skip setup?", the name-can-be-added-later warning, confirm "Skip"/cancel "Cancel", and `confirmColor={theme.colors.primary}`. Added `useTheme` + `ConfirmDialog` imports; styles `skipButton`/`skipButtonLabel`. No other file changed.
+- **D-02 `utils/onboardingSkip.test.ts` (new).** ACC-01..ACC-07 source-text guards `× android/ios/web` (Platform.OS mock).
+- **D-03** user-run matrix ACC-S01..ACC-S05 (Expo Go Android/iOS + web export) below.
+- **D-04** this entry + `AGENTS.md` §3.
+- **Not changed:** Intro behavior (DEC-04), `UserProfileContext` shape, `ConfirmDialog` component (props only), opening-balance payload/gating (SPEC-37/43), storage keys, API contract, routes, dependencies.
+- **Manual verification checklist (ACC-S01..ACC-S05, per §1.3 — user runs):**
+  - Expo Go Android + iOS, fresh Local account → tap Skip → confirm → lands on Dashboard with blank name; Settings shows "Wise User".
+  - Rapid double-tap of Skip while the dialog opens → exactly one dialog, no double completion.
+  - Local account offline → Skip still completes and routes to Dashboard; Cloud/Web offline → Skip shows the re-triable error and stays on Onboarding.
+  - Intro last-step "Get Started" → still lands on Onboarding, which now shows Skip.
+  - Web (`npm run web` / `expo export --platform web`) → Skip present, confirms, lands on Dashboard, no red-box/console error.
+- User-run verification pending per §1.3: `npm test` (jest), `npm run lint`, `npx tsc --noEmit`.
+- **Acceptance:** ACC-01..ACC-08 objective (jest × android/ios/web) + ACC-S01..ACC-S05 manual (three-platform).
+
+---
+
+## 2026-10-11 — Spec 80 FINAL v1.0 + implementation (Settings rename display name)
+
+- **Spec.** `specs/80-settings-rename-display-name.md` FINAL per user call. Trigger (user): "add a rename button beside the Wise User in settings, make sure it syncs." Clarified decisions: DEC-01 display name only (not login identity); DEC-02 Cloud-only visibility; DEC-03 reuse `updateProfile` (web surfaces errors, native best-effort, no queue); DEC-04 pencil `IconButton` + inline dialog with `showMessage` feedback.
+- **Gap.** Settings showed `profile.name` (`app/(tabs)/settings.tsx:1280`) with no way to change it; a skipped onboarding (SPEC-79) leaves "Wise User".
+- **D-01 `app/(tabs)/settings.tsx`.** Added `showRenameDialog`/`renameInput`/`isRenaming` state; `openRenameDialog` (prefills `profile?.name || ""`); `handleSaveRename` (trims, guards empty, `await updateProfile({ name })` in `try/catch`, closes dialog + `showMessage` success/error); pencil `IconButton` (`icon="pencil-outline"`) gated on `!isLocal`, with `flex: 1` on the existing profile-name `View`; a Paper `Dialog` (prefilled `TextInput` `maxLength={50}`, Cancel/Save) placed as the second-to-last Portal child so the shared message dialog stays last (SPEC-58).
+- **D-02 `utils/profileRename.test.ts` (new).** ACC-01..ACC-06 source-text guards `× android/ios/web` (Platform.OS mock).
+- **D-03** user-run matrix ACC-S01..ACC-S05 (Expo Go Android/iOS + web export) below.
+- **D-04** this entry + `AGENTS.md` §3.
+- **Not changed:** `updateProfile` signature/behavior, `UserProfileContext`, `authName`/`master_users`/login identity, storage keys, API contract, routes, dependencies; no offline sync queue (accepted per DEC-03). Local-only accounts render no rename control (DEC-02).
+- **Manual verification checklist (ACC-S01..ACC-S05, per §1.3 — user runs):**
+  - Expo Go Android + iOS Cloud account → pencil → type a new name → Save → Settings + avatar initials update immediately.
+  - Web: rename → reload / second web session → new name persists (server sync).
+  - Local-only account (native) → no pencil shown.
+  - Empty/whitespace Save does nothing; Cancel leaves the name; web offline Save shows the "Update Failed" message.
+  - `expo export --platform web` builds; rename works; no red-box/console error.
+- User-run verification pending per §1.3: `npm test` (jest), `npm run lint`, `npx tsc --noEmit`.
+- **Acceptance:** ACC-01..ACC-07 objective (jest × android/ios/web) + ACC-S01..ACC-S05 manual (three-platform).

@@ -1,15 +1,17 @@
 import { useState, useRef } from "react";
 import { View, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
-import { Text, TextInput, Button, HelperText } from "react-native-paper";
+import { Text, TextInput, Button, HelperText, useTheme } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useUserProfileActions } from "../context/UserProfileContext";
 import { useTransactionsData, useTransactionsActions } from "../context/TransactionsContext";
 import { formatNumberInput, parseAmount } from "../utils/amount";
 import { buildOpeningBalancePayload, OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function OnboardingScreen() {
     const router = useRouter();
+    const theme = useTheme();
     const { completeSetup } = useUserProfileActions();
     const { addTransaction } = useTransactionsActions();
     const { transactions } = useTransactionsData();
@@ -20,6 +22,7 @@ export default function OnboardingScreen() {
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState<{ name?: string; balance?: string }>({});
     const [setupError, setSetupError] = useState<string | null>(null);
+    const [showSkipDialog, setShowSkipDialog] = useState(false);
 
     const validate = () => {
         const newErrors: { name?: string; balance?: string } = {};
@@ -60,6 +63,25 @@ export default function OnboardingScreen() {
         } catch (e) {
             console.error("Setup failed:", e);
             setSetupError("Couldn't save your opening balance. Please check your connection and try again.");
+        } finally {
+            busyRef.current = false;
+            setLoading(false);
+        }
+    };
+
+    const handleSkip = async () => {
+        if (busyRef.current) return;
+        busyRef.current = true;
+        setLoading(true);
+        setSetupError(null);
+        try {
+            await completeSetup("", 0);
+            setShowSkipDialog(false);
+            router.replace("/");
+        } catch (e) {
+            console.error("Setup failed:", e);
+            setShowSkipDialog(false);
+            setSetupError("Couldn't save your setup. Please check your connection and try again.");
         } finally {
             busyRef.current = false;
             setLoading(false);
@@ -133,6 +155,16 @@ export default function OnboardingScreen() {
                         >
                             Get Started
                         </Button>
+                        <Button
+                            mode="text"
+                            onPress={() => setShowSkipDialog(true)}
+                            disabled={loading}
+                            style={styles.skipButton}
+                            labelStyle={styles.skipButtonLabel}
+                            testID="skip-button"
+                        >
+                            Skip
+                        </Button>
                         {setupError ? (
                             <HelperText type="error" visible={true}>
                                 {setupError}
@@ -145,6 +177,18 @@ export default function OnboardingScreen() {
                     </Text>
                 </ScrollView>
             </KeyboardAvoidingView>
+            <ConfirmDialog
+                visible={showSkipDialog}
+                title="Skip setup?"
+                message="Setup will be marked complete with no name or initial balance. You can add your name later in Settings."
+                confirmLabel="Skip"
+                cancelLabel="Cancel"
+                icon="alert-outline"
+                loading={loading}
+                onConfirm={handleSkip}
+                onCancel={() => setShowSkipDialog(false)}
+                confirmColor={theme.colors.primary}
+            />
         </LinearGradient>
     );
 }
@@ -235,6 +279,14 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "bold",
         letterSpacing: 0.5,
+    },
+    skipButton: {
+        marginTop: 8,
+    },
+    skipButtonLabel: {
+        color: "#3949ab",
+        fontSize: 14,
+        fontWeight: "600",
     },
     footerText: {
         textAlign: "center",
