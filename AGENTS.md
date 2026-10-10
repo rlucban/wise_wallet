@@ -524,6 +524,10 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-10 — Spec 82 FINAL + implemented.** `specs/82-synthetic-category-id-uuid-gate.md`: D-01 `toApiCategoryId` helper, D-02 both POSTs + PUT route through it (sanitize/display intact), D-03 `utils/syntheticCategoryId.test.ts` ACC-01..03 × android/ios/web. See `docs/savepoint.md`.
 
+- **2026-10-10 — Spec 83 FINAL + implemented.** `specs/83-dashboard-recent-no-navigation.md`: D-01 recent row → non-pressable `View` (style/content identical, deps cleaned); D-02 new `utils/dashboardRecentNoNav.test.ts` ACC-01..03 × android/ios/web; details + other entries intact. See `docs/savepoint.md`.
+
+- **2026-10-10 — Spec 84 FINAL + implemented.** `specs/84-adopt-server-transaction-ids.md`: D-02 adopt-POST-row-id + exact due-link remap on both paths (validation/repull untouched), D-03 `utils/serverIdAdopt.test.ts` ACC-01..03 × android/ios/web; pasted-body gate outstanding, device proof doubles as retroactive gate (disclosed). See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

@@ -28,6 +28,15 @@ export async function pruneDueLinks(txId: string, userId: string): Promise<void>
   }
 }
 
+export async function remapDueLink(fromId: string, toId: string, userId: string): Promise<void> {
+  if (!fromId || !toId || !userId || fromId === toId) return;
+  const map = await readMap(userId);
+  if (!(fromId in map)) return;
+  map[toId] = map[fromId];
+  delete map[fromId];
+  await writeMap(map, userId);
+}
+
 export async function pruneDueLinksByDue(dueId: string, userId: string): Promise<void> {
   const map = await readMap(userId);
   const keys = Object.entries(map).filter(([, value]) => value === dueId).map(([key]) => key);

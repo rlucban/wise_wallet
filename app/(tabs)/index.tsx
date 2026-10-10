@@ -111,9 +111,7 @@ export default function Dashboard() {
 
   const renderTransactionItem = useCallback(
     ({ item }: { item: Transaction }) => (
-      <TouchableOpacity
-        onPress={() => router.push(`/transaction-details?id=${item.id}`)}
-        activeOpacity={0.7}
+      <View
         style={{
           backgroundColor: theme.colors.surface,
           borderRadius: 16,
@@ -175,9 +173,9 @@ export default function Dashboard() {
             {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
           </Text>
         </View>
-      </TouchableOpacity>
+      </View>
     ),
-    [theme, router, formatAmount]
+    [theme, formatAmount]
   );
 
   const ListHeader = useCallback(() => (
