@@ -10,6 +10,13 @@ import { useIsLocalAccount } from "../utils/authMode";
 import { generateUUID } from "../utils/uuid";
 import { useToast } from "../context/ToastContext";
 import { nowTimestamp } from "../utils/storage";
+import {
+    getDeletedIds,
+    markDeleted,
+    clearDeleted,
+    getSeenRemoteIds,
+    setSeenRemoteIds,
+} from "../utils/savingsDeletionMarkers";
 
 function migrateSavingsItem(item: SavingsItem): SavingsItem {
   const record = item as unknown as Record<string, unknown>;
@@ -121,24 +128,44 @@ export function useSavings() {
             if (!isLocal && API_URL && activeUserId) {
                 const { ok, data: remoteData } = await authFetch<SavingsItem[]>(`savingsItems?userId=${activeUserId}`);
                 if (ok && Array.isArray(remoteData)) {
+                        const deleted = await getDeletedIds(activeUserId); // SPEC-77 CON-05
+                        const seenRemoteIds = new Set(await getSeenRemoteIds(activeUserId)); // SPEC-77 CON-03
+                        const remoteIdSet = new Set(remoteData.map(g => g.id));
                         const remoteTitleMap = new Map(remoteData.map(g => [g.title.toLowerCase(), g]));
 
                         const mergedMap = new Map<string, SavingsItem>();
                         let overwrittenCount = 0;
 
+                        // SPEC-77 CON-04: never re-add a row this device deleted; re-propagate the delete.
+                        const tombstonedRemoteIds: string[] = [];
                         for (const remoteItem of remoteData) {
+                            if (deleted[remoteItem.id] !== undefined) {
+                                tombstonedRemoteIds.push(remoteItem.id);
+                                continue;
+                            }
                             mergedMap.set(remoteItem.id, remoteItem);
+                        }
+                        for (const tombstonedId of tombstonedRemoteIds) {
+                            await enqueueAndTrigger('savingsItems', 'delete', tombstonedId);
                         }
 
                         for (const localItem of deduped) {
                             const remoteItem = mergedMap.get(localItem.id);
-                            if (!remoteItem && !remoteTitleMap.has(localItem.title.toLowerCase())) {
-                                mergedMap.set(localItem.id, localItem);
-                                await enqueueAndTrigger('savingsItems', 'create', localItem.id, localItem as unknown as Record<string, unknown>);
-                            } else if (remoteItem && (localItem.updatedAt || 0) > (remoteItem.updatedAt || 0)) {
+                            if (!remoteItem) {
+                                // SPEC-77 CON-03: in the last remote snapshot but gone now → remotely deleted → prune.
+                                if (seenRemoteIds.has(localItem.id)) {
+                                    await repos.savingsItems.deleteById(localItem.id);
+                                    continue;
+                                }
+                                // SPEC-77 CON-05: never-synced local item keeps the legacy create path.
+                                if (!remoteTitleMap.has(localItem.title.toLowerCase())) {
+                                    mergedMap.set(localItem.id, localItem);
+                                    await enqueueAndTrigger('savingsItems', 'create', localItem.id, localItem as unknown as Record<string, unknown>);
+                                }
+                            } else if ((localItem.updatedAt || 0) > (remoteItem.updatedAt || 0)) {
                                 mergedMap.set(localItem.id, localItem);
                                 await enqueueAndTrigger('savingsItems', 'update', localItem.id, localItem as unknown as Record<string, unknown>);
-                            } else if (remoteItem && (remoteItem.updatedAt || 0) > (localItem.updatedAt || 0)) {
+                            } else if ((remoteItem.updatedAt || 0) > (localItem.updatedAt || 0)) {
                                 // SPEC-73 CON-05: field-union — preserve local fields a
                                 // pre-migration server omits instead of letting remote-wins revert them.
                                 mergedMap.set(localItem.id, {
@@ -156,6 +183,10 @@ export function useSavings() {
                         await repos.savingsItems.upsertBulk(merged);
                         setItems(merged);
                         _savingsCache = { userId: activeUserId, items: merged }; // D-01 SPEC-60 (merged path)
+
+                        // SPEC-77 CON-08: refresh the seen-remote snapshot, then clear confirmed tombstones.
+                        await setSeenRemoteIds(activeUserId, remoteData.map(g => g.id));
+                        await clearDeleted(activeUserId, Object.keys(deleted).filter((id) => !remoteIdSet.has(id)));
 
                         if (overwrittenCount > 0) {
                             showToast(`${overwrittenCount} record(s) updated from another device.`);
@@ -239,7 +270,7 @@ export function useSavings() {
                     body: JSON.stringify({
                         ...(current as SavingsItem),
                         ...updates,
-                        updatedAt: current?.updatedAt || nowTimestamp(),
+                        updatedAt: nowTimestamp(), // SPEC-77 CON-07: a mutation must be LWW-newer
                         userId: activeUserId,
                     }),
                 });
@@ -255,8 +286,9 @@ export function useSavings() {
                 return;
             }
             const existing = await repos.savingsItems.getById(id);
+            const stamp = nowTimestamp(); // SPEC-77 CON-07: same stamp for local + sync so the mutation wins LWW
             if (existing) {
-                await repos.savingsItems.upsert({ ...existing, ...updates } as SavingsItem);
+                await repos.savingsItems.upsert({ ...existing, ...updates, updatedAt: stamp } as SavingsItem);
             }
             setItems((prev) => prev.map((g) => (g.id === id ? { ...g, ...updates } : g)));
             // SPEC-74 CON-01: write through so the next mount seeds the update.
@@ -273,7 +305,7 @@ export function useSavings() {
                     const syncData = {
                         ...(existing as SavingsItem),
                         ...updates,
-                        updatedAt: existing?.updatedAt || nowTimestamp(),
+                        updatedAt: stamp,
                         userId: activeUserId,
                     } as SavingsItem;
                     await enqueueAndTrigger('savingsItems', 'update', id, syncData as unknown as Record<string, unknown>);
@@ -300,6 +332,9 @@ export function useSavings() {
                 // D-75-01 SPEC-75 CON-01: broadcast so mounted instances re-seed immediately.
                 notifySavingsCacheChanged();
                 return;
+            }
+            if (!isLocal && activeUserId) {
+                await markDeleted(activeUserId, id); // SPEC-77 CON-06: local deletion marker
             }
             await repos.savingsItems.deleteById(id);
             setItems((prev) => prev.filter((g) => g.id !== id));

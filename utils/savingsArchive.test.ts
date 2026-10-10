@@ -56,12 +56,14 @@ function runSuite(os: "android" | "ios" | "web") {
       );
     });
 
-    it("G6 (SPEC-73 CON-04): updateItem syncs a full record, never a partial { ...updates } body", () => {
+    it("G6 (SPEC-73 CON-04 / SPEC-77 CON-07): updateItem syncs a full record and advances updatedAt", () => {
       const src = readRepo("hooks/useSavings.ts");
       expect(src).not.toContain("body: JSON.stringify({ ...updates, userId: activeUserId })");
       expect(src).not.toContain("const syncData = { ...updates, userId: activeUserId };");
-      expect(count(src, /updatedAt: current\?\.updatedAt \|\| nowTimestamp\(\)/g)).toBeGreaterThanOrEqual(1);
-      expect(count(src, /updatedAt: existing\?\.updatedAt \|\| nowTimestamp\(\)/g)).toBeGreaterThanOrEqual(1);
+      expect(src).not.toContain("updatedAt: current?.updatedAt || nowTimestamp()");
+      expect(src).not.toContain("updatedAt: existing?.updatedAt || nowTimestamp()");
+      expect(count(src, /const stamp = nowTimestamp\(\);/g)).toBe(1);
+      expect(count(src, /updatedAt: stamp/g)).toBe(2);
     });
 
     it("G7 (SPEC-73 CON-06): syncProcessor surfaces savingsItems 400/404 instead of silent dequeue", () => {
@@ -163,6 +165,50 @@ function runSuite(os: "android" | "ios" | "web") {
         expect(src).toContain("hideCancel");
         expect(src).toContain('severity === "error" ? "alert-circle-outline" : "check-circle-outline"');
       }
+    });
+
+    it("G17 (SPEC-77 ACC-02): native deleteItem records a tombstone, guarded on activeUserId", () => {
+      const src = readRepo("hooks/useSavings.ts");
+      const deleteBlock = src.slice(src.indexOf("const deleteItem"));
+      expect(deleteBlock).toContain("if (!isLocal && activeUserId) {");
+      expect(deleteBlock).toContain("await markDeleted(activeUserId, id);");
+    });
+
+    it("G18 (SPEC-77 ACC-03): remotely deleted local item is pruned, not re-created", () => {
+      const src = readRepo("hooks/useSavings.ts");
+      expect(src).toContain("const seenRemoteIds = new Set(await getSeenRemoteIds(activeUserId));");
+      expect(src).toMatch(
+        /if \(seenRemoteIds\.has\(localItem\.id\)\) \{\s*await repos\.savingsItems\.deleteById\(localItem\.id\);\s*continue;\s*\}/
+      );
+    });
+
+    it("G19 (SPEC-77 ACC-04): tombstoned remote rows are skipped and a delete is (re-)enqueued", () => {
+      const src = readRepo("hooks/useSavings.ts");
+      expect(src).toContain("const deleted = await getDeletedIds(activeUserId);");
+      expect(src).toMatch(
+        /if \(deleted\[remoteItem\.id\] !== undefined\) \{\s*tombstonedRemoteIds\.push\(remoteItem\.id\);\s*continue;\s*\}/
+      );
+      expect(src).toContain("await enqueueAndTrigger('savingsItems', 'delete', tombstonedId);");
+    });
+
+    it("G20 (SPEC-77 ACC-05): a never-synced local item keeps the legacy create path", () => {
+      const src = readRepo("hooks/useSavings.ts");
+      expect(src).toMatch(
+        /if \(!remoteTitleMap\.has\(localItem\.title\.toLowerCase\(\)\)\) \{\s*mergedMap\.set\(localItem\.id, localItem\);\s*await enqueueAndTrigger\('savingsItems', 'create', localItem\.id, localItem as unknown as Record<string, unknown>\);\s*\}/
+      );
+    });
+
+    it("G21 (SPEC-77 ACC-06): seen-remote snapshot refreshed and confirmed tombstones cleared", () => {
+      const src = readRepo("hooks/useSavings.ts");
+      expect(src).toContain("await setSeenRemoteIds(activeUserId, remoteData.map(g => g.id));");
+      expect(src).toContain("await clearDeleted(activeUserId, Object.keys(deleted).filter((id) => !remoteIdSet.has(id)));");
+    });
+
+    it("G22 (SPEC-77 ACC-08): markers util depends only on ./storage (no new dependency)", () => {
+      const src = readRepo("utils/savingsDeletionMarkers.ts");
+      const imports = (src.match(/^import .*$/gm) || []).join("\n");
+      expect(imports).toContain('from "./storage"');
+      expect(imports).not.toMatch(/expo-|react-native|@react|uuid/);
     });
   });
 }
