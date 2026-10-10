@@ -1167,3 +1167,22 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-77-05** this entry + `AGENTS.md` §3.
 - User-run verification pending per §1.3 (agent does not run CLIs): `npm test` (jest), `npm run lint`, `npx tsc --noEmit`, plus Expo Go (Android + iOS) + web export ACC-S01..ACC-S04 (two-device delete converges; archive stays archived; offline-created item not pruned; no red-box).
 - **Acceptance:** ACC-01..ACC-08 objective (jest × android/ios/web) + ACC-S01..ACC-S04 manual (two-device delete/archive convergence; offline-create not pruned; no red-box).
+
+---
+
+## 2026-10-10 — Spec 78 FINAL v1.0 + implementation (Add Allocation goal-below-initial)
+
+- **Spec.** `specs/78-add-allocation-goal-below-initial.md` FINAL per user call. Trigger (user): "Add an allocation constraint; if the Goal Amount is lower than the Initial Balance, add a red line of error below the input box, stating amount is too low." User decisions (DEC-01..DEC-06/CON): comparison strictly `<` (equal allowed), blocks submit, exact copy `Goal amount is too low.`, scope Add Allocation only.
+- **Gap.** `isGoalInvalid` (`app/add-allocation.tsx:47-49`) rejected a non-empty goal only when `<= 0`, `> MAX_AMOUNT`, or unparseable — a goal below the Initial Balance was accepted, producing an allocation already at target.
+- **D-01 `utils/allocationGoal.ts` (new).** `isGoalBelowInitial(goalAmount: string, initialBalance: number): boolean` — `false` for empty/whitespace; else `parseFloat(goalAmount.replace(/[^0-9.]/g, "")) || 0` compared strictly `< initialBalance`. No `react-native` import (jest `roots: utils`).
+- **D-02 `app/add-allocation.tsx`.** `const goalBelowInitial = isGoalBelowInitial(goalAmount, initialBalanceNum);` folded into `isGoalInvalid` (existing `<= 0`/`> MAX_AMOUNT`/`isNaN` group parenthesized, then `|| goalBelowInitial`), so `isFormInvalid` disables "Create Allocation". Submit toast copy unchanged (SPEC-12 DEC-02).
+- **D-03 `app/add-allocation.tsx`.** Conditional `<Text variant="bodySmall" style={{ color: theme.colors.error, marginTop: 4, marginBottom: 8 }}>Goal amount is too low.</Text>` rendered immediately after the Goal Amount `TextInput`.
+- **D-04 `utils/allocationGoal.test.ts` (new).** ACC-01/02/05 + formatted-input cases × android/ios/web (`Platform.OS` mock) + two wiring guards (helper invocation folded into `isFormInvalid`; exact copy + `theme.colors.error` present in the screen).
+- **D-05/D-06** this entry + `AGENTS.md` §3; manual checklist below.
+- **Not changed:** available-balance formula (synced to Dashboard "Available to Spend" earlier 2026-10-10), Initial Balance validation, negative-balance label, edit-allocation modal (`app/savings.tsx`), repository/`useSavings`, backend/API. No new dependency/file beyond the D-* named ones.
+- **Manual verification checklist (ACC-06, per §1.3 — user runs):**
+  - Android + iOS Expo Go: enter Initial `500`, Goal `100` → red "Goal amount is too low." under Goal field, button disabled; change Goal to `500` or higher → line disappears, button enables; Goal empty → no line.
+  - Web (`npx expo start --web`): same three states; no console errors.
+  - No red-box crash on any platform.
+- User-run verification pending per §1.3: `npm test` (jest), `npm run lint`, `npx tsc --noEmit`.
+- **Acceptance:** ACC-01..ACC-05 objective (jest × android/ios/web) + ACC-06 manual (three-platform visual).
