@@ -8,6 +8,7 @@ interface PasscodeData {
   isPasscodeEnabled: boolean;
   passcode: string | null;
   isUnlocked: boolean;
+  lastPinVerifiedAt: number | null;
 }
 
 interface PasscodeActions {
@@ -15,6 +16,7 @@ interface PasscodeActions {
   setIsPasscodeEnabled: (enabled: boolean) => void;
   setIsUnlocked: (unlocked: boolean) => void;
   verifyPasscode: (candidate: string) => Promise<boolean>;
+  markPinVerified: () => void;
 }
 
 const PasscodeDataContext = createContext<PasscodeData | undefined>(undefined);
@@ -24,11 +26,20 @@ async function hashPin(pin: string): Promise<string> {
   return await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, pin);
 }
 
+// SPEC-90: fresh-verification window (memory-only — restart wipes it, fail-closed).
+const PIN_VERIFY_FRESH_MS = 5 * 60 * 1000;
+
+export function isPinVerificationFresh(ts: number | null): boolean {
+  return ts !== null && Date.now() - ts < PIN_VERIFY_FRESH_MS;
+}
+
 export function PasscodeProvider({ children }: { children: ReactNode }) {
   const { activeUserId } = useAuthData();
   const [isPasscodeEnabled, setIsPasscodeEnabled] = useState(false);
   const [passcode, setPasscode] = useState<string | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  // SPEC-90: last PIN-proof timestamp (unlock / Step-1-ok / change-ok stamp it).
+  const [lastPinVerifiedAt, setLastPinVerifiedAt] = useState<number | null>(null);
   // SPEC-35 D-01: hash mirrored to secure storage (never plaintext at rest).
   const [storedHash, setStoredHash] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
@@ -39,6 +50,11 @@ export function PasscodeProvider({ children }: { children: ReactNode }) {
   const setPasscodeAndPersist = useCallback((code: string | null) => {
     persistArmedRef.current = true;
     setPasscode(code);
+  }, []);
+
+  // SPEC-90: stamp a PIN proof; read via isPinVerificationFresh(lastPinVerifiedAt).
+  const markPinVerified = useCallback(() => {
+    setLastPinVerifiedAt(Date.now());
   }, []);
 
   // Hashed persist — armed only by explicit setPasscode calls, so hydration
@@ -72,6 +88,7 @@ export function PasscodeProvider({ children }: { children: ReactNode }) {
     setPasscode(null);
     setStoredHash(null);
     setIsUnlocked(false);
+    setLastPinVerifiedAt(null);
     (async () => {
       try {
         if (!activeUserId) {
@@ -114,14 +131,16 @@ export function PasscodeProvider({ children }: { children: ReactNode }) {
     isPasscodeEnabled,
     passcode,
     isUnlocked,
-  }), [isPasscodeEnabled, passcode, isUnlocked]);
+    lastPinVerifiedAt,
+  }), [isPasscodeEnabled, passcode, isUnlocked, lastPinVerifiedAt]);
 
   const actionsValue = useMemo(() => ({
     setPasscode: setPasscodeAndPersist,
     setIsPasscodeEnabled,
     setIsUnlocked,
     verifyPasscode,
-  }), [setPasscodeAndPersist, verifyPasscode]);
+    markPinVerified,
+  }), [setPasscodeAndPersist, verifyPasscode, markPinVerified]);
 
   // Hold the tree until the first hydrate attempt finishes so the
   // _layout gate never renders on stale defaults (CON-05).

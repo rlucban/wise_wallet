@@ -1444,3 +1444,228 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - SPEC-45's document untouched (§1.14 — runbook still NOT YET RUN; only the entry point is hidden). No commit.
 - Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (Expo Go Android/iOS Cloud/Local + web export) remain pending per `AGENTS.md` §1.3. No commit.
 - Repair (lint-driven, user-pasted output): literal `{false && (` trips `no-constant-binary-expression` (`1387:14`). Replaced with module-scope `const SHOW_REPAIR_SECTION = false;` + `{SHOW_REPAIR_SECTION && (` — behavior-identical, still one-line revert, references intact. CON-03/ACC-01 wording + D-02 guard updated to the const gate (spec stays v1.0 FINAL — same normative intent). No commit.
+
+## 2026-10-11 — Spec 86 FINAL + implemented (Register-flow optional balance + logo parity)
+
+- **Spec.** `specs/86-register-initial-balance-optional-and-logo-parity.md` FINAL per user call 2026-10-11 (DRAFT proposals adopted as-is: DEC-01 onboarding-only, DEC-02 label `Initial Balance (Optional)`, DEC-03 logo size 64). `app/register.tsx` has no balance field (both creation paths hardcode `initialBalance: 0`), so the "optional" copy targets the onboarding step; the only cash-like header in the auth flow is the `💰` emoji (`app/onboarding.tsx:78`) vs the white `wallet` glyph shared by register/login/intro.
+- **D-01** — `app/onboarding.tsx` ONLY (4 hunks): `react-native-vector-icons/MaterialCommunityIcons` import (same import line as `register.tsx`; both icon packages already deps — no new dep); `💰` `<Text>` → `<MaterialCommunityIcons name="wallet" size={64} color="#fff" style={{ marginBottom: 8 }} />` (inline margin preserves the removed `walletEmoji` 8pt gap — zero layout shift per ACC-S02); `label="Initial Balance"` → `label="Initial Balance (Optional)"`; dead `walletEmoji` style deleted. `cash-multiple` field icon, default `"0"`, 10M validation, footer copy, and `register/login/intro` byte-identical.
+- **D-02** — new `utils/registerOnboardingParity.test.ts`: ACC-01 (optional wording exactly once), ACC-02 (zero `walletEmoji`/`💰`, wallet glyph + white, register/login parity), ACC-03 (scope: `cash-multiple` once, default/validation/payload intact, no `Initial Balance` string in register) × android/ios/web.
+- Verification pending per `AGENTS.md` §1.3 (agent never runs CLIs): user-run `npx jest utils/registerOnboardingParity.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export). No commit.
+
+## 2026-10-11 — Adjacent rot noted (themeColors guard vs SPEC-74 peach badge; NOT SPEC-86)
+
+- User-run full `npx jest` (2026-10-11): 52/53 suites pass; the ONLY failure is `utils/themeColors.test.js` — `app/(tabs)/learning.tsx:117` hardcoded `"#FFDAB9"` / `"#5D4037"` (the SPEC-74 FINAL-mandated fixed peach App Guide badge, `getPastelTagStyle` "App Guide" branch). `app/onboarding.tsx` is not in the guard's `FILES_TO_CHECK`, and no SPEC-86 file appears in the failure — SPEC-86 did not cause this.
+- Conflict: SPEC-74 normatively requires those exact hex values; the guard forbids hardcoded colors with no per-line exception. Per §1.11, no fix without its own spec. Options: (a) new spec pinning a guard exception for that one line (visuals unchanged), or (b) new spec replacing the hex with theme tokens (needs a constants home + SPEC-74 visual amendment). Awaiting user call. No commit.
+
+## 2026-10-11 — Spec 87 FINAL + implemented (Pinned theme-guard exception for SPEC-74 peach badge)
+
+- **Spec.** `specs/87-theme-guard-peach-badge-exception.md` FINAL per user call 2026-10-11 (option (a), DRAFT mechanism adopted as-is: DEC-01 marker-comment, DEC-02 visuals unchanged).
+- **D-01** — `app/(tabs)/learning.tsx:117` ONLY: trailing `// SPEC-87 pinned: SPEC-74 peach badge` comment. Hex bytes, badge logic, everything else byte-identical.
+- **D-02** — `utils/themeColors.test.js` ONLY: ONE `ALLOWED_EXCEPTIONS` entry `"SPEC-87 pinned"` (+ comment pointing at `learning.tsx:117`/SPEC-87) appended last; comment carries no quotes so the block's quoted-entry list stays exact. `FILES_TO_CHECK` + all 11 prior entries byte-identical — no new matching machinery, guard still fails on any other hardcoded color.
+- **D-03** — new `utils/themeBadgeException.test.ts`: ACC-01 (badge line exact hex + marker, each hex/marker once in file), ACC-02 (entry once; scan-list 8 files + full exception list pinned via `toEqual`), ACC-03 (badge line contains an exception substring parsed from the guard's own block — proves the red goes green for the right reason) × android/ios/web.
+- Disclosed: the checker file necessarily names the marker — CON-05's pin is enforced per-file on the two governed files (1 occurrence each, verified by grep), not repo-wide. SPEC-74 untouched (§1.14).
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/themeBadgeException.test.ts utils/themeColors.test.js`, `npm run lint`, plus ACC-S01/S02 (peach badge unchanged light/dark + full jest green). No commit.
+
+## 2026-10-11 — Spec 87 v1.1 FINAL + implemented (Drop dead duplicate `content` literal)
+
+- **Spec.** Folded into SPEC-87 per user call ("ilagay mo sa spec 87 lang") — no SPEC-88 (§1.14 one home). v1.1 FINAL per user call "final - code this for me" 2026-10-11.
+- **D-05** — `app/(tabs)/learning-detail.tsx` ONLY: deleted the dead inline `content` template literal in `wisewallet_app_guide` (13 lines), keeping `title` + `content: APP_GUIDE_CONTENT`. Later-key-wins meant line 31 already governed render (`:228`) + TTS (`:171`) — zero behavior change, `no-dupe-keys` red gone.
+- **D-06** — `utils/themeBadgeException.test.ts` extended with ACC-04 (single `content:` in guide block, stale opener absent, import + sibling entries intact) × android/ios/web. No new test file; SPEC-71's guard file untouched.
+- Verification pending per `AGENTS.md` §1.3: user-run `npm run lint` (file must be clean), `npx jest utils/themeBadgeException.test.ts`, plus ACC-S03/S04 (identical guide body/audio, Expo Go + web). No commit.
+
+## 2026-10-11 — Overlap exposed by v1.1 (SPEC-80 guard pinned the dead literal; live guide still old copy)
+
+- User-run full `npx jest` (2026-10-11): ONLY `utils/paySourceRename.test.ts` ACC-01 fails (× android/ios/web) — it expects `learning-detail.tsx` to contain `"payment source."`, a string that lived ONLY in the dead literal v1.1 deleted. Self-crit: v1.1 never surveyed guard pins on the deleted text — that check is now part of the deletion pattern.
+- Deeper find (source-read): the LIVE guide body (`utils/learningGuideContent.ts`, what renders + TTS reads) still says "payment method(s)" in ~10 places across 3 articles (`:15,19,22,23,62,64,70,79,84,95`) — SPEC-80's 7th site was the dead text, so the rename never reached the live prose. `learningGuideContent.test.ts:29` additionally pins old copy ("Managing Categories and Payment Methods").
+- Conflict: SPEC-80 (rename) × SPEC-71/73 (content home + pins) × SPEC-87 v1.1 (deletion). Per §1.13/§1.14 + §1.1: NO edit until a spec with user calls governs — options (a) rename live prose (editorial: section titles + grammar need exact-string calls) vs (b) guard-only (enshrines user-visible inconsistency) vs (c) revert v1.1 (restores lint red — rejected). Awaiting user call. No commit.
+
+## 2026-10-11 — Spec 88 FINAL + implemented (Guide live prose Payment Source copy)
+
+- **Spec.** `specs/88-guide-payment-source-copy.md` FINAL per user call 2026-10-11 ("final" → "code this for me"; titles included, new-spec home).
+- **D-01** — `utils/learningGuideContent.ts` ONLY: 10 replacements per CON-04 (body lowercase "payment source(s)", Title Case titles, L22 grammar "Sources store"). Zero old copy remains in the module (grep-verified); article order/count untouched.
+- **D-02** — `utils/paySourceRename.test.ts` ONLY: guide pin repointed to the live module (`toContain("payment source")` + both-case absence); zero `learning-detail` references left; all other pins byte-identical.
+- **D-03** — `utils/learningGuideContent.test.ts` ONLY: `:29` pin → `"Managing Categories and Payment Sources",`. Nothing else touched.
+- **D-04** — new `utils/guidePaymentSource.test.ts`: ACC-01 (exact 10-string table + both-case absence), ACC-02 (repoint + pins intact), ACC-03 (5 exports intact, no identifiers, detail renders module text) × android/ios/web. Safety grep pre-verified no `paymentMethod` identifiers in the guide module.
+- Out of scope kept out: CSV header (`reportFormat.ts:37`, SPEC-33/34 parity) + `add-transaction.tsx:92` console log — both observed, neither touched. SPEC-80/71/73 docs untouched (§1.14, supersessions recorded in SPEC-88).
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/guidePaymentSource.test.ts utils/paySourceRename.test.ts utils/learningGuideContent.test.ts`, `npm run lint`, plus ACC-S01/S02 (read all 10 lines + TTS spot-check, Expo Go + web). No commit.
+
+## 2026-10-11 — Spec 89 FINAL + implemented (Change-passcode Step-1 iOS entry UI)
+
+- **Spec.** `specs/89-change-passcode-ios-entry-ui.md` FINAL per user call 2026-10-11 ("final - code this for me"; 4 / native / copy-lang / step-1-only).
+- **D-01** — `app/(tabs)/settings.tsx` Step-1 ONLY (4 hunks): title → `Enter passcode`; description → static 3-attempts note (string-expression form, verbatim for the guard); labeled box → 4 theme hollow circles (15px, outline→primary) in a tap-to-focus `Pressable` + visually-hidden input with IDENTICAL props/handlers (+ `autoFocus`); error strings/verify/disable/Cancel/close/Step-2/no-lock/modal all byte-identical. Disclosed wiring extras (spec-implied, not in CON-03's line list): `TextInput as NativeTextInput` import alias + `hiddenPinInputRef` (TS-strict forbids untyped refs, SPEC-28 cleared the last `any`).
+- **D-02** — new `utils/changePinEntryUi.test.ts`: ACC-01 (visuals + hidden-input props, old copy absent STEP-1-SCOPED — the Cloud no-lock branch legitimately keeps its own `label="Current Passcode"`), ACC-02 (verify behavior), ACC-03 (container intact, no `failedAttempts`/`lockout`/`resetPasscode`) × android/ios/web.
+- Self-caught in read-back: first-draft ACC-01 asserted file-wide label absence and would have failed on the out-of-scope Cloud branch — re-scoped to the Step-1 slice before handoff.
+- Residual risk (flagged, user-testable): `autoFocus` inside `NativeModal` — if the keyboard pops on merely opening Settings (children mounted while hidden), report back and the one-line fix is tap-only focus. No commit.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/changePinEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (circles fill, tap summons keyboard, same error/clear/advance, dark mode; Expo Go + web). No commit.
+
+## 2026-10-11 — Spec 90 FINAL + implemented (PIN verify freshness window)
+
+- **Spec.** `specs/90-pin-verify-freshness-window.md` FINAL per user call 2026-10-11 ("final + code this for me"; 5-min window).
+- **D-01** — `context/PasscodeContext.tsx` ONLY (7 hunks): `PIN_VERIFY_FRESH_MS`, `lastPinVerifiedAt` state + Data slot, `markPinVerified` + Actions slot, exported pure `isPinVerificationFresh`, reset in account-change clear. Split preserved, zero storage keys (pinned: 4× `"passcode"` only).
+- **D-02** — `app/passcode-screen.tsx` ONLY: destructure + `markPinVerified()` beside unlock success.
+- **D-03** — `app/(tabs)/settings.tsx` ONLY (7 hunks): helper import + destructure; skip-to-step-2 at BOTH open sites (Local+lock+fresh); `if (isLocal) markPinVerified()` on Step-1-ok; save-gate (`pinFresh` skip + Local stale-fallback to Step-1 with existing copy) + mark on Local success. Cloud path behavior-identical (fresh always false there).
+- **D-04** — new `utils/pinVerifyFreshness.test.ts`: ACC-01 (contract + key-count pin), ACC-02 (3 marks + 2 open gates + save-gate), ACC-03 (Cloud body/copies intact, no constant/copy/platform additions) × android/ios/web.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/pinVerifyFreshness.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (unlock→skip, change→skip, restart→verify, Cloud→verify; Expo Go + web). No commit.
+
+## 2026-10-11 — Spec 89 v1.1 FINAL + implemented (Bigger modal, blur, lock-screen dots)
+
+- **Spec.** `specs/89-change-passcode-ios-entry-ui.md` v1.1 FINAL per user call 2026-10-11 ("final + code this for me"; B/blur/(a)). Install gate cleared first: user ran `npx expo install expo-blur` (verified `~57.0.3` in `package.json` + lockfile + `node_modules/expo-blur` present) before any import was written.
+- **D-05** — `app/(tabs)/settings.tsx` ONLY (4 hunks): `expo-blur` import; change-dialog backdrop dim → `<BlurView intensity={80} tint="dark" absoluteFill>` (rgba removed, tap-outside Pressable kept — shared chrome, so Step-2/no-lock branches get blur too, content byte-identical); Step-1-local Surface override `{ maxWidth: 520, paddingVertical: 16 }` (shared `styles.dialog` untouched); circles row 16→28 + dots 16px filled lock logic incl. error-red (ring deleted). Grep pre-check: 4 OTHER modals keep their dim — ACC-04 scopes the rgba-absence to the change-dialog block.
+- **D-06** — `utils/changePinEntryUi.test.ts` extended with ACC-04 (blur + dep + scoped rgba-absence), ACC-05 (shared style + local override + row), ACC-06 (dots + v1.0 copies in Step-1 slice) × android/ios/web. No new test file.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/changePinEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S11/S12 (roomier modal, real blur, dots match lock screen incl. error-red + dark mode; Expo Go + web). No commit.
+
+## 2026-10-11 — Spec 89 v1.1 repair (ACC-06 slice scope; app untouched)
+
+- User-run jest: ACC-06 failed × android/ios/web — test bug, not app bug. The Step-1 slice (`pinStep === 1 ? (` → `// Step 2`) starts at the content ternary, but the title line sits ABOVE it in the title row, so the slice can never contain it (ACC-01 already pins the title file-wide and passes).
+- Repair (test-only, same normative intent — spec stays FINAL v1.1): the title assertion moved from `step1` to `source`; dots/note assertions stay slice-scoped. No app change. No commit.
+- Re-run pending per `AGENTS.md` §1.3: `npx jest utils/changePinEntryUi.test.ts` must go 18/18.
+
+## 2026-10-11 — Spec 91 FINAL + implemented (Lock screen iOS-entry parity + bigger card)
+
+- **Spec.** `specs/91-lock-screen-ios-entry-parity.md` FINAL per user call 2026-10-11 ("final + code this for me"; sizes 440/48 folded pre-FINAL per "lakihan pa… habaan height").
+- **D-01** — `app/passcode-screen.tsx` ONLY (8 hunks): `Pressable` import; title → `Enter passcode` + static note (string-expression, verbatim); dots wrapped in tap-to-focus `Pressable` (render/logic byte-identical); box → hidden input with identical props/handlers; dead `styles.input`/`inputContent` deleted; card `maxWidth` 380→440 + content `paddingVertical` 32→48. Gate logic/unlock/mark/error/dark path byte-identical.
+- **D-02** — new `utils/lockScreenEntryUi.test.ts`: ACC-01 (copy + hidden input + tap wiring, old copy absent), ACC-02 (sanitize/auto-4/unlock+mark/error+clear/HelperText), ACC-03 (sizes, dead styles gone, no Platform/lockout, settings Step-1 intact) × android/ios/web.
+- Self-caught pre-handoff: first-draft ACC-03 asserted Step-1's title against the lock-screen source (no `pinStep` there) — repointed to `settings.tsx` before handoff.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/lockScreenEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (mirror look, tap-focus, same verify/unlock, dark; Expo Go + web). No commit.
+
+## 2026-10-11 — Spec 91 v1.1 FINAL + implemented (Raised card, iOS avoidance, Unlock button)
+
+- **Spec.** `specs/91-lock-screen-ios-entry-parity.md` v1.1 FINAL per user call 2026-10-11 ("final + code this for me"; lock/(c)/(a) + raise-not-centered).
+- **D-04** — `app/passcode-screen.tsx` ONLY (5 hunks): `Platform` + Paper `Button` imports; `KeyboardAvoidingView` (register/login precedent ternary) wrapping the `Card` with flex-start/center/paddingTop-80 layout; `styles.container` → flex-1-only; contained full-width `Unlock` button (`disabled` until 4, same-path submit) below the error block. Dots/copy/hidden-input/error/unlock/mark byte-identical.
+- **D-05** — `utils/lockScreenEntryUi.test.ts` extended with ACC-04 (KAV + single ternary + 80-top) and ACC-05 (button + same-path + v1.0 intact) × android/ios/web. No new test file.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/lockScreenEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S03 (iOS: raised, keyboard clears card, button unlocks) / S04 (Android + web). No commit.
+
+## 2026-10-11 — Spec 91 v1.1 repair (2 stale guard pins; app untouched)
+
+- User-run jest: ACC-03 + ACC-05 failed × android/ios/web (6 failed, 9 passed) — both guard bugs, app correct throughout.
+  1. ACC-03 asserted `not.toContain("Platform")` — stale from v1.0; v1.1 CON-12 sanctions exactly one `Platform.OS` ternary (pinned by ACC-04's count guard). Dropped the stale line; spec ACC-03 text aligned to match (same normative intent — CON-12 + ACC-04 already govern).
+  2. ACC-05 asserted the `Unlock` label with 12-space indent, but the file on disk is indented deeper (received dump shows `,alignItems` spaceless too — externally reformatted after implementation; whitespace is non-normative, app unaffected). Replaced with indent-proof `"Unlock\n"` (unique in file). Lesson: no leading-whitespace pins.
+- No app change. No commit.
+- Re-run pending per `AGENTS.md` §1.3: `npx jest utils/lockScreenEntryUi.test.ts` must go 15/15.
+
+## 2026-10-11 — Spec 91 v1.1 repair #2 (line-ending-proof Unlock pin; app untouched)
+
+- User re-ran: Platform fix confirmed (ACC-03 green on all 3), ACC-05 still red ×3 — `toContain("Unlock\n")` not found although the label is visibly present. Diagnosis: line-ending/whitespace drift on disk (dump shows re-indented + spaceless `,alignItems` + odd separators — consistent with CRLF or editor reformatting; `"\n"` literal cannot match `"...\r\n"` or trailing spaces).
+- Repair (test-only, same normative intent): `toContain("Unlock\n")` → `toMatch(/^\s*Unlock\s*$/m)` (a line containing only the label under any indent/line-ending). Standing rule hardened: no exact-whitespace pins, only regex/substring pins.
+- No app change. No commit.
+- Re-run pending per `AGENTS.md` §1.3: `npx jest utils/lockScreenEntryUi.test.ts` must go 15/15.
+
+## 2026-10-11 — Spec 91 v1.1 repair #3 (missing KeyboardAvoidingView import; tsc red)
+
+- User-run `npx tsc --noEmit`: `TS2304 Cannot find name 'KeyboardAvoidingView'` ×2 — D-04 added the `Platform` import but not `KeyboardAvoidingView` itself. My miss, caught by tsc (not by jest — source-scan guards don't typecheck).
+- Repair (one import line, same normative intent — KAV usage was already FINAL): added to the existing `react-native` import. No spec text change.
+- Re-run pending per `AGENTS.md` §1.3: `npx tsc --noEmit` must be silent.
+
+## 2026-10-11 — Spec 89 v1.2 + Spec 91 v1.2 FINAL + implemented (Dialog KAV, lock re-center)
+
+- **Why:** phone screenshot proved the keyboard covers the change dialog's Set Passcode button (no avoidance on that modal — unlike SPEC-57's Clear-Data dialog in the same file); and my v1.1 lock raise hit the wrong surface ("di naman yun pinapa-adjust ko"). Both v1.2s FINAL per user call "final + code this for me" 2026-10-11.
+- **SPEC-89 D-08** — `app/(tabs)/settings.tsx` ONLY: KAV open + close tags around the change-dialog `Surface` (SPEC-57 mirror, no import change). All steps/branches/content byte-identical.
+- **SPEC-91 D-07** — `app/passcode-screen.tsx` ONLY: KAV style back to centered (`justifyContent center + padding 24`, container stays flex-1). KAV ternary, Unlock, dots, copy intact.
+- **Tests** — `changePinEntryUi.test.ts` +ACC-07 (block-scoped KAV wrap pin), `lockScreenEntryUi.test.ts` +ACC-08 (centered + no flex-start/80-top + intact) × android/ios/web. No new test files.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/changePinEntryUi.test.ts utils/lockScreenEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S13/S14 (phone keyboard matrix) + S05/S06 (centered lock matrix). No commit.
+
+## 2026-10-11 — Verified baselines + Spec 91 v1.2 repair (stale ACC-04; app untouched)
+
+- User-run full `npx jest`: **58/58 suites, 1116/1116 tests pass**; `npm run lint` clean. Targeted run: `changePinEntryUi` fully green (ACC-07 KAV green) — only stale `lockScreenEntryUi` ACC-04 red ×3.
+- Cause: v1.1 ACC-04 pinned `paddingTop: 80`, but v1.2 (FINAL, implemented) re-centered the card — the app is in the correct FINAL state, the pin is stale.
+- Repair (same normative intent — v1.2 already FINAL): ACC-04 now pins the centered KAV style + absence of `flex-start`/`paddingTop: 80`; spec ACC-04 text aligned. No app change. No commit.
+- Re-run pending per `AGENTS.md` §1.3: `npx jest utils/lockScreenEntryUi.test.ts` must go 18/18 (ACC-08 already green proves the re-center).
+
+- User-run `npm run lint` (2026-10-11): `app/(tabs)/learning-detail.tsx:31:9 error Duplicate key 'content' (no-dupe-keys)`. Neither SPEC-86 nor SPEC-87 touches that file — pre-existing.
+- Cause (source-read): `LEARNING_CONTENT.wisewallet_app_guide` holds TWO `content` keys — the inline template literal (lines 18-30) and `content: APP_GUIDE_CONTENT` (line 31, added by the SPEC-71/74 guide work). Later-key-wins, so line 31 governs at runtime and the inline literal is dead text. The §1.11-minimal, SPEC-71/74-consistent fix is deleting the dead literal (removing line 31 instead would change the article body and contradict the content home in `learningGuideContent.ts`); still needs its own spec + FINAL per §1.1. Awaiting user call. No commit.
+
+## 2026-10-11 — Overlap repair (SPEC-57 count pin vs SPEC-89 v1.2 wrapper; app untouched)
+
+- User-run full jest: ONLY `utils/clearDataKeyboard.test.ts` red ×6 — it pins exactly ONE `<KeyboardAvoidingView` file-wide ("no other dialog gained a wrapper"), and FINAL v1.2 legitimately added the second in the change dialog (same SPEC-57 mirror pattern). Same overlap family as the paySourceRename dead-pin.
+- Repair (same normative intent — FINAL v1.2 already contains the second wrapper via D-08): counts 1→2, plus block-scoped proof the second wrapper lives ONLY in the change modal (open+close+Surface); the anti-sprawl intent is preserved, now naming both known dialogs. No app change.
+- Disclosure: SPEC-57's document still says "exactly one" — stale text, left untouched per §1.14; say the word and I'll formalize it as SPEC-89 v1.3 or SPEC-57 v1.4.
+- Re-run pending per `AGENTS.md` §1.3: `npx jest utils/clearDataKeyboard.test.ts` must go green (full suite back to 58/58).
+
+## 2026-10-11 — Spec 89 v1.5 FINAL + implemented (Split modals + scroll safety)
+
+- **Spec.** `specs/89-change-passcode-ios-entry-ui.md` v1.5 FINAL per user call 2026-10-11 ("final + code this for me").
+- **Why:** user split the flow into Modal 1 (own Step-1 design) + Modal 2 (Step-2); suite red (dead anchors + stale count) + Modal-1 iOS soft-lock risk (no scroll/X) + Modal-2 ScrollView dropped by the restructure.
+- **D-17** — Modal-1 ScrollView wrap inside the tap-anywhere Pressable (design/handlers identical).
+- **D-18** — Modal-2 KAV flex restore + ScrollView wrap (v1.3/v1.4 behavior; aligned at FINAL-mark since bare restore would unbound it). Content identical, dead old-Step-1 block kept + recorded.
+- **D-19** — pinVerifyFreshness count 2→3 (dead+live+save, SPEC-90 superseded in SPEC-89); changePinEntryUi repointed to qualified modals + new ACC-11 (Modal-1 pins); clearDataKeyboard anchor repointed (counts still 2). No new test files.
+- Verification pending per `AGENTS.md` §1.3: user-run full `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S15/S16 (phone: both modals scroll, all actions reachable; Android + web). No commit.
+
+## 2026-10-11 — Spec 89 v1.4 FINAL + implemented (Bounded scroll)
+
+- **Spec.** `specs/89-change-passcode-ios-entry-ui.md` v1.4 FINAL per user call 2026-10-11 ("final + code this for me").
+- **Why:** phone screenshot proved v1.3 stretched the card full-screen (void below inputs) — the flex-less ScrollView + double centering let it grow unbounded.
+- **D-14** — `app/(tabs)/settings.tsx` ONLY: KAV style trimmed to `{ flex: 1, width: "100%" }`, `ScrollView` gains `style={{ flex: 1, width: "100%" }}` (bounded = deterministic scroll); content container + content byte-identical.
+- **D-15** — `utils/changePinEntryUi.test.ts` +ACC-10 (exact KAV style, old centering triple absent, flexGrow + Surface intact) × android/ios/web. No new test file.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/changePinEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S17/S18 (phone: normal-height dialog, top visible + buttons reachable with keyboard up; Android + web). No commit.
+
+## 2026-10-11 — Spec 89 v1.4 repair (stale ACC-09 KAV line; app untouched)
+
+- User-run jest: ACC-09 red ×3 (rest of file green incl. new ACC-10) — the test pinned v1.3's exact KAV style string, but v1.4 (FINAL, on disk — visible in the user's own dump) trimmed it. App correct.
+- Repair (test-only, same normative intent): that line now pins the v1.4 KAV style (mirrors ACC-10's first assertion — both pin the same FINAL truth). Spec ACC-09 text needed NO change (it only ever pinned `flex: 1` + ScrollView wrap, both still true). No app change. No commit.
+- Re-run pending per `AGENTS.md` §1.3: `npx jest utils/changePinEntryUi.test.ts` must go 27/27.
+
+## 2026-10-11 — Spec 91 v1.3 FINAL + implemented (Lock scroll-bound)
+
+- **Spec.** `specs/91-lock-screen-ios-entry-parity.md` v1.3 FINAL per user call 2026-10-11 ("final + code this for me").
+- **Why:** phone screenshot — keyboard-up pushed the lock title under the status bar and the button out of reach (KAV-padding overshoot, same class as the dialog).
+- **Late correction at FINAL-mark (disclosed, SPEC-35 precedent):** the DRAFT said trim KAV to flex-only, but that would full-bleed the 100%-width Card on phone (the dialog keeps margins via its 90% Surface; the lock relies on KAV `padding: 24`). Implemented ScrollView-only: v1.2 KAV style byte-identical.
+- **D-10** — `app/passcode-screen.tsx` ONLY: `ScrollView` import + open/close wrap (flex:1/width:100%, flexGrow-centered container, persistTaps). Content byte-identical.
+- **D-11** — `utils/lockScreenEntryUi.test.ts` +ACC-09 (ordered open→close nesting + scroll props + v1.2 KAV intact) × android/ios/web. No new test file.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/lockScreenEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S07/S08 (phone: title clear + button reachable with keyboard up; Android + web). No commit.
+
+## 2026-10-11 — Spec 91 v1.4 FINAL + implemented (Height behavior)
+
+- **Spec.** `specs/91-lock-screen-ios-entry-parity.md` v1.4 FINAL per user call 2026-10-11 ("final + code this for me").
+- **Why:** ScrollView gave reachability but KAV-`padding` still parked content at the top (full keyboard height pushed from below). Height shrinks from the bottom — top anchored, card fits the visible area.
+- **D-13** — `app/passcode-screen.tsx` ONLY: `behavior="height"` + dropped the now-unused `Platform` import (Android/web behavior unchanged — height already / ignored). All else byte-identical.
+- **D-14** — `utils/lockScreenEntryUi.test.ts` +ACC-10 (height string, zero Platform, KAV/ScrollView/button intact) × android/ios/web. No new test file.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/lockScreenEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S09/S10 (phone: title below status bar with keyboard up, no scroll needed, dots + Unlock reachable; Android + web). No commit.
+
+## 2026-10-11 — Spec 91 v1.5 FINAL + implemented (Remove KAV, scroll only)
+
+- **Spec.** `specs/91-lock-screen-ios-entry-parity.md` v1.5 FINAL per user call 2026-10-11 ("final + code this for me").
+- **Why:** three turns of KAV-driven positioning bugs with zero KAV wins on this screen; user proved manual scroll works ("na scroll naman sya").
+- **Late correction at FINAL-mark (disclosed, SPEC-35 precedent):** as drafted, dropping KAV also dropped its load-bearing `padding: 24` frame (full-bleed risk on the 100%-width Card) — frame moved onto the content container; also folded v1.3 ACC-09 into the rewrite set (it pinned KAV containment).
+- **D-16** — `app/passcode-screen.tsx` ONLY: KAV tags + import gone, `padding: 24` on the content container. Content byte-identical.
+- **D-17** — `utils/lockScreenEntryUi.test.ts`: ACC-04/08/09/10 rewritten (no-KAV pins + ordered nesting + frame) × android/ios/web. No new test file.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/lockScreenEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S11/S12 (phone: centered always, scroll only if covered; Android + web). No commit.
+
+## 2026-10-11 — Spec 91 v1.6 FINAL + implemented (Flex wrapper above the gate)
+
+- **Spec.** `specs/91-lock-screen-ios-entry-parity.md` v1.6 FINAL per user call 2026-10-11 ("final + code this for me").
+- **Why (the actual root cause):** web-centered vs phone-top-parked on the SAME bundle proved the lock file innocent — `app/_layout.tsx:207-209` returned `<PasscodeScreen />` bare while the normal tree gets `<View style={{ flex: 1 }}>` (`:214`); native unbounded chain collapses `flex: 1`, web's height-100% chain masks it. Also explains login always centering (Stack host).
+- **D-19** — `app/_layout.tsx` ONLY: one-line flex-1 wrapper around the gate return (mirrors line 214). Guards/providers/Stack/Paper byte-identical; lock file byte-identical.
+- **D-20** — `utils/lockScreenEntryUi.test.ts` +ACC-11 (wrapped return + gate condition + intact) × android/ios/web. No new test file.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/lockScreenEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S13/S14 (phone fresh reload after logout: centered, web == phone; Android + web). No commit.
+
+## 2026-10-11 — Spec 91 v1.4 repair (stale ACC-04 ternary pins; app untouched)
+
+- User-run jest: ACC-04 red ×3 (ACC-08/09/10 green — app already in FINAL v1.4 state). v1.4 removed the `Platform.OS` ternary ACC-04 pinned; plus a leftover `toHaveLength(1)` line caught on read-back (first repair edit left it behind — fixed in the same pass).
+- Repair (same normative intent — FINAL v1.4 governs): ACC-04 now pins KAV presence + centered style + zero ternary; spec ACC-04 text aligned. No app change. No commit.
+- Re-run pending per `AGENTS.md` §1.3: `npx jest utils/lockScreenEntryUi.test.ts` must go 18/18.
+
+## 2026-10-11 — Spec 91 v1.6 repair (user's PaperProvider wrap dropped the flex; app fix)
+
+- User-run jest: ACC-11 red ×3 — and the dump caught REAL drift: the user wrapped the gate return in `<PaperProvider theme={theme}>` (fixes dark-mode theme on the lock screen — valid, kept) but dropped my flex wrapper in the process (back to unbounded → top-parked).
+- Repair: flex wrapper re-applied INSIDE their PaperProvider (both intents preserved: themed + bounded); ACC-11 rewritten to pin both; spec CON-21/ACC-11 text aligned (same normative intent — bounded + themed gate). Indentation matched to siblings.
+- Re-run pending per `AGENTS.md` §1.3: `npx jest utils/lockScreenEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`.
+
+## 2026-10-11 — Repair (user's absoluteFillObject typo; tsc red)
+
+- User-run `npx tsc --noEmit`: `TS2551 Property 'absoluteFillObject' does not exist` — in the user's rewritten root View (line 43, not agent code). One-word repair → `StyleSheet.absoluteFill` (declared in this RN version). Same normative intent (bounded root).
+- Re-run pending per `AGENTS.md` §1.3: `npx tsc --noEmit` must be silent.
+
+## 2026-10-11 — Spec 89 v1.3 FINAL + implemented (Scroll-bounded dialog)
+
+- **Spec.** `specs/89-change-passcode-ios-entry-ui.md` v1.3 FINAL per user call 2026-10-11 ("final (c) final + code this for me"; sides confirmed fine as-is).
+- **Why:** phone screenshot proved KAV-`padding` alone overshoots on the tall dialog — top flew past the status bar. My v1.2 "KAV suffices" call was wrong for this height (its disclosed residual risk fired).
+- **D-11** — `app/(tabs)/settings.tsx` ONLY: KAV style +flex/center + `ScrollView` (flexGrow center, persistTaps) wrapping the change-dialog `Surface` (register/login/onboarding precedent). Content byte-identical.
+- **D-12** — `utils/changePinEntryUi.test.ts` +ACC-09 (block-scoped KAV-flex + ScrollView wrap pin) × android/ios/web. No new test file.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/changePinEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S15/S16 (phone: top visible with keyboard up on every branch, buttons reachable; Android + web). No commit.
+
+## 2026-10-11 — Spec 91 v1.8 FINAL + implemented (Adopt user rewrite + reconcile)
+
+- **Spec.** `specs/91-lock-screen-ios-entry-parity.md` v1.8 FINAL per user call 2026-10-11 ("final + code this for me"). Mid-work discovery (disclosed): the user had rewritten `passcode-screen.tsx` by hand (absoluteFill root, tap-anywhere Pressable, 18px dots, styled Unlock) — v1.8 adopts it as baseline instead of reverting; v1.7's unlanded D-22 superseded, stale spec-shaped guard pins replaced.
+- **D-25** — `app/passcode-screen.tsx` ONLY (3 hunks on their file): import drops unused KAV/Platform + gains ScrollView (lint was red); `hiddenInput` gains `top: 0` (auto-scroll kill); ScrollView wrap inside the Pressable (scroll fallback, tap-area + look untouched). Their design byte-identical otherwise.
+- **D-26** — `utils/lockScreenEntryUi.test.ts` re-baselined to disk reality (all pins verified line-by-line against the adopted file first; two whitespace-trap asserts rewritten split-form). No new test file.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/lockScreenEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S17/S18 (phone: centered always, keyboard-up reachable; Android + web). No commit.

@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { View, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from "react-native";
 import { Text, TextInput, Button, HelperText } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter } from "expo-router";
 import { useUserProfileActions } from "../context/UserProfileContext";
 import { useTransactionsData, useTransactionsActions } from "../context/TransactionsContext";
@@ -75,7 +76,7 @@ export default function OnboardingScreen() {
                 <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                     {/* Logo & Welcome */}
                     <View style={styles.header}>
-                        <Text style={styles.walletEmoji}>💰</Text>
+                        <MaterialCommunityIcons name="wallet" size={64} color="#fff" style={{ marginBottom: 8 }} />
                         <Text style={styles.appName}>WiseWallet</Text>
                         <Text style={styles.tagline}>Your personal finance companion</Text>
                     </View>
@@ -106,7 +107,7 @@ export default function OnboardingScreen() {
 
                         {/* Initial Balance Field */}
                         <TextInput
-                            label="Initial Balance"
+                            label="Initial Balance (Optional)"
                             value={balance}
                             onChangeText={(t) => setBalance(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
                             mode="outlined"
@@ -160,10 +161,6 @@ const styles = StyleSheet.create({
     header: {
         alignItems: "center",
         marginBottom: 32,
-    },
-    walletEmoji: {
-        fontSize: 64,
-        marginBottom: 8,
     },
     appName: {
         fontSize: 36,
