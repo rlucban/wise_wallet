@@ -5,11 +5,33 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import * as Speech from "expo-speech";
 import { prefetchFemaleVoice, speakWithFemaleVoice } from "../../utils/speechVoice";
 import { APP_GUIDE_CONTENT } from "../../utils/learningGuideContent";
+import {
+    APP_GUIDE_GETTING_STARTED_CONTENT,
+    APP_GUIDE_SCHEDULED_DUES_CONTENT,
+    APP_GUIDE_ALLOCATIONS_CONTENT,
+    APP_GUIDE_REPORTS_CONTENT,
+} from "../../utils/learningGuideContent";
 
 const LEARNING_CONTENT: Record<string, { title: string; content: string }> = {
     wisewallet_app_guide: {
         title: "WiseWallet App Guide",
         content: APP_GUIDE_CONTENT,
+    },
+    app_guide_getting_started: {
+        title: "Getting Started with WiseWallet",
+        content: APP_GUIDE_GETTING_STARTED_CONTENT,
+    },
+    app_guide_scheduled_dues: {
+        title: "Managing Scheduled Dues",
+        content: APP_GUIDE_SCHEDULED_DUES_CONTENT,
+    },
+    app_guide_allocations: {
+        title: "Savings Allocations",
+        content: APP_GUIDE_ALLOCATIONS_CONTENT,
+    },
+    app_guide_reports: {
+        title: "Reading Reports & Exporting",
+        content: APP_GUIDE_REPORTS_CONTENT,
     },
     budgeting_101: {
         title: "Budgeting 101",
