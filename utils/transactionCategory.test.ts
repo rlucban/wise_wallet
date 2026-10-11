@@ -37,16 +37,16 @@ function runSuite(os: "android" | "ios" | "web") {
             mockOS = os;
         });
 
-        it("ACC-01: online POST bodies derive categoryId from the selected category id (web + native)", () => {
+        it("ACC-01 (SPEC-82 superseded): online POST bodies gate categoryId through the uuid helper (web + native)", () => {
             const src = readRepo("context/TransactionsContext.tsx");
-            const derived = src.match(/categoryId: uploaded\.category\?\.id \?\? null/g) || [];
+            const derived = src.match(/categoryId: toApiCategoryId\(uploaded\.category\?\.id\)/g) || [];
             expect(derived).toHaveLength(2);
             expect(src).not.toMatch(/categoryId:\s*["'][^"']+["']/);
         });
 
-        it("ACC-01b: PUT bodies send categoryId only when updates carry a category (web + native)", () => {
+        it("ACC-01b (SPEC-82 superseded): PUT bodies gate categoryId through the helper when updates carry a category (web + native)", () => {
             const src = readRepo("context/TransactionsContext.tsx");
-            const cond = src.match(/if \(updates\.category !== undefined\) updateBody\.categoryId = updates\.category \? updates\.category\.id : null;/g) || [];
+            const cond = src.match(/if \(updates\.category !== undefined\) updateBody\.categoryId = toApiCategoryId\(updates\.category \? updates\.category\.id : null\);/g) || [];
             expect(cond).toHaveLength(2);
         });
 

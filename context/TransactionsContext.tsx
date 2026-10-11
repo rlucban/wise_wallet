@@ -12,7 +12,7 @@ import { useUserProfile } from "./UserProfileContext";
 import { useSystemAlerts } from "./SystemAlertsContext";
 import { useRepositories } from "./RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
-import { generateUUID } from "../utils/uuid";
+import { generateUUID, toApiCategoryId } from "../utils/uuid";
 import * as FileSystem from 'expo-file-system/legacy';
 import { getPrefixedKey, setItem } from "../utils/storage";
 import { updateLastSyncedAt } from "../utils/syncQueue";
@@ -189,7 +189,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 const uploaded = await uploadReceiptIfNeeded(newTransaction);
                 const { ok, status, error } = await authFetch('transactions', {
                     method: "POST",
-                    body: JSON.stringify({ ...uploaded, categoryId: uploaded.category?.id ?? null, userId: activeUserId }),
+                    body: JSON.stringify({ ...uploaded, categoryId: toApiCategoryId(uploaded.category?.id), userId: activeUserId }),
                 });
                 if (!ok) {
                     throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
@@ -208,7 +208,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             const uploaded = await uploadReceiptIfNeeded(newTransaction);
             const { ok, status, error } = await authFetch('transactions', {
                 method: "POST",
-                body: JSON.stringify({ ...uploaded, categoryId: uploaded.category?.id ?? null, userId: activeUserId }),
+                body: JSON.stringify({ ...uploaded, categoryId: toApiCategoryId(uploaded.category?.id), userId: activeUserId }),
             });
             if (!ok) {
                 throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
@@ -238,8 +238,8 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
             const updateBody: Record<string, unknown> = { ...updates, userId: activeUserId };
-            if (updates.category !== undefined) updateBody.categoryId = updates.category ? updates.category.id : null;
-                if (updates.category !== undefined) updateBody.categoryId = updates.category ? updates.category.id : null;
+            if (updates.category !== undefined) updateBody.categoryId = toApiCategoryId(updates.category ? updates.category.id : null);
+                if (updates.category !== undefined) updateBody.categoryId = toApiCategoryId(updates.category ? updates.category.id : null);
                 const zUpdateDate = toZIso(updateBody.date);
                 if (zUpdateDate !== null) updateBody.date = zUpdateDate;
                 const { ok, status, error } = await authFetch(`transactions/${id}`, {
