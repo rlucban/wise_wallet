@@ -1068,6 +1068,43 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
+## 2026-10-10 — SPEC-73 rolled back (per user call "revert")
+
+- SPEC-73 was marked FINAL and its D-01..D-03 were implemented and read-back verified, but the user ordered a revert before any user-run verification.
+- Rolled back on disk (verified via `Select-String` ground truth, not cached reads): `components/FloatingTabBar.tsx` pill → `theme.colors.surface` (light) + `zIndex: 100` removed; all four tab screens → `paddingBottom: 110`; `utils/tabBarFloat.test.ts` → original `110` pins, ACC-06 removed. Tree is back to the SPEC-69 state.
+- `specs/73-white-nav-bar-and-clearance.md` file deletion handed to the user (no delete tool in agent toolbox). No savepoint/AGENTS §3 entries for SPEC-73 were ever added (D-04 anchors missed — nothing to revert there).
+- Still open: all SPEC-70 v1.2 / 71 / 72 files and doc entries vanished from disk earlier the same day after proven presence (user-run jest+lint); cause undetermined — `git status` / environment check still owed by the user. No commit.
+
+---
+
+## 2026-10-10 — Spec 75 FINAL + implemented (Notification menu labels)
+
+- **D-01** — `app/notifications.tsx` ONLY: header `Menu` reduced to two items (`Read all alerts` → `markAllAsRead`, `Clear all alerts` → `clearAlerts`, handlers byte-identical); `Manage Dues` item + its `router.push("/dues")` deleted from the menu. `useRouter`/`router` and the `:227`/`:307` dues pushes + `safeGoBack` untouched (nothing orphaned).
+- **D-02** — new `utils/notificationMenuLabels.test.ts`: ACC-01 (two items, exact order/labels, old labels + Dues absent from Menu block), ACC-02 (handler pairings), ACC-03 (router refs intact, menu Platform-free) × android/ios/web.
+- No prior owner (no test/spec pinned these labels). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 76 FINAL + implemented (Category overspending alerts)
+
+- User calls during spec: floor deleted; breach re-based from monthly-share to `catTotal >= 50% of available balance` (reach-or-exceed); FINAL + implement in the same call — spec text corrected to 1.0 FINAL first, then code.
+- **D-01** — `types/index.ts`: `SystemAlert` += `categoryId?`, `monthKey?` (additive only). `utils/notifications.ts`: `OVERSPEND_SHARE_PCT = 50`, `OVERSPENDING_ALERT_TITLE`, `CategoryMonthTotal`/`OverspendEvaluation`, arithmetic-Manila `getManilaMonthKey`, pure `evaluateCategoryOverspend` (same expense predicate shape as balance computation, SPEC-46 echo-wins naming, `tx.date` month membership, `balance > 0` gate), `checkAndTriggerOverspendAlerts` create/update-in-place/auto-delete/stale-purge (title-scoped so SPEC-10 alerts survive; zero push calls). No other util touched.
+- **D-02** — `context/SystemAlertsContext.tsx`: `checkOverspending(transactions, balance)` entry (refreshes list only on non-zero evaluation); `context/TransactionsContext.tsx`: same-effect wiring. SPEC-10 lines + Notifications screen byte-identical.
+- **D-03** — new `utils/overspendAlerts.test.ts`: ACC-01 (exact-half breach, below-half clean, 0/negative clean, Manila boundary, unattributed/income never breach), ACC-02 (create with exact copy + no mockSchedule push, update-in-place same id, recovery delete, stale purge, SPEC-10 survival, ≤0 handoff), ACC-03 (wiring + SPEC-10 intact + additive types) × android/ios/web. Mirrors `notifications.test.ts` storage mocks.
+- Judgment call disclosed: `balance <= 0` deletes unread overspend alerts (rule degenerate there; negative-balance owns that state). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 76 v1.1 FINAL + implemented (Income basis, top-1)
+
+- User-reported defect: negative displayed balance (-₱4,900) with every category firing. Verified the v1.0 `balance > 0` guard intact on disk — the guarded path cannot create under non-positive input, so the alerts came from a divergent balance input or stale bundle. v1.1 removes `balance` from the rule entirely (structural fix) + top-1-only per user call.
+- **D-07** — `utils/notifications.ts`: evaluator re-signed `(transactions, monthlyIncome, initialBalance, now?)`, denominator `monthlyIncome + (initialBalance > 0 ? initialBalance : 0)`, top-1 select (total desc, name asc); trigger re-signed (body otherwise identical); header comment updated. Threshold/copy/fields/no-push unchanged.
+- **D-08** — `context/SystemAlertsContext.tsx` re-signed entry; `context/TransactionsContext.tsx` effect computes month-filtered `monthlyIncome` via its own predicate (single site) + `getManilaMonthKey` import (no cycle — utils imports types only); passes `(transactions, monthlyIncome, initialBalance)`. SPEC-10 untouched.
+- **D-09** — `utils/overspendAlerts.test.ts` rewritten to ACC-04/05 (income-basis, initial add/ignore, top-1, tie-break, migration downgrade, SPEC-10 survival, denom handoff) × android/ios/web. Self-caught pre-run: first migration draft seeded a Food alert with no Food transactions (would delete 2, not 1) — corrected seed before any run. No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S03/S04 (Expo Go Android/iOS + web export, incl. no-multi-fire proof) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (test-only, user-pasted jest 15/18): the ACC-03/05 wiring pin asserted the literal `checkOverspending(transactions: ...)` but the interface declares the `name: (args)` shape — all 15 behavior tests were already green, implementation untouched. Pin split into the exact interface + impl signatures. No commit.
 ## 2026-10-10 — Spec 70 FINAL v1.0 (PDF/CSV Auto-Download, Format Frozen)
 
 - `specs/70-pdf-auto-download-to-default-directory.md` marked **FINAL v1.0** per user call (Option A; status promotion only, no normative change).

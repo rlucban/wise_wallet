@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
-import { Due, DueFrequency, SystemAlert } from "../types";
+import { Due, DueFrequency, SystemAlert, Transaction } from "../types";
 import { getItem, setItem, getPrefixedKey, nowTimestamp } from "./storage";
 import { generateUUID } from "./uuid";
 
@@ -343,6 +343,123 @@ export async function checkAndTriggerNegativeBalanceAlert(
   await saveSystemAlerts([newAlert, ...alerts], userId);
   await scheduleNegativeBalancePush(newAlert);
   return { action: "created" };
+}
+
+// ---------------------------------------------------------------------------
+// SPEC-76 — Category overspending alerts (in-app only, never OS push).
+// v1.1: breach = a single category's current-Manila-month expenses reach or
+// exceed OVERSPEND_SHARE_PCT of (monthly income + positive starting
+// balance). Top breacher only (total desc, name asc); cleared when the rule
+// no longer holds; stale months purged. No balance input by design.
+// ---------------------------------------------------------------------------
+
+export const OVERSPEND_SHARE_PCT = 50;
+export const OVERSPENDING_ALERT_TITLE = "Overspending Alert";
+
+export interface CategoryMonthTotal {
+  categoryId: string;
+  name: string;
+  total: number;
+}
+
+export interface OverspendEvaluation {
+  created: number;
+  updated: number;
+  deleted: number;
+}
+
+export function getManilaMonthKey(timestamp: number): string {
+  const manila = new Date(timestamp + 8 * 3600 * 1000);
+  const month = manila.getUTCMonth() + 1;
+  return `${manila.getUTCFullYear()}-${month < 10 ? `0${month}` : `${month}`}`;
+}
+
+function buildOverspendMessage(categoryName: string): string {
+  return `High expenses detected in ${categoryName} this month.`;
+}
+
+export function evaluateCategoryOverspend(
+  transactions: Transaction[],
+  monthlyIncome: number,
+  initialBalance: number,
+  now: number = Date.now()
+): { monthKey: string; breached: CategoryMonthTotal[] } {
+  const monthKey = getManilaMonthKey(now);
+  const denominator = monthlyIncome + (initialBalance > 0 ? initialBalance : 0);
+  if (!(denominator > 0)) return { monthKey, breached: [] };
+  const threshold = (OVERSPEND_SHARE_PCT / 100) * denominator;
+  const totals = new Map<string, CategoryMonthTotal>();
+  for (const t of transactions) {
+    if (t.type !== "expense") continue;
+    const name = t.category?.name?.trim();
+    if (!name) continue;
+    if (getManilaMonthKey(Date.parse(t.date)) !== monthKey) continue;
+    const key = name.toLowerCase();
+    const amount = Number(t.amount || 0);
+    const existing = totals.get(key);
+    if (existing) {
+      existing.total += amount;
+    } else {
+      totals.set(key, { categoryId: t.category?.id ?? key, name, total: amount });
+    }
+  }
+  const breached = [...totals.values()].filter((c) => c.total >= threshold);
+  breached.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  return { monthKey, breached: breached.slice(0, 1) };
+}
+
+export async function checkAndTriggerOverspendAlerts(
+  transactions: Transaction[],
+  monthlyIncome: number,
+  initialBalance: number,
+  userId?: string,
+  now: number = Date.now()
+): Promise<OverspendEvaluation> {
+  const result: OverspendEvaluation = { created: 0, updated: 0, deleted: 0 };
+  const alerts = await getSystemAlerts(userId);
+  const isOverspend = (a: SystemAlert) => a.title === OVERSPENDING_ALERT_TITLE;
+  const { monthKey, breached } = evaluateCategoryOverspend(transactions, monthlyIncome, initialBalance, now);
+  const breachedIds = new Set(breached.map((b) => b.categoryId));
+  const survivors = alerts.filter((a) => {
+    if (!isOverspend(a) || a.read) return true;
+    if (a.monthKey === monthKey && breachedIds.has(a.categoryId ?? "")) return true;
+    result.deleted += 1;
+    return false;
+  });
+  const liveById = new Map(
+    survivors.filter((a) => isOverspend(a) && !a.read).map((a) => [a.categoryId ?? "", a])
+  );
+  const final = [...survivors];
+  for (const b of breached) {
+    const existing = liveById.get(b.categoryId);
+    if (existing) {
+      const updated: SystemAlert = {
+        ...existing,
+        message: buildOverspendMessage(b.name),
+        updatedAt: nowTimestamp(),
+      };
+      const idx = final.findIndex((a) => a.id === existing.id);
+      final[idx] = updated;
+      result.updated += 1;
+    } else {
+      final.unshift({
+        id: generateUUID(),
+        type: "Budget Alert",
+        title: OVERSPENDING_ALERT_TITLE,
+        message: buildOverspendMessage(b.name),
+        date: new Date(now).toISOString(),
+        read: false,
+        categoryId: b.categoryId,
+        monthKey,
+        updatedAt: nowTimestamp(),
+      });
+      result.created += 1;
+    }
+  }
+  if (result.created + result.updated + result.deleted > 0) {
+    await saveSystemAlerts(final, userId);
+  }
+  return result;
 }
 
 export async function createSessionEndedAlert(userId?: string): Promise<SystemAlert | null> {

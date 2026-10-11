@@ -86,5 +86,7 @@ export interface SystemAlert extends TimestampedEntity {
   date: string;
   read: boolean;
   balanceAtTrigger?: number;
+  categoryId?: string;
+  monthKey?: string;
 }
 
