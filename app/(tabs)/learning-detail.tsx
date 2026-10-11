@@ -27,7 +27,7 @@ Getting Started:
 7. Review Settings for account, category, and app preferences.
 
 Pro Tip:
-Enter transactions as quickly as possible. The faster your records stay current, the more useful your dashboard becomes.`
+Enter transactions as quickly as possible. The faster your records stay current, the more useful your dashboard becomes.`,
         content: APP_GUIDE_CONTENT,
     },
     app_guide_getting_started: {
