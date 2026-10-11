@@ -565,6 +565,42 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-10 — Spec 85 v1.2 FINAL + implemented.** Lookup keeps stale row while result dialog shows (success dialog never preempted); D-09 ACC-06 guard; edit screen needed nothing. See `docs/savepoint.md`.
 
+- **2026-10-11 — Spec 86 FINAL + implemented.** `specs/86-register-initial-balance-optional-and-logo-parity.md`: D-01 onboarding header `💰` → white `wallet` glyph (64, 8pt gap preserved, zero layout shift) + `Initial Balance (Optional)` label, behavior byte-identical; D-02 new `utils/registerOnboardingParity.test.ts` ACC-01..03 × android/ios/web; register/login/intro untouched. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 87 FINAL + implemented.** `specs/87-theme-guard-peach-badge-exception.md`: D-01 marker comment on `learning.tsx:117` + D-02 ONE `"SPEC-87 pinned"` guard entry (hex bytes/visuals byte-identical, SPEC-74 untouched); D-03 new `utils/themeBadgeException.test.ts` ACC-01..03 × android/ios/web. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 87 v1.1 FINAL + implemented.** Folded per user call (no SPEC-88): D-05 deleted the dead duplicate `content` literal in `learning-detail.tsx` (line 31 `APP_GUIDE_CONTENT` already won at runtime — zero behavior/TTS change, `no-dupe-keys` gone); D-06 ACC-04 guards folded into `themeBadgeException.test.ts`. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 88 FINAL + implemented.** `specs/88-guide-payment-source-copy.md`: D-01 10 live-prose replacements (titles incl., L22 grammar fixed); D-02 SPEC-80 guard repointed to the live module; D-03 headings pin updated; D-04 new `utils/guidePaymentSource.test.ts` ACC-01..03 × android/ios/web. CSV header + console log out of scope; SPEC-80/71/73 docs untouched. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 89 FINAL + implemented.** `specs/89-change-passcode-ios-entry-ui.md`: D-01 Step-1 → `Enter passcode` title + static note + 4 theme circles with hidden identical input (tap-to-focus; import-alias + ref disclosed extras); D-02 new `utils/changePinEntryUi.test.ts` ACC-01..03 × android/ios/web (Step-1-scoped after read-back catch); verify/buttons/Step-2/modal byte-identical, zero lockout machinery. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 90 FINAL + implemented.** `specs/90-pin-verify-freshness-window.md`: D-01 context timestamp/setter/helper/reset (memory-only, 5 min); D-02 unlock mark; D-03 skip-to-step-2 at both open sites + marks + save-gate/fallback (Local only — Cloud API needs currentPasscode); D-04 new `utils/pinVerifyFreshness.test.ts` ACC-01..03 × android/ios/web. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 89 v1.1 FINAL + implemented.** Bigger centered Step-1, `expo-blur` backdrop (user-installed `~57.0.3`, gate verified pre-implementation), 16px filled lock-screen dots; shared dialog style + Step-2 content untouched; D-06 guards folded into `changePinEntryUi.test.ts`. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 91 FINAL + implemented.** `specs/91-lock-screen-ios-entry-parity.md`: lock mirrors Step-1 (title + static note + hidden input + tap-focus), gate/error/unlock byte-identical, dead input styles deleted, card 440/48; D-02 new `utils/lockScreenEntryUi.test.ts` ACC-01..03 × android/ios/web (Step-1 assert repointed pre-handoff after self-catch). See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 91 v1.1 FINAL + implemented.** Raised KAV card (register/login precedent, iOS keyboard clears it) + contained `Unlock` button (disabled until 4, same-path submit); dots/copy/verify byte-identical; D-05 guards folded into `lockScreenEntryUi.test.ts`. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 89 v1.2 + Spec 91 v1.2 FINAL + implemented.** Phone proof: keyboard covered the change dialog's Set Passcode (no avoidance — SPEC-57 mirror KAV wrap, D-08, content identical); v1.1 lock raise hit the wrong surface (re-centered, D-07, KAV + Unlock kept). D-09/ACC-07 + ACC-08 guards folded into the same test files. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 91 v1.3 FINAL + implemented.** Lock scroll-bound (same overshoot class as dialog); ScrollView-only (KAV trim would full-bleed the 100% Card — caught pre-implementation, disclosed). D-11 ACC-09 folded into the same test file. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 91 v1.4 FINAL + implemented.** Height behavior (padding parked content at top — `behavior="height"` shrinks from bottom, top anchored; Android/web unchanged). D-14 ACC-10 folded into the same test file. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 91 v1.5 FINAL + implemented.** KAV removed after three positioning-bug turns (scroll already user-proven); frame moved to content container, ACC-04/08/09/10 rewritten (incl. late-caught ACC-09 + full-bleed catch, both disclosed). D-17 guards in the same test file. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 91 v1.6 FINAL + implemented.** Actual root cause: gate returned the lock bare (`_layout.tsx:207-209`) while the normal tree gets a flex-1 wrapper (`:214`) — one-line wrapper, lock file innocent and untouched. D-20 ACC-11 folded into the same test file. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 91 v1.8 FINAL + implemented.** Adopted your hand rewrite as baseline (absoluteFill + tap-anywhere + styled Unlock); reconciled only: unused imports out + ScrollView in, `top: 0` on hidden input, ScrollView wrap; guards re-baselined to disk. D-25/D-26, docs in savepoint. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 89 v1.3 FINAL + implemented.** KAV-padding overshoot proven on phone (top flew past status bar) — ScrollView bounds the shift (register/login precedent, D-11); D-12 ACC-09 folded into the same test file. Sides confirmed fine as-is. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 89 v1.4 FINAL + implemented.** v1.3 stretched the card full-screen on phone — bounded ScrollView pattern (KAV flex-only + ScrollView flex, D-14); D-15 ACC-10 folded into the same test file. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 89 v1.5 FINAL + implemented.** Adopted your split modals (Modal-1 own Step-1 + Modal-2 Step-2); ScrollView safety in Modal-1, KAV-flex + ScrollView restored in Modal-2, dead old-Step-1 kept + recorded; guards repointed (pinVerify count 3, new ACC-11). See `docs/savepoint.md`.
+
 ---
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode

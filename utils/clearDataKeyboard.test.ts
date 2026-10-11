@@ -38,7 +38,8 @@ function runSuite(os: "android" | "ios" | "web"): void {
         it("ACC-02: exactly one wrapper, and it closes the showPinPrompt dialog", () => {
             const settings = readRepo("app/(tabs)/settings.tsx");
             const wrappers = settings.match(/<KeyboardAvoidingView/g) ?? [];
-            expect(wrappers.length).toBe(1);
+            // SPEC-89 v1.2 added the second, known wrapper (change dialog) — same mirror pattern.
+            expect(wrappers.length).toBe(2);
             const start = settings.indexOf("{showPinPrompt && (");
             const modalOpen = settings.indexOf("<NativeModal", start);
             const modalClose = settings.indexOf("</NativeModal>", modalOpen);
@@ -53,17 +54,24 @@ function runSuite(os: "android" | "ios" | "web"): void {
             expect(inside).toContain("onPress={handleClearData}");
             // No stray closing tag outside the conditional.
             const total = settings.split("</KeyboardAvoidingView>").length - 1;
-            expect(total).toBe(1);
+            expect(total).toBe(2);
+            // SPEC-89 v1.2: the second wrapper lives in the change dialog only.
+            const chStart = settings.indexOf("visible={showChangePasscodeDialog && (!isPasscodeEnabled || pinStep === 2)}");
+            const chClose = settings.indexOf("</NativeModal>", chStart);
+            const chBlock = settings.slice(chStart, chClose);
+            expect(chBlock).toContain("<KeyboardAvoidingView");
+            expect(chBlock).toContain("</KeyboardAvoidingView>");
+            expect(chBlock).toContain("<Surface");
         });
 
         it("SPEC-57 scope: no other dialog gained a wrapper", () => {
             const settings = readRepo("app/(tabs)/settings.tsx");
-            // Only the Clear Data PIN card is wrapped by a KeyboardAvoidingView.
+            // Only the Clear Data PIN card and the change dialog are wrapped (SPEC-89 v1.2).
             const dialogs = settings.match(/<Dialog visible=/g) ?? [];
             expect(dialogs.length).toBeGreaterThan(3);
-            // One open tag + one close tag only (import + comment don't count).
-            expect(settings.match(/<KeyboardAvoidingView/g)?.length).toBe(1);
-            expect(settings.match(/<\/KeyboardAvoidingView>/g)?.length).toBe(1);
+            // Two open tags + two close tags only (import + comment don't count).
+            expect(settings.match(/<KeyboardAvoidingView/g)?.length).toBe(2);
+            expect(settings.match(/<\/KeyboardAvoidingView>/g)?.length).toBe(2);
         });
 
         it("ACC-03: messageDialog paints last in the Portal", () => {

@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
-import { View, ScrollView, Platform, StyleSheet, KeyboardAvoidingView, Modal as NativeModal, Pressable } from "react-native";
+import { View, ScrollView, Platform, StyleSheet, KeyboardAvoidingView, Modal as NativeModal, Pressable, TextInput as NativeTextInput } from "react-native";
 import { Appbar, List, Text, Card, Switch, Divider, Button, Avatar, Portal, Surface, Dialog, TextInput, Checkbox, useTheme as usePaperTheme, IconButton } from "react-native-paper";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
+import { BlurView } from "expo-blur";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRepositories } from "../../context/RepositoryContext";
 
@@ -14,7 +15,7 @@ import { getSyncQueue, saveSyncQueue } from "../../utils/syncQueue";
 import { useAuth } from "../../context/AuthContext";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useUserProfile } from "../../context/UserProfileContext";
-import { usePasscode } from "../../context/PasscodeContext";
+import { usePasscode, isPinVerificationFresh } from "../../context/PasscodeContext";
 import { useTransactionsActions } from "../../context/TransactionsContext";
 import { useCategoriesActions } from "../../context/CategoriesContext";
 import { authFetch } from "../../utils/apiClient";
@@ -136,7 +137,7 @@ export default function SettingsScreen() {
   const paperTheme = usePaperTheme();
   const { isDarkMode, toggleTheme } = useAppTheme();
   const { profile, updateProfile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
-  const { isPasscodeEnabled, setIsPasscodeEnabled, setPasscode, verifyPasscode } = usePasscode();
+  const { isPasscodeEnabled, setIsPasscodeEnabled, setPasscode, verifyPasscode, lastPinVerifiedAt, markPinVerified } = usePasscode();
   const { activeUserId, logout, login } = useAuth();
   const { refetch: refetchTx } = useTransactionsActions();
   const { refetch: refetchCats } = useCategoriesActions();
@@ -231,7 +232,14 @@ export default function SettingsScreen() {
     }
 
     // Local: fully offline (CON-04) — lock verify + local re-hash only.
-    if (isPasscodeEnabled && !(await verifyPasscode(current))) {
+    // SPEC-90: fresh proof skips the re-verify; lapsed freshness falls back to Step 1.
+    const pinFresh = isLocal && isPasscodeEnabled && isPinVerificationFresh(lastPinVerifiedAt);
+    if (isLocal && isPasscodeEnabled && !pinFresh && current.trim() === "") {
+      setPinStep(1);
+      setChangePasscodeError("Enter your current 4-digit PIN.");
+      return;
+    }
+    if (isPasscodeEnabled && !pinFresh && !(await verifyPasscode(current))) {
       setChangePasscodeError("Incorrect current PIN.");
       return;
     }
@@ -239,6 +247,7 @@ export default function SettingsScreen() {
     const isNewSetup = !isPasscodeEnabled;
     setPasscode(next);
     if (isNewSetup) setIsPasscodeEnabled(true);
+    markPinVerified();
     closeChangePasscodeDialog();
     setMessageDialog({
       visible: true,
@@ -272,6 +281,8 @@ export default function SettingsScreen() {
   const [changePasscodeError, setChangePasscodeError] = useState("");
   const [pinStep, setPinStep] = useState(1);
   const [pinError, setPinError] = useState<string | null>(null);
+  // SPEC-89: ref for the hidden Step-1 entry input (tap-circles-to-focus wiring only).
+  const hiddenPinInputRef = useRef<NativeTextInput | null>(null);
   const [deletePinInput, setDeletePinInput] = useState("");
 
   const [deletePinError, setDeletePinError] = useState("");
@@ -1444,7 +1455,11 @@ if (!serverOk && !localOk) {
               <Button
                 mode="outlined"
                 icon="lock-reset"
-                onPress={() => setShowChangePasscodeDialog(true)}
+                onPress={() => {
+                  // SPEC-90: fresh proof opens at Step 2 (Local + lock only).
+                  if (isLocal && isPasscodeEnabled && isPinVerificationFresh(lastPinVerifiedAt)) setPinStep(2);
+                  setShowChangePasscodeDialog(true);
+                }}
                 style={{ marginTop: 8 }}
               >
                 Change Passcode
@@ -1453,7 +1468,11 @@ if (!serverOk && !localOk) {
               <Button
                 mode="outlined"
                 icon="lock-plus-outline"
-                onPress={() => setShowChangePasscodeDialog(true)}
+                onPress={() => {
+                  // SPEC-90: fresh proof opens at Step 2 (Local + lock only).
+                  if (isLocal && isPasscodeEnabled && isPinVerificationFresh(lastPinVerifiedAt)) setPinStep(2);
+                  setShowChangePasscodeDialog(true);
+                }}
                 style={{ marginTop: 8 }}
               >
                 Set Passcode
@@ -1729,19 +1748,109 @@ if (!serverOk && !localOk) {
           </View>
         </NativeModal>
 
+        {/* Step 1: Verify current passcode — full-screen like passcode-screen.tsx */}
         <NativeModal
-          visible={showChangePasscodeDialog}
+          visible={showChangePasscodeDialog && isPasscodeEnabled && pinStep === 1}
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={closeChangePasscodeDialog}
+        >
+          <View style={{ flex: 1, backgroundColor: paperTheme.colors.background }}>
+            <Pressable
+              style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 32 }}
+              onPress={() => hiddenPinInputRef.current?.focus()}
+            >
+              <ScrollView
+                style={{ flex: 1, width: "100%" }}
+                contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", width: "100%" }}
+                keyboardShouldPersistTaps="handled"
+              >
+              <Text variant="headlineMedium" style={{ fontWeight: "700", marginBottom: 12, textAlign: "center", color: paperTheme.colors.onBackground }}>
+                Enter passcode
+              </Text>
+              <Text variant="bodyMedium" style={{ marginBottom: 40, textAlign: "center", color: paperTheme.colors.onSurfaceVariant }}>
+                {"After 3 failed attempts you'll need to reset your passcode."}
+              </Text>
+              <View style={{ flexDirection: "row", justifyContent: "center", marginBottom: 32, gap: 20 }}>
+                {[1, 2, 3, 4].map((i) => {
+                  const filled = currentPasscodeInput.length >= i;
+                  return (
+                    <View
+                      key={i}
+                      style={{
+                        width: 18, height: 18, borderRadius: 9,
+                        backgroundColor: pinError
+                          ? paperTheme.colors.error
+                          : filled
+                          ? paperTheme.colors.primary
+                          : paperTheme.colors.outlineVariant,
+                      }}
+                    />
+                  );
+                })}
+              </View>
+              <TextInput
+                ref={hiddenPinInputRef}
+                value={currentPasscodeInput}
+                onChangeText={(t) => { setCurrentPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4)); setPinError(null); }}
+                secureTextEntry
+                keyboardType="numeric"
+                maxLength={4}
+                autoFocus
+                style={{ opacity: 0, height: 1, width: 1, position: "absolute" }}
+              />
+              {pinError ? (
+                <Text style={{ color: paperTheme.colors.error, marginBottom: 16, textAlign: "center" }}>{pinError}</Text>
+              ) : null}
+              <View style={{ flexDirection: "row", gap: 12, marginTop: 8, width: "100%", maxWidth: 320 }}>
+                <Button mode="outlined" onPress={closeChangePasscodeDialog} style={{ flex: 1 }}>Cancel</Button>
+                <Button
+                  mode="contained"
+                  disabled={currentPasscodeInput.trim().length !== 4}
+                  onPress={async () => {
+                    const current = currentPasscodeInput.trim();
+                    if (!/^\d{4}$/.test(current)) { setPinError("Enter your current 4-digit PIN."); return; }
+                    if (isLocal && !(await verifyPasscode(current))) { setPinError("Incorrect Current PIN. Try again."); setCurrentPasscodeInput(""); return; }
+                    if (isLocal) markPinVerified();
+                    setPinStep(2);
+                    setPinError(null);
+                  }}
+                  style={{ flex: 1 }}
+                >
+                  Verify
+                </Button>
+              </View>
+              </ScrollView>
+            </Pressable>
+          </View>
+        </NativeModal>
+
+        <NativeModal
+          visible={showChangePasscodeDialog && (!isPasscodeEnabled || pinStep === 2)}
           transparent
           animationType="fade"
           presentationStyle="overFullScreen"
           onRequestClose={closeChangePasscodeDialog}
         >
-          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.32)" }}>
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
             <Pressable style={StyleSheet.absoluteFill} onPress={closeChangePasscodeDialog} />
-            <Surface elevation={3} style={styles.dialog}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={{ flex: 1, width: "100%" }}
+            >
+            <ScrollView
+              style={{ flex: 1, width: "100%" }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", width: "100%" }}
+              keyboardShouldPersistTaps="handled"
+            >
+            <Surface
+              elevation={3}
+              style={[styles.dialog, isPasscodeEnabled && pinStep === 1 && { maxWidth: 520, paddingVertical: 16 }]}
+            >
           {isPasscodeEnabled ? (
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-              <Dialog.Title>{pinStep === 1 ? "Change Passcode" : "Enter New Passcode"}</Dialog.Title>
+              <Dialog.Title>{pinStep === 1 ? "Enter passcode" : "Enter New Passcode"}</Dialog.Title>
               <IconButton icon="close" onPress={closeChangePasscodeDialog} />
             </View>
           ) : (
@@ -1751,17 +1860,42 @@ if (!serverOk && !localOk) {
             {isPasscodeEnabled ? (
               // Step 1: Verify current passcode when a lock exists (CON-10: same source as entry button)
               pinStep === 1 ? (
-                <View>
-                  <Text style={{ marginBottom: 16 }}>
-                    Enter your current passcode to verify.
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ marginBottom: 8, textAlign: "center" }}>
+                    {"After 3 failed attempts you'll need to reset your passcode."}
                   </Text>
+                  <Pressable
+                    onPress={() => hiddenPinInputRef.current?.focus()}
+                    style={{ flexDirection: "row", justifyContent: "center", marginVertical: 28 }}
+                  >
+                    {[1, 2, 3, 4].map((i) => {
+                      const filled = currentPasscodeInput.length >= i;
+                      return (
+                        <View
+                          key={i}
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: 8,
+                            marginHorizontal: 8,
+                            backgroundColor:
+                              pinError
+                                ? paperTheme.colors.error
+                                : filled
+                                ? paperTheme.colors.primary
+                                : paperTheme.colors.outlineVariant,
+                          }}
+                        />
+                      );
+                    })}
+                  </Pressable>
                   {pinError ? (
-                    <Text style={{ color: paperTheme.colors.error, marginBottom: 8 }}>
+                    <Text style={{ color: paperTheme.colors.error, marginBottom: 8, textAlign: "center" }}>
                       {pinError}
                     </Text>
                   ) : null}
                   <TextInput
-                    label="Current Passcode"
+                    ref={hiddenPinInputRef}
                     value={currentPasscodeInput}
                     onChangeText={(t) => {
                       setCurrentPasscodeInput(t.replace(/[^0-9]/g, "").slice(0, 4));
@@ -1770,7 +1904,8 @@ if (!serverOk && !localOk) {
                     secureTextEntry
                     keyboardType="numeric"
                     maxLength={4}
-                    style={{ marginBottom: 12 }}
+                    autoFocus
+                    style={{ opacity: 0, height: 1 }}
                   />
                 </View>
               ) : (
@@ -1919,6 +2054,7 @@ if (!serverOk && !localOk) {
                       setCurrentPasscodeInput("");
                       return;
                     }
+                    if (isLocal) markPinVerified();
                     setPinStep(2);
                     setPinError(null);
                   }}
@@ -1944,6 +2080,8 @@ if (!serverOk && !localOk) {
             )}
           </Dialog.Actions>
             </Surface>
+            </ScrollView>
+            </KeyboardAvoidingView>
           </View>
         </NativeModal>
 

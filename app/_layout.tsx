@@ -205,7 +205,11 @@ function MainLayout() {
   }, [activeUserId, authFailureReason, failedUserId, authLoading, profileLoading, profile, segments, navigationState?.key, router, addSessionAlert, clearAuthFailureReason, clearFailedUserId]);
 
   if (isPasscodeEnabled && !isUnlocked) {
-      return <PasscodeScreen />;
+    return (
+      <PaperProvider theme={theme}>
+          <View style={{ flex: 1 }}><PasscodeScreen /></View>
+      </PaperProvider>
+    );
   }
 
   return (

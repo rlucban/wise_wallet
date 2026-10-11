@@ -38,9 +38,10 @@ function runSuite(os: "android" | "ios" | "web") {
             expect(details).toContain("PAYMENT SOURCE / ACCOUNT");
             expect(details).not.toContain("PAYMENT METHOD");
 
-            const guide = readRepo("app/(tabs)/learning-detail.tsx");
-            expect(guide).toContain("payment source.");
+            const guide = readRepo("utils/learningGuideContent.ts");
+            expect(guide).toContain("payment source");
             expect(guide).not.toContain("payment method");
+            expect(guide).not.toContain("Payment Method");
 
             const chart = readRepo("components/PaymentMethodChart.tsx");
             expect(chart).toContain(">Payment Sources</Text>");

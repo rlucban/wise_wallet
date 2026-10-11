@@ -31,6 +31,7 @@ const ALLOWED_EXCEPTIONS = [
   "Green", // in comment
   "shadowColor", // React Native shadow property
   "boxShadow", // CSS box-shadow property
+  "SPEC-87 pinned", // SPEC-74 peach badge (learning.tsx:117 only; see SPEC-87)
 ];
 
 function hasHardcodedColor(content, _filePath) {

@@ -114,7 +114,7 @@ export default function LearningScreen() {
             case "Debt":
                 return { backgroundColor: tertiaryBg, textColor: tertiaryText };
             case "App Guide":
-                return { backgroundColor: "#FFDAB9", textColor: "#5D4037" };
+                return { backgroundColor: "#FFDAB9", textColor: "#5D4037" }; // SPEC-87 pinned: SPEC-74 peach badge
             default:
                 return { backgroundColor: colors.surfaceVariant, textColor: colors.onSurfaceVariant };
         }

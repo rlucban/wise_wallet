@@ -26,7 +26,7 @@ function readRepo(relativePath: string): string {
 const TRIMMED_HEADINGS = [
     "Using the Dashboard",
     "Adding and Editing Transactions",
-    "Managing Categories and Payment Methods",
+    "Managing Categories and Payment Sources",
     "Using the Calendar and Notifications",
     "Protecting Your Account",
     "Managing Settings and Data",
