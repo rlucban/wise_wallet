@@ -186,7 +186,7 @@ export default function TransactionDetails() {
             </View>
 
             <View style={styles.detailRow}>
-              <Text style={styles.label}>PAYMENT METHOD / ACCOUNT</Text>
+              <Text style={styles.label}>PAYMENT SOURCE / ACCOUNT</Text>
               <Text style={styles.value}>
                 {transaction.paymentMethod || "Cash"}
               </Text>

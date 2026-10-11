@@ -15,6 +15,19 @@ import {
 const LEARNING_CONTENT: Record<string, { title: string; content: string }> = {
     wisewallet_app_guide: {
         title: "WiseWallet App Guide",
+        content: `Welcome to WiseWallet. This guide helps you start tracking money with the app's main screens.
+
+Getting Started:
+1. Open the Dashboard and review your Available to Spend balance.
+2. Tap the circle + button beside the tab bar to add a transaction.
+3. Choose income or expense, amount, category, date, and payment source.
+4. Use Reports to check your cash flow and category trends.
+5. Use Scheduled to track upcoming bills and payment reminders.
+6. Use Allocations for savings goals and progress.
+7. Review Settings for account, category, and app preferences.
+
+Pro Tip:
+Enter transactions as quickly as possible. The faster your records stay current, the more useful your dashboard becomes.`
         content: APP_GUIDE_CONTENT,
     },
     app_guide_getting_started: {

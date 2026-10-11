@@ -36,7 +36,7 @@ export function PaymentMethodChart({ transactions }: { transactions: Transaction
   return (
     <Card style={{ margin: 16, marginTop: 8 }}>
       <Card.Content>
-        <Text variant="titleMedium" style={{ marginBottom: 8 }}>Payment Methods</Text>
+        <Text variant="titleMedium" style={{ marginBottom: 8 }}>Payment Sources</Text>
         <DonutChart
           data={segments}
           width={screenWidth - 64}

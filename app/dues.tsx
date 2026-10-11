@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { View } from "react-native";
+import { View, Pressable } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Appbar, Text, Card, FAB, Portal, Modal, TextInput, Button, Checkbox, useTheme, Chip, IconButton, SegmentedButtons, Dialog } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -10,7 +10,7 @@ import { useDues } from "../hooks/useDues";
 import { useTransactions, useTransactionsActions } from "../hooks/useTransactions";
 import { useUserProfile } from "../context/UserProfileContext";
 import { useCategoriesData } from "../context/CategoriesContext";
-import { Due, DueFrequency, PaymentMethodInfo } from "../types";
+import { Due, DueFrequency } from "../types";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import EmptyState from "../components/EmptyState";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -20,7 +20,6 @@ import { getTimeOfMonthTip, getRecurringProjectionMessage, isOverdue } from "../
 import { ensureOthersOption } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
 import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
-import { authFetch } from "../utils/apiClient";
 import { useSavings } from "../hooks/useSavings";
 
 const FREQUENCY_LABELS: Record<DueFrequency, string> = {
@@ -31,11 +30,13 @@ const FREQUENCY_LABELS: Record<DueFrequency, string> = {
   yearly: "Yearly",
 };
 
-// SPEC-47 fallback: used when the paymentMethods API is unreachable (Local/offline).
-// "Unknown" is the honest sentinel — it passes non-empty validation without asserting a false method.
-const FALLBACK_PAY_METHODS: PaymentMethodInfo[] = [
-  { id: "cash", name: "Cash", type: "cash" },
-  { id: "unknown", name: "Unknown", type: "other" },
+// SPEC-80 v1.1: the pay sheet offers exactly these 5 static source types (sheet-only lock).
+const PAY_SOURCE_OPTIONS: { id: string; name: string }[] = [
+  { id: "cash", name: "Cash" },
+  { id: "card", name: "Card" },
+  { id: "bank", name: "Bank" },
+  { id: "e-wallet", name: "E-Wallet" },
+  { id: "other", name: "Other" },
 ];
 
 type ListItem =
@@ -73,7 +74,6 @@ export default function DuesScreen() {
     message: "",
   });
   const [payTarget, setPayTarget] = useState<Due | null>(null);
-  const [payMethods, setPayMethods] = useState<PaymentMethodInfo[]>(FALLBACK_PAY_METHODS);
   const [payMethod, setPayMethod] = useState("Cash");
   const [payBusy, setPayBusy] = useState(false);
 
@@ -239,20 +239,9 @@ export default function DuesScreen() {
     }
   };
 
-  const openPayDialog = useCallback(async (due: Due) => {
-    setPayTarget(due);
+  const openPayDialog = useCallback((due: Due) => {
     setPayMethod("Cash");
-    try {
-      const { ok, data } = await authFetch<PaymentMethodInfo[]>("paymentMethods");
-      if (ok && Array.isArray(data) && data.length > 0) {
-        setPayMethods(data);
-        setPayMethod(data[0].name);
-      } else {
-        setPayMethods(FALLBACK_PAY_METHODS);
-      }
-    } catch {
-      setPayMethods(FALLBACK_PAY_METHODS);
-    }
+    setPayTarget(due);
   }, []);
 
   const recordTransaction = useCallback(async (item: Due, method: string) => {
@@ -649,41 +638,85 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
         </Portal>
 
         <Portal>
-          <Dialog visible={!!payTarget} onDismiss={() => setPayTarget(null)}>
-            <Dialog.Title style={{ textAlign: "center" }}>
-              {payTarget?.type === "income" ? `Receive "${payTarget?.title}"?` : `Pay "${payTarget?.title}"?`}
-            </Dialog.Title>
-            <Dialog.Content>
-              <Text variant="bodyMedium" style={{ textAlign: "center", marginBottom: 12 }}>
-                {payTarget ? `${payTarget.title} (${formatAmount(payTarget.amount)})` : ""}
-              </Text>
-              <Text variant="labelLarge" style={{ marginBottom: 8 }}>Payment Method</Text>
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
-                {payMethods.map((m) => (
-                  <Chip key={m.id} selected={payMethod === m.name} onPress={() => setPayMethod(m.name)} mode="outlined">
-                    {m.name}
-                  </Chip>
-                ))}
-              </View>
-            </Dialog.Content>
-            <Dialog.Actions style={{ justifyContent: "center" }}>
-              <Button mode="text" onPress={() => setPayTarget(null)}>Cancel</Button>
-              <Button
-                mode="contained"
-                disabled={!payTarget || payBusy}
-                loading={payBusy}
-                onPress={() => {
-                  if (!payTarget) return;
-                  const due = payTarget;
-                  const method = payMethod;
-                  setPayTarget(null);
-                  recordTransaction(due, method);
+          <Modal
+            visible={!!payTarget}
+            onDismiss={() => setPayTarget(null)}
+            style={{ justifyContent: "flex-end", marginTop: 0, marginBottom: 0 }}
+          >
+            <View
+              style={{
+                backgroundColor: theme.colors.surface,
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                borderBottomLeftRadius: 0,
+                borderBottomRightRadius: 0,
+                padding: 20,
+                paddingBottom: 32,
+              }}
+            >
+              <View
+                style={{
+                  alignSelf: "center",
+                  width: 48,
+                  height: 5,
+                  borderRadius: 3,
+                  backgroundColor: theme.colors.outlineVariant,
+                  marginBottom: 16,
                 }}
-              >
-                Confirm
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
+              />
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <Text variant="titleLarge" style={{ color: theme.colors.onSurface, fontWeight: "700" }}>
+                  {payTarget?.type === "income" ? `Receive "${payTarget?.title}"?` : `Pay "${payTarget?.title}"?`}
+                </Text>
+                <IconButton icon="close" onPress={() => setPayTarget(null)} />
+              </View>
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>
+                {payTarget ? `Amount: ${formatAmount(payTarget.amount)}` : ""}
+              </Text>
+              <View style={{ gap: 8, marginBottom: 16 }}>
+                {PAY_SOURCE_OPTIONS.map((m) => {
+                  const selected = payMethod === m.name;
+                  return (
+                    <Pressable
+                      key={m.id}
+                      onPress={() => setPayMethod(m.name)}
+                      style={{
+                        borderRadius: 16,
+                        padding: 16,
+                        borderWidth: selected ? 2 : 1,
+                        borderColor: selected ? theme.colors.primary : theme.colors.outlineVariant,
+                        backgroundColor: theme.colors.surface,
+                      }}
+                    >
+                      <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>
+                        {m.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <View style={{ gap: 8 }}>
+                <Button
+                  mode="contained"
+                  style={{ alignSelf: "stretch" }}
+                  disabled={!payTarget || payBusy}
+                  loading={payBusy}
+                  onPress={() => {
+                    if (!payTarget) return;
+                    const due = payTarget;
+                    const method = payMethod;
+                    setPayTarget(null);
+                    recordTransaction(due, method);
+                  }}
+                >
+                  Confirm
+                </Button>
+                <Button mode="contained-tonal" style={{ alignSelf: "stretch" }} onPress={() => setPayTarget(null)}>
+                  Cancel
+                </Button>
+              </View>
+            </View>
+          </Modal>
         </Portal>
 
        <Portal>

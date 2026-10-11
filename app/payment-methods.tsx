@@ -89,7 +89,7 @@ export default function PaymentMethodsScreen() {
         <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
             <Appbar.Header style={{ backgroundColor: theme.colors.background, elevation: 0 }}>
                 <Appbar.BackAction onPress={() => safeGoBack(router)} />
-                <Appbar.Content title="Payment Methods" titleStyle={{ fontWeight: "700" }} />
+                <Appbar.Content title="Payment Sources" titleStyle={{ fontWeight: "700" }} />
             </Appbar.Header>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -112,7 +112,7 @@ export default function PaymentMethodsScreen() {
 
             <Portal>
                 <Modal visible={visible} onDismiss={() => setVisible(false)} contentContainerStyle={styles.modal}>
-                    <Text variant="headlineSmall" style={styles.modalTitle}>Add Payment Method</Text>
+                    <Text variant="headlineSmall" style={styles.modalTitle}>Add Payment Source</Text>
                     <TextInput
                         label="Name (e.g. GCash, BPI, My Visa)"
                         value={name}
@@ -146,7 +146,7 @@ export default function PaymentMethodsScreen() {
                 title="Delete Method?"
                 message={
                     deleteTarget
-                        ? `Are you sure you want to delete the payment method "${deleteTarget.name}"? This action cannot be undone.`
+                        ? `Are you sure you want to delete the payment source "${deleteTarget.name}"? This action cannot be undone.`
                         : ""
                 }
                 confirmLabel="Delete"
