@@ -11,7 +11,7 @@ export interface LearningResource {
   icon: string;
   topic: ArticleTopic;
   minutes: number;
-  audience: AudienceType;
+  audience?: AudienceType;
 }
 
 export const LEARNING_RESOURCES: LearningResource[] = [
@@ -76,6 +76,37 @@ export const LEARNING_RESOURCES: LearningResource[] = [
     icon: "rocket-launch-outline",
     topic: "App Guide",
     minutes: 4,
-    audience: "Students",
+  },
+  {
+    id: "app_guide_getting_started",
+    title: "Getting Started with WiseWallet",
+    description: "Set up your profile, account mode, and first transaction.",
+    icon: "flag-checkered",
+    topic: "App Guide",
+    minutes: 3,
+  },
+  {
+    id: "app_guide_scheduled_dues",
+    title: "Managing Scheduled Dues",
+    description: "Create dues, choose recurrence, and pay bills on time.",
+    icon: "calendar-clock",
+    topic: "App Guide",
+    minutes: 4,
+  },
+  {
+    id: "app_guide_allocations",
+    title: "Savings Allocations",
+    description: "Build goal-based savings and track your progress.",
+    icon: "target",
+    topic: "App Guide",
+    minutes: 3,
+  },
+  {
+    id: "app_guide_reports",
+    title: "Reading Reports & Exporting",
+    description: "Understand your cash flow and export CSV or PDF.",
+    icon: "chart-donut",
+    topic: "App Guide",
+    minutes: 4,
   },
 ];

@@ -9,10 +9,15 @@ const PDF_MIME_TYPE = "application/pdf";
 const PDF_UTI = "com.adobe.pdf";
 const PRINT_FRAME_CLEANUP_MS = 1000;
 
-const requireDocumentDirectory = (): string => {
-    const directory = FileSystem.documentDirectory;
+const warnIfAdmin = (message: string, error: unknown): void => {
+    if (process.env.EXPO_PUBLIC_ADMIN_TOGGLE === "true") {
+        console.warn(message, error);
+    }
+};
+
+const requireDirectory = (directory: string | null, message: string): string => {
     if (!directory) {
-        throw new Error("Local file storage is unavailable on this device.");
+        throw new Error(message);
     }
     return directory;
 };
@@ -54,11 +59,20 @@ const printReportInIframe = (htmlContent: string): void => {
     }
 };
 
-export const exportToCSV = async (transactions: Transaction[]) => {
+export const shareSavedReport = async (uri: string, kind: "pdf" | "csv"): Promise<void> => {
+    await Sharing.shareAsync(
+        uri,
+        kind === "pdf"
+            ? { mimeType: PDF_MIME_TYPE, UTI: PDF_UTI, dialogTitle: "Share transaction report" }
+            : { mimeType: "text/csv", dialogTitle: "Share transaction data" }
+    );
+};
+
+export const exportToCSV = async (transactions: Transaction[]): Promise<string | null> => {
     const csvContent = buildCsvContent(transactions);
     const fileName = `WiseWallet_Export_${new Date().toISOString().slice(0, 10)}.csv`;
 
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
         const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
@@ -66,16 +80,30 @@ export const exportToCSV = async (transactions: Transaction[]) => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        return;
+        return null;
     }
 
     try {
-        const fileUri = `${requireDocumentDirectory()}${fileName}`;
+        const fileUri = `${requireDirectory(
+            FileSystem.documentDirectory,
+            "Local file storage is unavailable on this device."
+        )}${fileName}`;
         await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: "utf8" });
-        await Sharing.shareAsync(fileUri);
-    } catch (error) {
-        console.error("Error exporting to CSV:", error);
-        throw error;
+        return fileUri;
+    } catch (writeError) {
+        warnIfAdmin("CSV save unavailable, sharing file directly:", writeError);
+        try {
+            const cacheUri = `${requireDirectory(
+                FileSystem.cacheDirectory,
+                "Local file storage is unavailable on this device."
+            )}${fileName}`;
+            await FileSystem.writeAsStringAsync(cacheUri, csvContent, { encoding: "utf8" });
+            await Sharing.shareAsync(cacheUri, { mimeType: "text/csv", dialogTitle: "Share transaction data" });
+            return null;
+        } catch (fallbackError) {
+            console.error("Error exporting to CSV:", fallbackError);
+            throw fallbackError;
+        }
     }
 };
 
@@ -83,41 +111,45 @@ export const exportToPDF = async (
     transactions: Transaction[],
     formatAmount: (amount: number) => string,
     rangeLabel: string
-) => {
+): Promise<string | null> => {
     const htmlContent = buildReportHtml(transactions, formatAmount, rangeLabel);
 
     try {
         if (Platform.OS === "web") {
             printReportInIframe(htmlContent);
-            return;
+            return null;
         }
 
         const result = await Print.printToFileAsync({ html: htmlContent });
-        if (!result || !result.uri) return;
+        if (!result || !result.uri) {
+            throw new Error("The report could not be generated.");
+        }
 
-        let shareUri = result.uri;
         try {
-            const reportUri = `${requireDocumentDirectory()}${buildReportFileName(rangeLabel)}`;
+            const reportUri = `${requireDirectory(
+                FileSystem.documentDirectory,
+                "Local file storage is unavailable on this device."
+            )}${buildReportFileName(rangeLabel)}`;
             await FileSystem.deleteAsync(reportUri, { idempotent: true });
             await FileSystem.copyAsync({ from: result.uri, to: reportUri });
-            shareUri = reportUri;
+            return reportUri;
         } catch (copyError) {
-            if (process.env.EXPO_PUBLIC_ADMIN_TOGGLE === "true") {
-                console.warn("Report copy unavailable, sharing print file directly:", copyError);
-            }
+            warnIfAdmin("Report copy unavailable, sharing print file directly:", copyError);
         }
+
         try {
-            await Sharing.shareAsync(shareUri, {
+            await Sharing.shareAsync(result.uri, {
                 mimeType: PDF_MIME_TYPE,
                 UTI: PDF_UTI,
                 dialogTitle: "Share transaction report",
             });
+            return null;
         } catch (shareError) {
-            if (process.env.EXPO_PUBLIC_ADMIN_TOGGLE === "true") {
-                console.warn("Report share unavailable, opening print dialog:", shareError);
-            }
-            await Print.printAsync({ html: htmlContent });
+            warnIfAdmin("Report share unavailable, opening print dialog:", shareError);
         }
+
+        await Print.printAsync({ html: htmlContent });
+        return null;
     } catch (error) {
         console.error("Error exporting to PDF:", error);
         throw error;

@@ -7,7 +7,7 @@ import { useCurrency } from "../../context/CurrencyContext";
 import { DonutChart } from "../../components/DonutChart";
 import { MonthlyTrendChart } from "../../components/MonthlyTrendChart";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
-import { exportToCSV, exportToPDF } from "../../utils/exportUtils";
+import { exportToCSV, exportToPDF, shareSavedReport } from "../../utils/exportUtils";
 import { CardSkeleton, ChartSkeleton, ListRowsSkeleton } from "../../components/SkeletonLoader";
 import { isWithinInterval, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, format, subMonths, addMonths, addWeeks, subWeeks } from "date-fns";
 
@@ -154,11 +154,53 @@ export default function ReportsScreen() {
 
   const handleExportPDF = useCallback(async () => {
     try {
-      await exportToPDF(filteredTransactions, formatAmount, currentRange.label);
+      const savedUri = await exportToPDF(filteredTransactions, formatAmount, currentRange.label);
+      if (savedUri) {
+        Alert.alert(
+          "Report Saved",
+          `Saved as ${savedUri.split("/").pop() ?? "report"} to this device.`,
+          [
+            {
+              text: "Share",
+              onPress: () => {
+                void shareSavedReport(savedUri, "pdf").catch(() => {
+                  Alert.alert("Share Failed", "Could not open the share sheet.");
+                });
+              },
+            },
+            { text: "OK", style: "cancel" },
+          ]
+        );
+      }
     } catch {
       Alert.alert("Export Failed", "Could not export the PDF report. Please try again.");
     }
   }, [filteredTransactions, formatAmount, currentRange]);
+
+  const handleExportCSV = useCallback(async () => {
+    try {
+      const savedUri = await exportToCSV(filteredTransactions);
+      if (savedUri) {
+        Alert.alert(
+          "Data Exported",
+          `Saved as ${savedUri.split("/").pop() ?? "data"} to this device.`,
+          [
+            {
+              text: "Share",
+              onPress: () => {
+                void shareSavedReport(savedUri, "csv").catch(() => {
+                  Alert.alert("Share Failed", "Could not open the share sheet.");
+                });
+              },
+            },
+            { text: "OK", style: "cancel" },
+          ]
+        );
+      }
+    } catch {
+      Alert.alert("Export Failed", "Could not export the CSV data. Please try again.");
+    }
+  }, [filteredTransactions]);
 
   const trend = useMemo(() => {
     const base = offsetDate;
@@ -404,7 +446,7 @@ export default function ReportsScreen() {
           <View style={{ flexDirection: "row", gap: 12 }}>
             <TouchableOpacity
               style={{ flex: 1, paddingVertical: 14, borderRadius: 10, backgroundColor: theme.colors.surfaceVariant, alignItems: "center" }}
-              onPress={() => exportToCSV(filteredTransactions)}
+              onPress={handleExportCSV}
             >
               <MaterialCommunityIcons name="file-excel" size={22} color={theme.colors.primary} />
               <Text variant="labelSmall" style={{ fontWeight: "700", color: theme.colors.primary, marginTop: 4 }}>CSV</Text>
