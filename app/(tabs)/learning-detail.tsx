@@ -27,10 +27,9 @@ Getting Started:
 7. Review Settings for account, category, and app preferences.
 
 Pro Tip:
-{
-  description: `Enter transactions as quickly as possible. The faster your records stay current, the more useful your dashboard becomes.`,
-  content: APP_GUIDE_CONTENT,
-},
+Enter transactions as quickly as possible. The faster your records stay current, the more useful your dashboard becomes.`,
+        content: APP_GUIDE_CONTENT,
+    },
     app_guide_getting_started: {
         title: "Getting Started with WiseWallet",
         content: APP_GUIDE_GETTING_STARTED_CONTENT,
