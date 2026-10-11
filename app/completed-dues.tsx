@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { Appbar, Text, Card, SegmentedButtons, useTheme } from "react-native-paper";
+import { Appbar, Text, Card, useTheme } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
 import { safeGoBack } from "../utils/backNavigation";
 import { useDues } from "../hooks/useDues";
@@ -17,47 +17,15 @@ export default function CompletedDuesScreen() {
   const { dues, loading, refetch } = useDues();
   const { formatAmount } = useCurrencyActions();
 
-  const [filter, setFilter] = useState<"week" | "month" | "all">("all");
-
   useFocusEffect(
     useCallback(() => {
       refetch();
     }, [refetch])
   );
 
-  const now = useMemo(() => new Date(), []);
-  const startOfWeek = useMemo(() => {
-    const d = new Date(now);
-    d.setDate(now.getDate() - now.getDay());
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, [now]);
-  const endOfWeek = useMemo(() => {
-    const d = new Date(startOfWeek);
-    d.setDate(startOfWeek.getDate() + 6);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  }, [startOfWeek]);
-  const startOfMonth = useMemo(() => new Date(now.getFullYear(), now.getMonth(), 1), [now]);
-  const endOfMonth = useMemo(() => new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999), [now]);
-
   const completedDues = useMemo(() => {
-    const items = dues.filter((d) => d.completed).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    if (filter === "week") {
-      return items.filter((d) => {
-        const dDate = new Date(d.date);
-        return dDate >= startOfWeek && dDate <= endOfWeek;
-      });
-    }
-    if (filter === "month") {
-      return items.filter((d) => {
-        const dDate = new Date(d.date);
-        return dDate >= startOfMonth && dDate <= endOfMonth;
-      });
-    }
-    return items;
-  }, [dues, filter, startOfWeek, endOfWeek, startOfMonth, endOfMonth]);
+    return dues.filter((d) => d.completed).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [dues]);
 
   const totalCompletedAmount = useMemo(() => {
     return completedDues.reduce((sum, d) => sum + Number(d.amount || 0), 0);
@@ -126,18 +94,6 @@ export default function CompletedDuesScreen() {
   const ListHeader = useCallback(
     () => (
       <View style={{ marginBottom: 12 }}>
-        <View style={{ marginBottom: 12 }}>
-          <SegmentedButtons
-            value={filter}
-            onValueChange={(val) => setFilter(val as "week" | "month" | "all")}
-            buttons={[
-              { value: "week", label: "This Week" },
-              { value: "month", label: "This Month" },
-              { value: "all", label: "All" },
-            ]}
-          />
-        </View>
-
         {completedDues.length > 0 && (
           <Card
             style={{
@@ -148,7 +104,7 @@ export default function CompletedDuesScreen() {
             }}
           >
             <Text variant="labelMedium" style={{ color: theme.colors.onPrimaryContainer, textAlign: "center" }}>
-              TOTAL COMPLETED ({filter.toUpperCase()})
+              TOTAL COMPLETED
             </Text>
             <Text
               variant="headlineMedium"
@@ -160,7 +116,7 @@ export default function CompletedDuesScreen() {
         )}
       </View>
     ),
-    [filter, completedDues.length, totalCompletedAmount, theme, formatAmount]
+    [completedDues.length, totalCompletedAmount, theme, formatAmount]
   );
 
   return (

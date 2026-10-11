@@ -2,14 +2,7 @@
 // single expanded WiseWallet App Guide body. No React Native imports so the
 // §1.10 jest guard can run under the `roots: utils` setup.
 
-export const APP_GUIDE_CONTENT = `Getting Started:
-Welcome to WiseWallet, your personal finance tracker. This guide walks you through every screen in the app.
-1. Complete onboarding to set up your profile and opening balance.
-2. During registration choose Online or Local account mode. Local accounts keep all data on this device.
-3. Cash is your first payment method; add more payment methods and categories in Settings.
-4. Set a 4-digit passcode when prompted to protect the app on open.
-
-Using the Dashboard:
+export const APP_GUIDE_CONTENT = `Using the Dashboard:
 The Dashboard is your home screen with the health of your money at a glance.
 1. The top card shows your Available to Spend balance.
 2. Highlights summarize balances, upcoming dues, and savings progress.
@@ -28,26 +21,6 @@ Customization keeps your tracking accurate.
 1. Open Manage Categories to add, rename, or sort categories. Sort by Name, Type, or Recent.
 2. Payment Methods stores the ways you pay, such as cash, cards, and e-wallets.
 3. Every transaction requires a category and a payment method, so keep both up to date.
-
-Tracking Scheduled Dues:
-Never miss a bill with recurring and one-time schedules.
-1. Add a due with a title, amount, category, payment method, and start date from the calendar picker.
-2. Choose one-time or recurring. Auto-renew creates the next occurrence when the current one is paid.
-3. Pay a due to record its transaction; you will be asked to confirm the payment method.
-4. Completed dues move to the Completed Dues screen with This Week, This Month, and All filters.
-
-Building Allocations:
-Allocations turn savings goals into visible progress.
-1. Create an allocation with a target amount and watch the progress bar fill as you transfer money in.
-2. Finished allocations can be archived to keep your active list clean.
-3. The Archived Allocations screen lets you restore a goal or delete it permanently.
-
-Reading Reports and Exporting:
-Reports help you understand where your money goes.
-1. The income-vs-expense donut and monthly trend chart show your cash flow pattern.
-2. Category breakdowns reveal which categories cost the most.
-3. A caption always shows the exact period selected.
-4. Export CSV or PDF from the Reports screen: mobile saves the file and offers Share, web uses the browser download or print flow.
 
 Using the Calendar and Notifications:
 Stay on top of dates and alerts.
@@ -75,3 +48,98 @@ Small habits make the biggest difference.
 2. Check Reports weekly to spot spending leaks early.
 3. Pay dues on time or reschedule them so they never surprise you.
 4. Keep your passcode private and export a backup when you change devices.`;
+
+export const APP_GUIDE_GETTING_STARTED_CONTENT = `Getting Started with WiseWallet:
+WiseWallet is your personal finance tracker; this guide covers your first minutes in the app.
+1. Install and open the app, then complete onboarding to set up your profile.
+2. Enter your opening balance so the Available to Spend figure starts from the truth.
+
+Choosing an Account Mode:
+You decide early whether your data lives on this device or in the cloud.
+1. Pick Online to sync through the server and sign in from other devices.
+2. Pick Local to keep everything on this device only; Local can later upgrade with Make Online.
+
+Setting Up Categories and Payment Methods:
+Accurate tracking starts with the basics in place.
+1. Cash is created as your first payment method; add cards and e-wallets in Settings.
+2. Open Manage Categories to add or rename the categories you actually spend on.
+
+Recording Your First Transaction:
+The Dashboard is where daily money habits begin.
+1. Tap the circle + beside the tab bar to add income or an expense.
+2. Choose a category, payment method, and date, then save to update your balance.
+
+Setting a Passcode:
+Protect the app before you rely on it daily.
+1. Set a 4-digit passcode when prompted during setup.
+2. The app asks for this passcode each time it opens.`;
+
+export const APP_GUIDE_SCHEDULED_DUES_CONTENT = `What Scheduled Dues Do:
+Dues track bills and repeating payments so nothing slips past you.
+1. Each due has a title, amount, category, payment method, and start date.
+2. Dues appear on the Dashboard highlights and the Calendar when a date nears.
+
+Creating a Due:
+Add a due in a few taps from the Dues screen.
+1. Tap the + button and enter the amount, category, and payment method.
+2. Pick the start date from the calendar picker, then choose one-time or recurring.
+
+Recurring and One-Time Dues:
+Choose how often a due comes back.
+1. One-time dues are paid once and then finished.
+2. Recurring dues repeat on their schedule and create the next occurrence when paid.
+
+Paying a Due:
+Paying records the matching transaction for you.
+1. Open the due and tap Pay to record it immediately.
+2. Confirm the payment method when prompted; the transaction keeps the due's category.
+
+Auto-Renew and Completed Dues:
+Keep long-running schedules tidy.
+1. Turn on Auto-Renew so the next occurrence is created automatically when the current one is paid.
+2. Paid dues move to Completed Dues, filterable by This Week, This Month, or All.`;
+
+export const APP_GUIDE_ALLOCATIONS_CONTENT = `What Allocations Are:
+Allocations turn savings goals into visible progress.
+1. Each allocation has a goal amount and a running balance you add to over time.
+2. The top card on the Savings screen shows your total active allocated amount.
+
+Creating an Allocation:
+Start a goal in a couple of steps.
+1. Open the Savings screen and tap the + button.
+2. Enter a name and a target amount, then save to begin tracking.
+
+Tracking Progress:
+See how close each goal is to completion.
+1. A progress bar fills as you transfer money into the allocation.
+2. Transfers increase the balance and update the percentage toward the goal.
+
+Archiving and Restoring:
+Keep your active list focused once a goal is done.
+1. Archive a finished allocation to move it out of the active list.
+2. Open Archived Allocations to restore a goal or delete it permanently.`;
+
+export const APP_GUIDE_REPORTS_CONTENT = `Opening Reports:
+Reports show where your money actually goes.
+1. Open the Reports tab to see the selected period at the top.
+2. A caption always names the exact range the charts and totals cover.
+
+Summary and Donut:
+The first view is the health of your cash flow.
+1. The Expense, Income, and Total cards summarize the period at a glance.
+2. The income-vs-expense donut shows how the two compare.
+
+Monthly Trend:
+Spot patterns across the year.
+1. The monthly bar chart plots income and expenses month by month.
+2. Use it to see which months run heavy and which run light.
+
+Category Breakdown:
+Learn which categories cost the most.
+1. The category list ranks spending so the biggest costs surface first.
+2. Colors identify the category, while red and green are reserved for expense and income in the trend.
+
+Exporting CSV and PDF:
+Take your report with you.
+1. Choose CSV for a spreadsheet-friendly file of the period's data.
+2. Choose PDF for a formatted report; mobile saves the file and offers Share, web uses the browser download or print flow.`;

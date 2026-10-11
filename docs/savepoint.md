@@ -1068,6 +1068,200 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 
 ---
 
+## 2026-10-10 — SPEC-73 rolled back (per user call "revert")
+
+- SPEC-73 was marked FINAL and its D-01..D-03 were implemented and read-back verified, but the user ordered a revert before any user-run verification.
+- Rolled back on disk (verified via `Select-String` ground truth, not cached reads): `components/FloatingTabBar.tsx` pill → `theme.colors.surface` (light) + `zIndex: 100` removed; all four tab screens → `paddingBottom: 110`; `utils/tabBarFloat.test.ts` → original `110` pins, ACC-06 removed. Tree is back to the SPEC-69 state.
+- `specs/73-white-nav-bar-and-clearance.md` file deletion handed to the user (no delete tool in agent toolbox). No savepoint/AGENTS §3 entries for SPEC-73 were ever added (D-04 anchors missed — nothing to revert there).
+- Still open: all SPEC-70 v1.2 / 71 / 72 files and doc entries vanished from disk earlier the same day after proven presence (user-run jest+lint); cause undetermined — `git status` / environment check still owed by the user. No commit.
+
+---
+
+## 2026-10-10 — Spec 75 FINAL + implemented (Notification menu labels)
+
+- **D-01** — `app/notifications.tsx` ONLY: header `Menu` reduced to two items (`Read all alerts` → `markAllAsRead`, `Clear all alerts` → `clearAlerts`, handlers byte-identical); `Manage Dues` item + its `router.push("/dues")` deleted from the menu. `useRouter`/`router` and the `:227`/`:307` dues pushes + `safeGoBack` untouched (nothing orphaned).
+- **D-02** — new `utils/notificationMenuLabels.test.ts`: ACC-01 (two items, exact order/labels, old labels + Dues absent from Menu block), ACC-02 (handler pairings), ACC-03 (router refs intact, menu Platform-free) × android/ios/web.
+- No prior owner (no test/spec pinned these labels). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 76 FINAL + implemented (Category overspending alerts)
+
+- User calls during spec: floor deleted; breach re-based from monthly-share to `catTotal >= 50% of available balance` (reach-or-exceed); FINAL + implement in the same call — spec text corrected to 1.0 FINAL first, then code.
+- **D-01** — `types/index.ts`: `SystemAlert` += `categoryId?`, `monthKey?` (additive only). `utils/notifications.ts`: `OVERSPEND_SHARE_PCT = 50`, `OVERSPENDING_ALERT_TITLE`, `CategoryMonthTotal`/`OverspendEvaluation`, arithmetic-Manila `getManilaMonthKey`, pure `evaluateCategoryOverspend` (same expense predicate shape as balance computation, SPEC-46 echo-wins naming, `tx.date` month membership, `balance > 0` gate), `checkAndTriggerOverspendAlerts` create/update-in-place/auto-delete/stale-purge (title-scoped so SPEC-10 alerts survive; zero push calls). No other util touched.
+- **D-02** — `context/SystemAlertsContext.tsx`: `checkOverspending(transactions, balance)` entry (refreshes list only on non-zero evaluation); `context/TransactionsContext.tsx`: same-effect wiring. SPEC-10 lines + Notifications screen byte-identical.
+- **D-03** — new `utils/overspendAlerts.test.ts`: ACC-01 (exact-half breach, below-half clean, 0/negative clean, Manila boundary, unattributed/income never breach), ACC-02 (create with exact copy + no mockSchedule push, update-in-place same id, recovery delete, stale purge, SPEC-10 survival, ≤0 handoff), ACC-03 (wiring + SPEC-10 intact + additive types) × android/ios/web. Mirrors `notifications.test.ts` storage mocks.
+- Judgment call disclosed: `balance <= 0` deletes unread overspend alerts (rule degenerate there; negative-balance owns that state). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 76 v1.1 FINAL + implemented (Income basis, top-1)
+
+- User-reported defect: negative displayed balance (-₱4,900) with every category firing. Verified the v1.0 `balance > 0` guard intact on disk — the guarded path cannot create under non-positive input, so the alerts came from a divergent balance input or stale bundle. v1.1 removes `balance` from the rule entirely (structural fix) + top-1-only per user call.
+- **D-07** — `utils/notifications.ts`: evaluator re-signed `(transactions, monthlyIncome, initialBalance, now?)`, denominator `monthlyIncome + (initialBalance > 0 ? initialBalance : 0)`, top-1 select (total desc, name asc); trigger re-signed (body otherwise identical); header comment updated. Threshold/copy/fields/no-push unchanged.
+- **D-08** — `context/SystemAlertsContext.tsx` re-signed entry; `context/TransactionsContext.tsx` effect computes month-filtered `monthlyIncome` via its own predicate (single site) + `getManilaMonthKey` import (no cycle — utils imports types only); passes `(transactions, monthlyIncome, initialBalance)`. SPEC-10 untouched.
+- **D-09** — `utils/overspendAlerts.test.ts` rewritten to ACC-04/05 (income-basis, initial add/ignore, top-1, tie-break, migration downgrade, SPEC-10 survival, denom handoff) × android/ios/web. Self-caught pre-run: first migration draft seeded a Food alert with no Food transactions (would delete 2, not 1) — corrected seed before any run. No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S03/S04 (Expo Go Android/iOS + web export, incl. no-multi-fire proof) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 77 FINAL + implemented (Completed dues filter + header)
+
+- **D-01** — `app/completed-dues.tsx` ONLY: state → `useState<"week" | "month">("month")` + narrowed cast; `All` button deleted; dead `return items` fallthrough collapsed (week branch + month fallthrough — self-caught pre-run: first edit duplicated the month filter, immediately repaired and read-back verified); header → static `TOTAL COMPLETED`. Windows/sort/skeleton/refresh/rows byte-identical.
+- **D-02** — new `utils/completedDuesFilter.test.ts`: ACC-01 (narrowed state/default/order, no `all` remnants), ACC-02 (static header, no interpolation/fallthrough), ACC-03 (windows/sort/skeleton intact, no Platform) × android/ios/web. Absence pins pre-verified against the unread file tail.
+- SPEC-32's document untouched (§1.14 — segment slice superseded here). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (test-only, user-pasted jest 15/18): the ACC-03/05 wiring pin asserted the literal `checkOverspending(transactions: ...)` but the interface declares the `name: (args)` shape — all 15 behavior tests were already green, implementation untouched. Pin split into the exact interface + impl signatures. No commit.
+
+---
+
+## 2026-10-10 — Spec 77 v1.1 FINAL + implemented (Overall list)
+
+- **D-04** — `app/completed-dues.tsx` ONLY: `SegmentedButtons` block, `filter` state/cast, week/month predicate branches, and orphaned `now`/week/month memos all removed (plus now-unused `useState`/`SegmentedButtons` imports); list = kept sorted-all expression; `TOTAL COMPLETED` card and everything else byte-identical.
+- **D-05** — `utils/completedDuesFilter.test.ts` rewritten to ACC-04 (no segments/state, sorted-all list), ACC-05 (no orphans, live overall total), ACC-06 (sort/skeleton/refresh/rows/empty intact, no Platform) × android/ios/web. Absence pins pre-verified on disk.
+- Spec-text correction disclosed: the v1.1 amendment as first written carried ACC-03/S01/S02 forward, contradicting CON-11's memo deletion — corrected to full supersession (ACC-04/05/06, S03/S04) before any run; same normative intent.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S03/S04 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 79 FINAL + implemented (Pay chip grid + modal polish)
+
+- **D-01** — `app/dues.tsx` pay dialog ONLY: chips get theme-aware states (unselected `#F3F4F6` light / `surfaceVariant` dark + `outlineVariant` border + `onSurfaceVariant` text; selected `#1E3A8A` + white text + selected-only `check` icon + `selectedColor`, `outlined` kept); label centered; dialog gains `borderRadius: 16` + `overflow: "hidden"` (width untouched). Container already row/wrap/center/gap-8 — pinned, not reshaped. Fetch/validation/busy/`recordTransaction`/dismiss byte-identical.
+- **D-02** — new `utils/payChipStyling.test.ts`: ACC-01 (grid container, no scrollview/nowrap), ACC-02 (chip state literals), ACC-03 (dialog radius, centered label, behavior lines intact) × android/ios/web.
+- SPEC-47/65/63 documents untouched (§1.14 — styling-only home). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS light+dark + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 79 repair (themeColors guard vs selected white)
+
+- User-pasted full jest: 798/801 green; only `utils/themeColors.test.js` failed (3/3 platforms) on `app/dues.tsx:669` `selectedColor="#ffffff"`. All three SPEC-79 suites passed — implementation matches the FINAL spec; the conflict is spec-vs-standing-guard, not a code defect.
+- Root cause: the guard flags any hex literal on lines without a theme token. The other new literals (`#1E3A8A`, `#F3F4F6`) share lines with theme tokens (exempt); line 669 stands alone. A theme token CANNOT replace it: no token is white in both Paper themes, and the selected background is fixed navy in both — fixed white is the only readable choice (same rationale as the existing hardcoded FAB `color="#fff"`, which sits outside the guard's file list).
+- Fix (guard accommodation, same normative intent — spec stays v1.0 FINAL): `ALLOWED_EXCEPTIONS` gains a documented `selectedColor` entry (prop-scoped, SPEC-79-cited; general rule intact — contrast with SPEC-27, which refused to weaken the guard because tokens existed there). CON-04 annotated accordingly. Zero app-code change. No commit.
+- Still open: user-run rerun (`npx jest utils/themeColors.test.js`), lint result (output was cut at `eslint .`), tsc, ACC-S01/S02 matrix. No commit.
+
+---
+
+## 2026-10-10 — Spec 79 v1.1 FINAL + implemented (Add-due chips, 2-col grid)
+
+- User call: v1.0 custom styling "does not match the system" — match add-due chips (verified pattern `dues.tsx:573-618`), 2 columns, keep indigo direction. Reconciled without literals: app primaries are indigo-family (`#1B3F7A`/`#4A90D9`), so theme-default selected chips read indigo automatically.
+- **D-04** — `app/dues.tsx` pay dialog ONLY: chips add-due-exact (`outlined`, `borderRadius: 16`, plain names) + `flexBasis: "48%"`/`flexGrow: 1` in a row/wrap/gap-6 container (no centering); label → semibold left (reverses v1.0 centering); all custom colors/icon deleted. Dialog box radius from v1.0 kept.
+- **D-05** — `utils/payChipStyling.test.ts` rewritten to ACC-04/05/06. Self-caught pre-run: first draft asserted no `justifyContent: "center" }}>` in the dialog block, but `Dialog.Actions` legitimately centers that way — re-scoped to pin the old chip-container string gone instead.
+- **D-06** — `utils/themeColors.test.js` `selectedColor` exception removed (guard byte-identical to pre-SPEC-79; verified zero matches). The pre-existing `dues.tsx:733` Calendar `selectedColor: theme.colors.primary` is untouched (theme-token line, always exempt).
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S03/S04 (Expo Go Android/iOS light+dark + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 79 v1.2 FINAL + implemented (Bottom-sheet account cards)
+
+- User call with screenshot (bottom-sheet "Select account" picker): true bottom sheet, Confirm kept, indigo border, no icons. Four scoping calls answered before drafting.
+- **D-08** — `app/dues.tsx` pay `Dialog` → bottom-sheet Paper `Modal` (bottom-anchored, surface, 28pt top corners, handle pill, title+X row, amount subtitle, full-width method cards with 2px primary / 1px outlineVariant borders, stacked full-width Confirm + tonal Cancel). Dynamic copy + `recordTransaction` flow byte-identical; `Pressable` added (RN core); `Chip`/`Dialog` imports kept (used elsewhere). Zero hardcoded colors.
+- **D-09** — `utils/payChipStyling.test.ts` rewritten to ACC-07/08. Self-caught pre-run: first draft pinned no `icon=` in the block, but the X close legitimately carries `icon="close"` — re-scoped to the chip-icon pattern + positive X pin. No spec intent change (CON-15 already required the X).
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S05/S06 (Expo Go Android/iOS light+dark + web export, screenshot-shape match) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 79 folded v1.2 FINAL + implemented (Wrapper anchoring, 24/0, pb-32)
+
+- User call: fold v1.3 into v1.2 (no new version) — done; v1.3 section deleted, substance merged into v1.2 (CON-15, DEC-13/14/15, ACC-07, S05).
+- **D-08 folded** — `app/dues.tsx`: Modal wrapper `style` (flex-end + zeroed margins, `contentContainerStyle` deleted), radii 24 top / explicit 0 bottom, `paddingBottom: 32`. Replaces the pre-fold D-08 (28 radii via contentContainerStyle).
+- **D-09** — ACC-07 rewritten to the folded pins (ACC-08 stands).
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S05/S06 (Expo Go Android/iOS incl. gesture-bar devices + web export) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (test-only, user-pasted jest 3/6): the `paySheetBlock` extractor sliced from the `visible=` prop, excluding the `<Modal` tag it then asserted — the dump proved the implementation block otherwise fully green. Slice now starts at the tag via `lastIndexOf`. No spec/code change. No commit.
+- Repair (test-only, user-pasted jest 6/9): ACC-05 asserted `overflow: hidden` but the source reads `overflow: "hidden"` (quoted) — the received-string dump proved every other pin green and the implementation correct. One-quote fix, no spec/code change. No commit.
+
+---
+
+## 2026-10-10 — Spec 80 FINAL + implemented (Payment Source + fetch-then-open)
+
+- **D-01** — copy-only rename at all 7 inventoried sites (edit label, methods title/dialog/delete-message, details section label, literacy copy, chart title); identifiers, `paymentMethods` API/field, route + file/component names, comments, console strings untouched (verified zero old-literal matches on disk).
+- **D-02** — `app/dues.tsx` `openPayDialog`: fetch resolves first, `setPayTarget(due)` moved last (disk order verified: fetch `:244` → open `:256`); selection rules identical per branch; no loading UI (sheet appears when ready; double-tap idempotent, accepted).
+- **D-03** — new `utils/paySourceRename.test.ts`: ACC-01 (new copy + old literals gone + identifiers/API/files intact), ACC-02 (fetch-before-open ordering + selection lines), ACC-03 (flow/fallback/behavior lines) × android/ios/web. Absence pins pre-verified on disk.
+- SPEC-47's document untouched (§1.14 — instant-open slice superseded here). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export, incl. no-blink + offline fallback) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 80 v1.1 FINAL + implemented (Fixed source options)
+
+- Folded from the SPEC-81 draft (deleted unimplemented); v1.0 fetch-then-open superseded days later with it — recorded honestly.
+- **D-05** — `app/dues.tsx`: new `PAY_SOURCE_OPTIONS` const (5 labels); sheet maps over it; `openPayDialog` sync (reset Cash + open); deleted `FALLBACK_PAY_METHODS` + comment, `payMethods` state, `PaymentMethodInfo` + `authFetch` imports (all verified orphaned — zero matches on disk). `payMethod` default/selection + Confirm flow byte-identical in behavior.
+- **D-06** — `utils/paySourceRename.test.ts` extended: superseded ACC-02/ACC-03-fetch pins replaced with ACC-04 (static set + render + default) and ACC-05 (fetch/fallback/orphans gone, sync opener); ACC-01 rename + surviving ACC-03 pins stand. Absence pins pre-verified on disk.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export, incl. offline-identical) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 80 v1.2 FINAL + implemented (Subtitle Amount copy)
+
+- **D-08** — `app/dues.tsx` ONLY: sheet subtitle → `` `Amount: ${formatAmount(payTarget.amount)}` `` (title echo dropped). Ternary guard + all other lines byte-identical.
+- **D-09** — `utils/paySourceRename.test.ts` extended with ACC-06 (exact template + old-pattern absence + title row intact). Self-caught pre-run: the insert consumed ACC-03's `it(` header — restored immediately, structure read-back verified.
+- Homed in SPEC-80 per user direction ("to 80"); SPEC-79 untouched. No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (guard migration, user-pasted full jest 807/813): `utils/duePayment.test.ts` ACC-02a/b pinned the SPEC-47 fetch/fallback behavior that v1.1 D-05 deleted by design (6 failures = 2 pins × 3 platforms; all 807 others green, so implementation already matched the FINAL spec). Rewrote both pins to the v1.1 norm (static 5 labels, sync opener, orphans gone); all other pins (incl. REG-01..06) untouched. D-06 wording extended to name this file (same intent — it was a scoping miss, not new scope). Verified zero fetch/fallback remnants on disk. No commit.
+
+---
+
+## 2026-10-10 — Spec 82 FINAL + implemented (Synthetic categoryId uuid gate)
+
+- **D-01** — `utils/uuid.ts`: new pure `toApiCategoryId` (uuid-shape passthrough, everything else → `null`; no new imports).
+- **D-02** — `context/TransactionsContext.tsx` ONLY: both POST bodies + the PUT body route through the helper (+ its import); sanitize/display echoes byte-identical, so local `Add Scheduled`/`Others` labels survive and web keeps them verbatim.
+- **D-03** — new `utils/syntheticCategoryId.test.ts`: ACC-01 (uuid/upper passthrough; nil/blank/sentinels/titles/numerics → null), ACC-02 (4 helper uses, no bare wire expressions left), ACC-03 (same-layer import, sanitize + dues fallback intact) × android/ios/web.
+- Adjacent rot noted (§1.11, not fixed — needs its own spec): the PUT body lines were already duplicated verbatim pre-change (two identical `updateBody.categoryId` assignments); preserved as-is.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (web-first: repay the same uncategorized due) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 85 FINAL + implemented (Delete/edit toasts)
+
+- **D-01** — `app/transaction-details.tsx` ONLY: `handleDelete` gains try/catch — success toasts `Deleted successfully` then back; failure closes confirm, stays, toasts the error (fixes the uncaught-throw red box). `useToast` wiring only addition.
+- **D-02** — `app/edit-transaction.tsx` ONLY: save success toasts `Saved successfully` then back; failure toasts (same generic, new surface) with loading reset; pre-submit native validation `Alert`s + `Alert` import intact.
+- **D-03** — new `utils/mutationFeedback.test.ts`: ACC-01/02 (exact toast copy, catch/fallbacks, validation Alerts intact), ACC-03 (no Platform in either file) × android/ios/web. Pins pre-verified on disk.
+- ToastContext/provider untouched (SPEC-05 mechanism reused as-is). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export, incl. forced-failure-no-redbox) remain pending per `AGENTS.md` §1.3. No commit.
+- Retroactive gate PASSED (user-verified 2026-10-10): fresh build + legacy row still 404'd (expected — no backfill by design), then the SAME row deleted fine after navigate-away-and-back. Proves (a) legacy rows heal via GET-replace exactly as spec'd, (b) the failure mode is the pre-fix id divergence, not a new defect. No code change. No commit.
+
+---
+
+## 2026-10-10 — Spec 83 FINAL + implemented (Recent rows display-only)
+
+- **D-01** — `app/(tabs)/index.tsx` ONLY: recent row `TouchableOpacity` → `View` (no push, no flash) + `router` dropped from that callback's deps (otherwise `exhaustive-deps` lint flags it). Style/content/order byte-identical; all other touchables + `router` import intact (verified on disk).
+- **D-02** — new `utils/dashboardRecentNoNav.test.ts`: ACC-01 (zero `transaction-details` refs in index), ACC-02 (row contract + deps), ACC-03 (shared list still navigates; details file present) × android/ios/web.
+- Details screen, shared list, and all other entry points byte-identical (SPEC-63 CON-07 honored). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (Expo Go Android/iOS + web export, incl. edit-path-still-works check) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 84 FINAL + implemented (Adopt server transaction IDs)
+
+- Disclosure up front: CON-03 demanded the pasted POST body BEFORE code; the user marked FINAL without it. Proceeded anyway because the design is fail-open (no usable id → byte-identical legacy behavior, zero regression surface) — disclosed here instead of silently. Device ACC-S01 doubles as the retroactive gate: if add-then-delete still 404s, the POST returns no id and the CON-03 stop clause fires (re-spec around repull-with-bypass).
+- Self-caught pre-run: a stray edit joined two lines in `dueTxLinks.ts` — read back, repaired, verified before continuing.
+- **D-02** — `utils/dueTxLinks.ts`: new `remapDueLink` (exact-entry move, safe no-ops); `context/TransactionsContext.tsx`: both POST paths extract the returned row, adopt a non-empty string id, record-then-remap, list the final row (web) / repull (native). Validation/sanitize/receipt/error/repull/list lines byte-identical.
+- **D-03** — new `utils/serverIdAdopt.test.ts`: ACC-01 (extraction + adopt + remap pins ×2 paths), ACC-02 (live remap move/no-op suite on real AsyncStorage), ACC-03 (surroundings + same-layer imports) × android/ios/web.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (web-first: add → immediate edit + delete; dues-pay → refetch → lock holds) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (guard migration, user-pasted full jest 819/825): `utils/transactionCategory.test.ts` ACC-01/ACC-01b pinned the exact SPEC-46 wire expressions that D-02 replaced by design (6 failures = 2 pins × 3 platforms; all 819 others green, so implementation already matched the FINAL spec). Rewrote both pins to the helper norm; all other pins untouched. D-03 wording extended to name this file (same intent — scoping miss, not new scope). No commit.
+
+---
+
+## 2026-10-10 — Spec 85 v1.1 FINAL + implemented (Screenshot dialogs)
+
+- **D-04** — `app/transaction-details.tsx` ONLY: result `Dialog` (ConfirmDialog-identical responsive style, icon/title/message/single OK) + `handleDelete` shows it on both outcomes (`Deleted Successfully` / `Delete Failed`; OK → back / stay); `useToast` wiring removed.
+- **D-05** — `app/edit-transaction.tsx` ONLY: same contract (`Saved Successfully` / `Save Failed`, loading reset, OK → back / stay); pre-submit validation `Alert`s + `Alert` import intact; `useToast` wiring removed.
+- **D-06** — `utils/mutationFeedback.test.ts` rewritten to ACC-04/05 (dialog design pins, exact copy, zero `showToast`/`ToastContext` in both files) × android/ios/web. Pins pre-verified on disk.
+- ToastContext/provider untouched (still serves its own callers). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S03/S04 (Expo Go Android/iOS + web export, screenshot-design match) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 85 v1.2 FINAL + implemented (Dialog survives row removal)
+
+- Root cause (my v1.1 bug, user-reported): successful delete nulled the row → lookup effect → early-return "not found" view preempted the success dialog before back-nav. Failure path never hit it (row intact).
+- **D-08** — `app/transaction-details.tsx` ONLY: lookup effect keeps the stale row while `resultDialog.visible` (deps extended — otherwise `exhaustive-deps` lint flags it). Genuine not-found rows still render the text.
+- **D-09** — ACC-06 guard (effect guard + deps + text branch intact). Self-caught pre-run ×2: a stray no-op edit joined two test lines (read back, repaired, verified), and the ACC-06 insert anchor was ambiguous (verified end-placement by read-back).
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S05/S06 (Expo Go Android/iOS + web export: success dialog, never not-found text) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (guard migration, user-pasted full jest 819/825): `utils/transactionCategory.test.ts` ACC-01/ACC-01b pinned the exact SPEC-46 wire expressions that D-02 replaced by design (6 failures = 2 pins × 3 platforms; all 819 others green, so implementation already matched the FINAL spec). Rewrote both pins to the helper norm; all other pins untouched. D-03 wording extended to name this file (same intent — scoping miss, not new scope). No commit.
+- Repair (test-only, user-pasted jest 15/18): the ACC-03/05 wiring pin asserted the literal `checkOverspending(transactions: ...)` but the interface declares the `name: (args)` shape — all 15 behavior tests were already green, implementation untouched. Pin split into the exact interface + impl signatures. No commit.
 ## 2026-10-10 — Spec 70 FINAL v1.0 (PDF/CSV Auto-Download, Format Frozen)
 
 - `specs/70-pdf-auto-download-to-default-directory.md` marked **FINAL v1.0** per user call (Option A; status promotion only, no normative change).
@@ -1186,3 +1380,67 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
   - No red-box crash on any platform.
 - User-run verification pending per §1.3: `npm test` (jest), `npm run lint`, `npx tsc --noEmit`.
 - **Acceptance:** ACC-01..ACC-05 objective (jest × android/ios/web) + ACC-06 manual (three-platform visual).
+## 2026-10-11 — Spec 73 FINAL v1.0 + implementation
+
+- **Spec.** `specs/73-app-guide-additional-articles.md` FINAL per user call 2026-10-11 on branch `fix/pdf-multiplatform-download`. User decision: add four focused App Guide articles alongside the existing overview — *Getting Started with WiseWallet*, *Managing Scheduled Dues*, *Savings Allocations*, *Reading Reports & Exporting* — so the `App Guide` topic holds five cards. Supersedes **SPEC-71 CON-03 only** (the one-article lock); SPEC-71 body/guards and SPEC-72 stay in force (§1.14).
+- **D-01 `utils/learningData.ts`.** Appended four `LearningResource` entries after `wisewallet_app_guide` (CON-05), all `topic: "App Guide"`, no `audience` (CON-03/CON-04), ids `app_guide_getting_started` / `app_guide_scheduled_dues` / `app_guide_allocations` / `app_guide_reports`, icons `flag-checkered` / `calendar-clock` / `target` / `chart-donut`. The six existing audience articles and their 6 `audience:` lines are unchanged.
+- **D-02 `utils/learningGuideContent.ts`.** Added four new pure constants (`APP_GUIDE_GETTING_STARTED_CONTENT`, `APP_GUIDE_SCHEDULED_DUES_CONTENT`, `APP_GUIDE_ALLOCATIONS_CONTENT`, `APP_GUIDE_REPORTS_CONTENT`), each a 4–5 block sectioned body (headings end in `:`, ≥2 body lines each, no `TODO(`); `APP_GUIDE_CONTENT` byte-identical.
+- **D-03 `app/(tabs)/learning-detail.tsx`.** Added four `LEARNING_CONTENT` entries mapping the new ids to their imported constants; the original `import { APP_GUIDE_CONTENT } from "../../utils/learningGuideContent"` line is retained byte-identical (SPEC-71 ACC-05), so the new constants are imported on a second statement. `Speech`, `speakWithFemaleVoice`, SPEC-64/11 paths, and the existing six entries byte-identical.
+- **D-04 `utils/learningGuideContent.test.ts`.** Added a SPEC-73 suite inside the existing × android/ios/web `runSuite`: ACC-01 (four new resources present after the overview, topic App Guide, no audience), ACC-02 (6 audience lines, optional field, `LEARNING_CATEGORIES` unchanged), ACC-03 (each new body non-empty, ≥3 unique headings, ≥2 body lines, no `TODO(`), ACC-04 (detail imports + maps all four), ACC-05 (SPEC-71 outline + SPEC-72 audience guards stay green).
+- **D-05** this entry + `AGENTS.md` §3.
+- User-run verification pending per §1.3 (agent does not run CLIs): `npm test` (jest), `npm run lint`, `npx tsc --noEmit`, plus Expo Go (Android + iOS) + `expo export --platform web` (ACC-06/07).
+
+## 2026-10-11 — Spec 74 FINAL v1.0 + implementation
+
+- **Spec.** `specs/74-trim-overview-and-app-guide-section.md` FINAL per user call 2026-10-11 on branch `fix/pdf-multiplatform-download`. User decisions: trim the overview to sections without their own article; render App Guide cards in a new section beneath Recommended Reading (Recommended Reading stays visible when empty); fixed peach App Guide topic badge. Supersedes SPEC-71 ACC-01/ACC-02 and SPEC-73 ACC-05 (11-block / 3,000-char outline → 7-block / 1,500-char); SPEC-73's four articles and SPEC-72's audience removal retained (§1.14).
+- **D-01 `utils/learningGuideContent.ts`.** `APP_GUIDE_CONTENT` trimmed from 11 to **7** blocks by deleting *Getting Started*, *Tracking Scheduled Dues*, *Building Allocations*, *Reading Reports and Exporting*; remaining 7 blocks byte-identical (Using the Dashboard → Pro Tips). The four SPEC-73 article constants are byte-identical.
+- **D-02 `app/(tabs)/learning.tsx`.** Added `recommendedResources` (`item.topic !== "App Guide"`) and `appGuideResources` (`item.topic === "App Guide"`) memos; extracted the existing card `map` into a local `renderArticleList(items)` helper reused by both sections; Recommended Reading now renders `recommendedResources` (stays visible when empty); new **App Guide** section renders `appGuideResources` beneath it, hidden when empty; `getPastelTagStyle` gains `case "App Guide": { backgroundColor: "#FFDAB9", textColor: "#5D4037" }` (fixed light/dark).
+- **D-03 `utils/learningGuideContent.test.ts`.** `REQUIRED_HEADINGS` → `TRIMMED_HEADINGS` (6) + `REMOVED_HEADINGS` (4); SPEC-71 ACC-01 now asserts exactly 7 blocks with removed headings absent, ACC-02 threshold 3,000 → 1,500; SPEC-73 ACC-05 updated to `length >= 1500` / `blocks.length === 7`; new SPEC-74 ACC-03 (topic split + App Guide title after Recommended Reading), ACC-04 (peach literals), ACC-05 (four SPEC-73 articles + detail mapping + audience count 6) × android/ios/web.
+- **D-04** this entry + `AGENTS.md` §3.
+- User-run verification pending per §1.3 (agent does not run CLIs): `npm test` (jest), `npm run lint`, `npx tsc --noEmit`, plus Expo Go (Android + iOS) + `expo export --platform web` (ACC-06/07).
+## 2026-10-10 — Spec 70 FINAL + implemented (SPEC-70 Manage Categories Header Sort)
+
+- **D-01** — `app/category-settings.tsx` ONLY: deleted the body sort `SegmentedButtons` row (Name/Type); added a right-side sort `Appbar.Action` (`icon="sort"`, `accessibilityLabel="Sort by"`) in `Appbar.Header` opening a Paper `Menu` (existing dep, same anchor pattern as `app/notifications.tsx`) with `Name`/`Type`/`Recent` mapping to the existing `sortBy` state (default `"name"`, active mode check-marked); Expenses/Income filter and `sortCategories(filtered, sortBy)` path byte-identical.
+- **D-02** — new `utils/manageCategoriesHeaderSort.test.ts`: ACC-01..ACC-04 × android/ios/web (single `SegmentedButtons` + no `value={sortBy}`; header action/menu/default/checks; three `setSortBy` mappings with no `authFetch`/`AsyncStorage` + helper pins; no `router.push` + filter path intact). Ordering determinism NOT re-tested — canonical home `utils/categorySort.test.ts` via SPEC-63 D-08 (§1.14).
+- `utils/categorySort.ts`, SPEC-63, package.json, storage keys, API contract, routes untouched. No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 70 v1.1 FINAL + implemented (Name sort direction)
+
+- **D-04** — `app/category-settings.tsx` ONLY: menu is now four items (`Name A-Z` with `leadingIcon="arrow-down"`, `Name Z-A` with `leadingIcon="arrow-up"`, `Type`, `Recent`); new in-memory `sortDir` state (`"asc"` default, Name-only, active check tracks the combination); call-site `sortCategories(filtered, sortBy, sortDir)`. `utils/categorySort.ts`: one additive optional param (`dir = "asc"`); only the `"name"` branch reverses on `"desc"`; `type`/`recent` reference no `dir`.
+- **D-05** — `utils/manageCategoriesHeaderSort.test.ts`: ACC-02/04 updated to the four-item/three-arg contract; new ACC-05 (arrows + dir-invisibility pin), ACC-06 (mapping pairs), ACC-07 (backward compat incl. live dir-ignored checks) × android/ios/web. `utils/categorySort.test.ts` byte-identical.
+- SPEC-63's document untouched (§1.14 — the v1.1 amendment is the canonical home for direction). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S04/S05 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 70 v1.2 FINAL + implemented (Direction-only menu)
+
+- **D-07** — `app/category-settings.tsx` ONLY: menu is now exactly two items (`A-Z` with `leadingIcon="arrow-down"`, `Z-A` with `leadingIcon="arrow-up"`, check tracks `sortDir` alone); `sortBy` state deleted (no dead mode state), call-site passes `"name"` literally; `CategorySortMode` import removed. Type/Recent items gone; fallback-to-default needs no migration (in-memory only).
+- **D-08** — `utils/manageCategoriesHeaderSort.test.ts`: superseded ACC-02/05/06 assertions replaced; ACC-01 + ACC-07 kept; new ACC-08 (two items, no `sortBy` identifier, literal call-site), ACC-09 (dir mapping pairs + zero footprint), ACC-10 (helper + `categorySort.test.ts` v1.1-identical pins) × android/ios/web.
+- `utils/categorySort.ts` and `utils/categorySort.test.ts` untouched by v1.2 (§1.14 — v1.2 amendment stays the canonical home). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S06/S07 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 71 FINAL + implemented (Settings modal rounded corners)
+
+- Ask expanded mid-spec (v0.1 → v0.2, pre-FINAL): Change Passcode only → Clear Data + Delete Account + Change Passcode with all boxes consistent. Approach flipped accordingly: targeted `Surface` override → two keys on shared `styles.dialog` (one diff, cannot drift).
+- **D-01** — `app/(tabs)/settings.tsx` ONLY: `styles.dialog` gains `borderRadius: 16` + `overflow: "hidden"` appended after the four existing keys (byte-identical). Zero JSX change — all three named modals plus every other consumer inherit the curve.
+- **D-02** — new `utils/settingsModalRadius.test.ts`: ACC-01 (six keys in block), ACC-02 (new pairs ×1 each in file; syncCard `borderRadius: 8` intact), ACC-03 (exact six-key list; SPEC-65 pins intact) × android/ios/web.
+- §1.14 overlap recorded in spec: SPEC-26 keeps width/alignSelf, SPEC-65 keeps margin rule, SPEC-71 owns radius/overflow; neither document edited; SPEC-65 guards verified unaffected (toContain assertions, no shape pins).
+- Test-wording refinement (disclosed, zero behavior difference): FINAL ACC-02 text says the bare words occur once each, but `borderRadius: 8` pre-exists on syncCard — the guard pins the NEW pairs (`borderRadius: 16`, `overflow: "hidden"`) at ×1 each, which is the spec's evident intent (CON-03/CON-04). No commit.
+- Repair (test-only, user-pasted jest): ACC-03 failed 3/3 — `dialogBlock` sliced from `dialog: {`, so the key regex captured the block label itself. Fixed the slice to start after the opening brace; D-01 untouched (ACC-01/02 were already green). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 72 FINAL + implemented (Hide Repair Transaction Duplicates)
+
+- **D-01** — `app/(tabs)/settings.tsx` ONLY: the Repair button guard `{!isLocal && (` → `{false && (` + one-line SPEC-72 comment. Button JSX, `previewRepair`/`executeRepair`, `repairPreview` state, and the confirm dialog byte-identical — one-line revert restores the section.
+- **D-02** — new `utils/hideRepairSection.test.ts`: ACC-01 (single `{false && (` gate + intact button incl. SPEC-72 comment), ACC-02 (flow logic present), ACC-03 (gate line has no Platform/isLocal; Backup/Export/Clear rows intact) × android/ios/web. Gate uniqueness pre-verified by source scan.
+- SPEC-45's document untouched (§1.14 — runbook still NOT YET RUN; only the entry point is hidden). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (Expo Go Android/iOS Cloud/Local + web export) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (lint-driven, user-pasted output): literal `{false && (` trips `no-constant-binary-expression` (`1387:14`). Replaced with module-scope `const SHOW_REPAIR_SECTION = false;` + `{SHOW_REPAIR_SECTION && (` — behavior-identical, still one-line revert, references intact. CON-03/ACC-01 wording + D-02 guard updated to the const gate (spec stays v1.0 FINAL — same normative intent). No commit.

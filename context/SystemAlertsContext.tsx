@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
-import { SystemAlert } from "../types";
+import { SystemAlert, Transaction } from "../types";
 import { useAuth } from "./AuthContext";
 import { useCurrencyActions } from "./CurrencyContext";
 import {
@@ -8,9 +8,10 @@ import {
   markAllAlertsAsRead as markAllReadHelper,
   clearAllAlerts as clearAlertsHelper,
   checkAndTriggerNegativeBalanceAlert,
+  checkAndTriggerOverspendAlerts,
   createSessionEndedAlert,
 } from "../utils/notifications";
-import type { BalanceAlertEvaluation } from "../utils/notifications";
+import type { BalanceAlertEvaluation, OverspendEvaluation } from "../utils/notifications";
 
 interface SystemAlertsContextType {
   alerts: SystemAlert[];
@@ -21,6 +22,7 @@ interface SystemAlertsContextType {
   markAllAsRead: () => Promise<void>;
   clearAlerts: () => Promise<void>;
   checkNegativeBalance: (balance: number) => Promise<BalanceAlertEvaluation>;
+  checkOverspending: (transactions: Transaction[], monthlyIncome: number, initialBalance: number) => Promise<OverspendEvaluation>;
   addSessionAlert: (userId: string) => Promise<void>;
 }
 
@@ -82,6 +84,18 @@ export function SystemAlertsProvider({ children }: { children: ReactNode }) {
     [activeUserId, formatAmount, fetchAlerts]
   );
 
+  const checkOverspending = useCallback(
+    async (transactions: Transaction[], monthlyIncome: number, initialBalance: number): Promise<OverspendEvaluation> => {
+      if (!activeUserId) return { created: 0, updated: 0, deleted: 0 };
+      const evaluation = await checkAndTriggerOverspendAlerts(transactions, monthlyIncome, initialBalance, activeUserId);
+      if (evaluation.created + evaluation.updated + evaluation.deleted > 0) {
+        await fetchAlerts();
+      }
+      return evaluation;
+    },
+    [activeUserId, fetchAlerts]
+  );
+
   const addSessionAlert = useCallback(async (userId: string) => {
     await createSessionEndedAlert(userId);
     await fetchAlerts();
@@ -99,9 +113,10 @@ export function SystemAlertsProvider({ children }: { children: ReactNode }) {
       markAllAsRead,
       clearAlerts,
       checkNegativeBalance,
+      checkOverspending,
       addSessionAlert,
     }),
-    [alerts, unreadCount, loading, fetchAlerts, markAsRead, markAllAsRead, clearAlerts, checkNegativeBalance, addSessionAlert]
+    [alerts, unreadCount, loading, fetchAlerts, markAsRead, markAllAsRead, clearAlerts, checkNegativeBalance, checkOverspending, addSessionAlert]
   );
 
   return <SystemAlertsContext.Provider value={value}>{children}</SystemAlertsContext.Provider>;

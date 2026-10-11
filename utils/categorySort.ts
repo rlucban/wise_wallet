@@ -2,7 +2,13 @@ import type { Category } from "../types";
 
 export type CategorySortMode = "name" | "type" | "recent";
 
-export function sortCategories(categories: Category[], sortBy: CategorySortMode): Category[] {
+export type CategorySortDirection = "asc" | "desc";
+
+export function sortCategories(
+  categories: Category[],
+  sortBy: CategorySortMode,
+  dir: CategorySortDirection = "asc"
+): Category[] {
   const copy = [...categories];
   switch (sortBy) {
     case "type":
@@ -10,7 +16,9 @@ export function sortCategories(categories: Category[], sortBy: CategorySortMode)
     case "recent":
       return copy.sort((a, b) => b.updatedAt - a.updatedAt || a.name.localeCompare(b.name));
     case "name":
-    default:
-      return copy.sort((a, b) => a.name.localeCompare(b.name));
+    default: {
+      const ordered = copy.sort((a, b) => a.name.localeCompare(b.name));
+      return dir === "desc" ? ordered.reverse() : ordered;
+    }
   }
 }

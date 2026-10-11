@@ -12,13 +12,14 @@ import { useUserProfile } from "./UserProfileContext";
 import { useSystemAlerts } from "./SystemAlertsContext";
 import { useRepositories } from "./RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
-import { generateUUID } from "../utils/uuid";
+import { generateUUID, toApiCategoryId } from "../utils/uuid";
 import * as FileSystem from 'expo-file-system/legacy';
 import { getPrefixedKey, setItem } from "../utils/storage";
 import { updateLastSyncedAt } from "../utils/syncQueue";
 import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
+import { getManilaMonthKey } from "../utils/notifications";
 import { resolveTransactionCategory } from "../utils/transactionCategory";
-import { attachDueLinks, recordDueLink, pruneDueLinks } from "../utils/dueTxLinks";
+import { attachDueLinks, recordDueLink, remapDueLink, pruneDueLinks } from "../utils/dueTxLinks";
 
 interface TransactionsData {
     transactions: Transaction[];
@@ -149,7 +150,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         }
     }, [activeUserId, txRepo, isLocal, refreshFromApi, categories]);
 
-    const { checkNegativeBalance } = useSystemAlerts();
+    const { checkNegativeBalance, checkOverspending } = useSystemAlerts();
 
     useEffect(() => {
         if (!activeUserId) return;
@@ -168,7 +169,12 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
         const balance = initialBalance + income - expense;
 
         checkNegativeBalance(balance);
-    }, [activeUserId, profile, transactions, loading, checkNegativeBalance]);
+        const monthKey = getManilaMonthKey(Date.now());
+        const monthlyIncome = transactions
+            .filter((t) => t.type === "income" && t.note !== "Initial account setup" && t.category?.id !== OPENING_BALANCE_CATEGORY_ID && getManilaMonthKey(Date.parse(t.date)) === monthKey)
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+        checkOverspending(transactions, monthlyIncome, initialBalance);
+    }, [activeUserId, profile, transactions, loading, checkNegativeBalance, checkOverspending]);
 
         const addTransaction = useCallback(async (transaction: Omit<Transaction, "id">) => {
             try {
@@ -181,15 +187,22 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct — no local repo, no flag gate, no queue.
                 const uploaded = await uploadReceiptIfNeeded(newTransaction);
-                const { ok, status, error } = await authFetch('transactions', {
+                const { ok, data, status, error } = await authFetch('transactions', {
                     method: "POST",
-                    body: JSON.stringify({ ...uploaded, categoryId: uploaded.category?.id ?? null, userId: activeUserId }),
+                    body: JSON.stringify({ ...uploaded, categoryId: toApiCategoryId(uploaded.category?.id), userId: activeUserId }),
                 });
                 if (!ok) {
                     throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
                 }
                 if (transaction.dueId) await recordDueLink(uploaded.id, transaction.dueId, activeUserId);
-                setTransactions((prev) => [...prev, uploaded]);
+                const createdRow = (Array.isArray(data) ? data[0] : data) as { id?: unknown } | null | undefined;
+                const serverId = typeof createdRow?.id === "string" && createdRow.id.length > 0 ? createdRow.id : null;
+                let finalRow = uploaded;
+                if (serverId && serverId !== uploaded.id) {
+                    await remapDueLink(uploaded.id, serverId, activeUserId);
+                    finalRow = { ...uploaded, id: serverId };
+                }
+                setTransactions((prev) => [...prev, finalRow]);
                 return;
             }
 
@@ -200,14 +213,19 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             }
             // Online native: API first (SPEC-45 DEC-02). No local repo, no queue.
             const uploaded = await uploadReceiptIfNeeded(newTransaction);
-            const { ok, status, error } = await authFetch('transactions', {
+            const { ok, data, status, error } = await authFetch('transactions', {
                 method: "POST",
-                body: JSON.stringify({ ...uploaded, categoryId: uploaded.category?.id ?? null, userId: activeUserId }),
+                body: JSON.stringify({ ...uploaded, categoryId: toApiCategoryId(uploaded.category?.id), userId: activeUserId }),
             });
             if (!ok) {
                 throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
             }
             if (transaction.dueId) await recordDueLink(newTransaction.id, transaction.dueId, activeUserId);
+            const createdRow = (Array.isArray(data) ? data[0] : data) as { id?: unknown } | null | undefined;
+            const serverId = typeof createdRow?.id === "string" && createdRow.id.length > 0 ? createdRow.id : null;
+            if (serverId && serverId !== newTransaction.id) {
+                await remapDueLink(newTransaction.id, serverId, activeUserId);
+            }
             await refreshFromApi();
             return;
         } catch (error) {
@@ -232,8 +250,8 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct.
             const updateBody: Record<string, unknown> = { ...updates, userId: activeUserId };
-            if (updates.category !== undefined) updateBody.categoryId = updates.category ? updates.category.id : null;
-                if (updates.category !== undefined) updateBody.categoryId = updates.category ? updates.category.id : null;
+            if (updates.category !== undefined) updateBody.categoryId = toApiCategoryId(updates.category ? updates.category.id : null);
+                if (updates.category !== undefined) updateBody.categoryId = toApiCategoryId(updates.category ? updates.category.id : null);
                 const zUpdateDate = toZIso(updateBody.date);
                 if (zUpdateDate !== null) updateBody.date = zUpdateDate;
                 const { ok, status, error } = await authFetch(`transactions/${id}`, {

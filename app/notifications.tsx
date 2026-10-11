@@ -357,21 +357,14 @@ export default function NotificationsScreen() {
               setMenuVisible(false);
               markAllAsRead();
             }}
-            title="Mark All System Alerts as Read"
+            title="Read all alerts"
           />
           <Menu.Item
             onPress={() => {
               setMenuVisible(false);
               clearAlerts();
             }}
-            title="Clear System Alerts"
-          />
-          <Menu.Item
-            onPress={() => {
-              setMenuVisible(false);
-              router.push("/dues");
-            }}
-            title="Manage Dues"
+            title="Clear all alerts"
           />
         </Menu>
       </Appbar.Header>

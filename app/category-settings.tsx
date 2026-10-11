@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { View, ScrollView } from "react-native";
-import { Appbar, List, IconButton, FAB, Portal, Modal, TextInput, Button, SegmentedButtons, useTheme, Card, Text } from "react-native-paper";
+import { Appbar, List, IconButton, FAB, Portal, Modal, Menu, TextInput, Button, SegmentedButtons, useTheme, Card, Text } from "react-native-paper";
 import { useRouter } from "expo-router";
 import { safeGoBack } from "../utils/backNavigation";
 import { useCategoriesData, useCategoriesActions } from "../context/CategoriesContext";
 import { TransactionType, Category } from "../types";
-import { sortCategories, CategorySortMode } from "../utils/categorySort";
+import { sortCategories, CategorySortDirection } from "../utils/categorySort";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function CategorySettings() {
@@ -14,7 +14,8 @@ export default function CategorySettings() {
   const { categories } = useCategoriesData();
   const { addCategory, deleteCategory } = useCategoriesActions();
   const [type, setType] = useState<TransactionType>("expense");
-  const [sortBy, setSortBy] = useState<CategorySortMode>("name");
+  const [sortDir, setSortDir] = useState<CategorySortDirection>("asc");
+  const [menuVisible, setMenuVisible] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
@@ -29,7 +30,7 @@ export default function CategorySettings() {
     ...c,
     type: String(c.type).toLowerCase().trim() as TransactionType,
   }));
-  const filteredCategories = sortCategories(normalizedCategories.filter((c) => c.type === type), sortBy);
+  const filteredCategories = sortCategories(normalizedCategories.filter((c) => c.type === type), "name", sortDir);
 
   const handleAdd = async () => {
     if (newCatName.trim()) {
@@ -49,6 +50,36 @@ export default function CategorySettings() {
       <Appbar.Header>
         <Appbar.BackAction onPress={() => safeGoBack(router)} />
         <Appbar.Content title="Manage Categories" />
+        <Menu
+          visible={menuVisible}
+          onDismiss={() => setMenuVisible(false)}
+          anchor={
+            <Appbar.Action
+              icon="sort"
+              accessibilityLabel="Sort by"
+              onPress={() => setMenuVisible(true)}
+            />
+          }
+        >
+          <Menu.Item
+            onPress={() => {
+              setSortDir("asc");
+              setMenuVisible(false);
+            }}
+            title="A-Z"
+            leadingIcon="arrow-down"
+            trailingIcon={sortDir === "asc" ? "check" : undefined}
+          />
+          <Menu.Item
+            onPress={() => {
+              setSortDir("desc");
+              setMenuVisible(false);
+            }}
+            title="Z-A"
+            leadingIcon="arrow-up"
+            trailingIcon={sortDir === "desc" ? "check" : undefined}
+          />
+        </Menu>
       </Appbar.Header>
 
       <View style={{ padding: 16 }}>
@@ -60,16 +91,6 @@ export default function CategorySettings() {
             { value: "income", label: "Income" },
           ]}
         />
-        <View style={{ marginTop: 12 }}>
-          <SegmentedButtons
-            value={sortBy}
-            onValueChange={(v) => setSortBy(v as CategorySortMode)}
-            buttons={[
-              { value: "name", label: "Name" },
-              { value: "type", label: "Type" },
-            ]}
-          />
-        </View>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingTop: 0 }}>

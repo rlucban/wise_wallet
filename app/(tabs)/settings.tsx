@@ -118,6 +118,8 @@ const styles = StyleSheet.create({
     width: "90%",
     alignSelf: "center",
     marginHorizontal: 0,
+    borderRadius: 16,
+    overflow: "hidden",
   },
   dialogContent: {
     alignItems: "center",
@@ -125,6 +127,9 @@ const styles = StyleSheet.create({
 
   }
 });
+
+// SPEC-72: Repair section hidden — logic intact; set true to restore.
+const SHOW_REPAIR_SECTION = false;
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -1381,7 +1386,7 @@ if (!serverOk && !localOk) {
                 Restore Data from Cloud API
               </Button>
             )}
-            {!isLocal && (
+            {SHOW_REPAIR_SECTION && (
               <Button mode="outlined" icon="auto-fix" onPress={previewRepair} loading={isSyncing} disabled={isSyncing} style={{ marginVertical: 4 }}>
                 Repair Transaction Duplicates
               </Button>

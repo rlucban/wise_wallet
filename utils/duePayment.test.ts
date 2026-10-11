@@ -41,16 +41,22 @@ function runSuite(os: "android" | "ios" | "web") {
             expect(src).not.toContain("onPress={() => recordTransaction(due)}");
         });
 
-        it("ACC-02a: hardcoded fallback carries Cash and the Unknown sentinel", () => {
+        it("ACC-02a (v1.1 superseded): static fixed set carries the 5 source labels, no Unknown sentinel", () => {
             const src = readRepo("app/dues.tsx");
-            expect(src).toContain('name: "Cash"');
-            expect(src).toContain('name: "Unknown"');
+            expect(src).toContain("PAY_SOURCE_OPTIONS");
+            for (const label of ['name: "Cash"', 'name: "Card"', 'name: "Bank"', 'name: "E-Wallet"', 'name: "Other"']) {
+                expect(src).toContain(label);
+            }
+            expect(src).not.toContain('name: "Unknown"');
         });
 
-        it("ACC-02b: API list preferred when reachable, fallback on empty/failure", () => {
+        it("ACC-02b (v1.1 superseded): opener synchronous, fetch and fallback gone", () => {
             const src = readRepo("app/dues.tsx");
-            expect(src).toContain('authFetch<PaymentMethodInfo[]>("paymentMethods")');
-            expect(count(src, /setPayMethods\(FALLBACK_PAY_METHODS\)/g)).toBe(2);
+            expect(src).toContain("openPayDialog = useCallback((due: Due)");
+            expect(src).toContain("setPayTarget(due);");
+            expect(src).not.toContain('authFetch<PaymentMethodInfo[]>("paymentMethods")');
+            expect(src).not.toContain("setPayMethods");
+            expect(src).not.toContain("FALLBACK_PAY_METHODS");
         });
 
         it("ACC-03a: add throws prefer the server message on HTTP failures (web + native)", () => {
