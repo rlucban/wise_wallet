@@ -19,7 +19,7 @@ import { updateLastSyncedAt } from "../utils/syncQueue";
 import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 import { getManilaMonthKey } from "../utils/notifications";
 import { resolveTransactionCategory } from "../utils/transactionCategory";
-import { attachDueLinks, recordDueLink, pruneDueLinks } from "../utils/dueTxLinks";
+import { attachDueLinks, recordDueLink, remapDueLink, pruneDueLinks } from "../utils/dueTxLinks";
 
 interface TransactionsData {
     transactions: Transaction[];
@@ -187,7 +187,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             if (Platform.OS === "web") {
                 // SPEC-36 CON-W-03 (v1.2): web writes API-direct — no local repo, no flag gate, no queue.
                 const uploaded = await uploadReceiptIfNeeded(newTransaction);
-                const { ok, status, error } = await authFetch('transactions', {
+                const { ok, data, status, error } = await authFetch('transactions', {
                     method: "POST",
                     body: JSON.stringify({ ...uploaded, categoryId: toApiCategoryId(uploaded.category?.id), userId: activeUserId }),
                 });
@@ -195,7 +195,14 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                     throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
                 }
                 if (transaction.dueId) await recordDueLink(uploaded.id, transaction.dueId, activeUserId);
-                setTransactions((prev) => [...prev, uploaded]);
+                const createdRow = (Array.isArray(data) ? data[0] : data) as { id?: unknown } | null | undefined;
+                const serverId = typeof createdRow?.id === "string" && createdRow.id.length > 0 ? createdRow.id : null;
+                let finalRow = uploaded;
+                if (serverId && serverId !== uploaded.id) {
+                    await remapDueLink(uploaded.id, serverId, activeUserId);
+                    finalRow = { ...uploaded, id: serverId };
+                }
+                setTransactions((prev) => [...prev, finalRow]);
                 return;
             }
 
@@ -206,7 +213,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             }
             // Online native: API first (SPEC-45 DEC-02). No local repo, no queue.
             const uploaded = await uploadReceiptIfNeeded(newTransaction);
-            const { ok, status, error } = await authFetch('transactions', {
+            const { ok, data, status, error } = await authFetch('transactions', {
                 method: "POST",
                 body: JSON.stringify({ ...uploaded, categoryId: toApiCategoryId(uploaded.category?.id), userId: activeUserId }),
             });
@@ -214,6 +221,11 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
                 throw new Error(status !== 0 && error ? error : "Failed to save transaction. Please check your connection.");
             }
             if (transaction.dueId) await recordDueLink(newTransaction.id, transaction.dueId, activeUserId);
+            const createdRow = (Array.isArray(data) ? data[0] : data) as { id?: unknown } | null | undefined;
+            const serverId = typeof createdRow?.id === "string" && createdRow.id.length > 0 ? createdRow.id : null;
+            if (serverId && serverId !== newTransaction.id) {
+                await remapDueLink(newTransaction.id, serverId, activeUserId);
+            }
             await refreshFromApi();
             return;
         } catch (error) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { View, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
-import { Appbar, Text, Card, useTheme } from "react-native-paper";
+import { Appbar, Text, Card, Dialog, Button, useTheme } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,11 +36,13 @@ export default function TransactionDetails() {
 
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
+  const [resultDialog, setResultDialog] = useState({ visible: false, ok: true, message: "" });
 
   useEffect(() => {
     const found = transactions.find((t) => t.id === id);
+    if (!found && resultDialog.visible) return;
     setTransaction(found || null);
-  }, [id, transactions]);
+  }, [id, transactions, resultDialog.visible]);
 
   const isIncome = transaction?.type === "income";
   const amountColor = isIncome ? theme.colors.primary : theme.colors.error;
@@ -48,11 +50,25 @@ export default function TransactionDetails() {
   const isScheduled = Boolean(transaction?.dueId || transaction?.category?.id === "scheduled");
 
   const handleDelete = async () => {
-    if (transaction) {
+    if (!transaction) return;
+    try {
       await deleteTransaction(transaction.id);
       setDeleteDialogVisible(false);
-      safeGoBack(router);
+      setResultDialog({ visible: true, ok: true, message: "The transaction has been deleted." });
+    } catch (e) {
+      setDeleteDialogVisible(false);
+      setResultDialog({
+        visible: true,
+        ok: false,
+        message: e instanceof Error && e.message ? e.message : "Failed to delete transaction. Please check your connection.",
+      });
     }
+  };
+
+  const handleResultOk = () => {
+    const wasOk = resultDialog.ok;
+    setResultDialog({ ...resultDialog, visible: false });
+    if (wasOk) safeGoBack(router);
   };
 
   if (!transaction) {
@@ -208,6 +224,26 @@ export default function TransactionDetails() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteDialogVisible(false)}
       />
+      <Dialog
+        visible={resultDialog.visible}
+        onDismiss={handleResultOk}
+        style={{ maxWidth: 480, width: "90%", alignSelf: "center", marginHorizontal: 0 }}
+      >
+        <Dialog.Icon icon={resultDialog.ok ? "check-circle-outline" : "alert-circle-outline"} />
+        <Dialog.Title style={{ textAlign: "center" }}>
+          {resultDialog.ok ? "Deleted Successfully" : "Delete Failed"}
+        </Dialog.Title>
+        <Dialog.Content>
+          <Text variant="bodyMedium" style={{ textAlign: "center" }}>
+            {resultDialog.message}
+          </Text>
+        </Dialog.Content>
+        <Dialog.Actions style={{ justifyContent: "center" }}>
+          <Button mode="contained" onPress={handleResultOk}>
+            OK
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
     </View>
   );
 }
