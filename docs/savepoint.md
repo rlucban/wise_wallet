@@ -1120,3 +1120,49 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-03 `utils/learningGuideContent.test.ts`.** `REQUIRED_HEADINGS` → `TRIMMED_HEADINGS` (6) + `REMOVED_HEADINGS` (4); SPEC-71 ACC-01 now asserts exactly 7 blocks with removed headings absent, ACC-02 threshold 3,000 → 1,500; SPEC-73 ACC-05 updated to `length >= 1500` / `blocks.length === 7`; new SPEC-74 ACC-03 (topic split + App Guide title after Recommended Reading), ACC-04 (peach literals), ACC-05 (four SPEC-73 articles + detail mapping + audience count 6) × android/ios/web.
 - **D-04** this entry + `AGENTS.md` §3.
 - User-run verification pending per §1.3 (agent does not run CLIs): `npm test` (jest), `npm run lint`, `npx tsc --noEmit`, plus Expo Go (Android + iOS) + `expo export --platform web` (ACC-06/07).
+## 2026-10-10 — Spec 70 FINAL + implemented (SPEC-70 Manage Categories Header Sort)
+
+- **D-01** — `app/category-settings.tsx` ONLY: deleted the body sort `SegmentedButtons` row (Name/Type); added a right-side sort `Appbar.Action` (`icon="sort"`, `accessibilityLabel="Sort by"`) in `Appbar.Header` opening a Paper `Menu` (existing dep, same anchor pattern as `app/notifications.tsx`) with `Name`/`Type`/`Recent` mapping to the existing `sortBy` state (default `"name"`, active mode check-marked); Expenses/Income filter and `sortCategories(filtered, sortBy)` path byte-identical.
+- **D-02** — new `utils/manageCategoriesHeaderSort.test.ts`: ACC-01..ACC-04 × android/ios/web (single `SegmentedButtons` + no `value={sortBy}`; header action/menu/default/checks; three `setSortBy` mappings with no `authFetch`/`AsyncStorage` + helper pins; no `router.push` + filter path intact). Ordering determinism NOT re-tested — canonical home `utils/categorySort.test.ts` via SPEC-63 D-08 (§1.14).
+- `utils/categorySort.ts`, SPEC-63, package.json, storage keys, API contract, routes untouched. No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 70 v1.1 FINAL + implemented (Name sort direction)
+
+- **D-04** — `app/category-settings.tsx` ONLY: menu is now four items (`Name A-Z` with `leadingIcon="arrow-down"`, `Name Z-A` with `leadingIcon="arrow-up"`, `Type`, `Recent`); new in-memory `sortDir` state (`"asc"` default, Name-only, active check tracks the combination); call-site `sortCategories(filtered, sortBy, sortDir)`. `utils/categorySort.ts`: one additive optional param (`dir = "asc"`); only the `"name"` branch reverses on `"desc"`; `type`/`recent` reference no `dir`.
+- **D-05** — `utils/manageCategoriesHeaderSort.test.ts`: ACC-02/04 updated to the four-item/three-arg contract; new ACC-05 (arrows + dir-invisibility pin), ACC-06 (mapping pairs), ACC-07 (backward compat incl. live dir-ignored checks) × android/ios/web. `utils/categorySort.test.ts` byte-identical.
+- SPEC-63's document untouched (§1.14 — the v1.1 amendment is the canonical home for direction). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S04/S05 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 70 v1.2 FINAL + implemented (Direction-only menu)
+
+- **D-07** — `app/category-settings.tsx` ONLY: menu is now exactly two items (`A-Z` with `leadingIcon="arrow-down"`, `Z-A` with `leadingIcon="arrow-up"`, check tracks `sortDir` alone); `sortBy` state deleted (no dead mode state), call-site passes `"name"` literally; `CategorySortMode` import removed. Type/Recent items gone; fallback-to-default needs no migration (in-memory only).
+- **D-08** — `utils/manageCategoriesHeaderSort.test.ts`: superseded ACC-02/05/06 assertions replaced; ACC-01 + ACC-07 kept; new ACC-08 (two items, no `sortBy` identifier, literal call-site), ACC-09 (dir mapping pairs + zero footprint), ACC-10 (helper + `categorySort.test.ts` v1.1-identical pins) × android/ios/web.
+- `utils/categorySort.ts` and `utils/categorySort.test.ts` untouched by v1.2 (§1.14 — v1.2 amendment stays the canonical home). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S06/S07 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 71 FINAL + implemented (Settings modal rounded corners)
+
+- Ask expanded mid-spec (v0.1 → v0.2, pre-FINAL): Change Passcode only → Clear Data + Delete Account + Change Passcode with all boxes consistent. Approach flipped accordingly: targeted `Surface` override → two keys on shared `styles.dialog` (one diff, cannot drift).
+- **D-01** — `app/(tabs)/settings.tsx` ONLY: `styles.dialog` gains `borderRadius: 16` + `overflow: "hidden"` appended after the four existing keys (byte-identical). Zero JSX change — all three named modals plus every other consumer inherit the curve.
+- **D-02** — new `utils/settingsModalRadius.test.ts`: ACC-01 (six keys in block), ACC-02 (new pairs ×1 each in file; syncCard `borderRadius: 8` intact), ACC-03 (exact six-key list; SPEC-65 pins intact) × android/ios/web.
+- §1.14 overlap recorded in spec: SPEC-26 keeps width/alignSelf, SPEC-65 keeps margin rule, SPEC-71 owns radius/overflow; neither document edited; SPEC-65 guards verified unaffected (toContain assertions, no shape pins).
+- Test-wording refinement (disclosed, zero behavior difference): FINAL ACC-02 text says the bare words occur once each, but `borderRadius: 8` pre-exists on syncCard — the guard pins the NEW pairs (`borderRadius: 16`, `overflow: "hidden"`) at ×1 each, which is the spec's evident intent (CON-03/CON-04). No commit.
+- Repair (test-only, user-pasted jest): ACC-03 failed 3/3 — `dialogBlock` sliced from `dialog: {`, so the key regex captured the block label itself. Fixed the slice to start after the opening brace; D-01 untouched (ACC-01/02 were already green). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (Expo Go Android/iOS + web export) remain pending per `AGENTS.md` §1.3. No commit.
+
+---
+
+## 2026-10-10 — Spec 72 FINAL + implemented (Hide Repair Transaction Duplicates)
+
+- **D-01** — `app/(tabs)/settings.tsx` ONLY: the Repair button guard `{!isLocal && (` → `{false && (` + one-line SPEC-72 comment. Button JSX, `previewRepair`/`executeRepair`, `repairPreview` state, and the confirm dialog byte-identical — one-line revert restores the section.
+- **D-02** — new `utils/hideRepairSection.test.ts`: ACC-01 (single `{false && (` gate + intact button incl. SPEC-72 comment), ACC-02 (flow logic present), ACC-03 (gate line has no Platform/isLocal; Backup/Export/Clear rows intact) × android/ios/web. Gate uniqueness pre-verified by source scan.
+- SPEC-45's document untouched (§1.14 — runbook still NOT YET RUN; only the entry point is hidden). No commit.
+- Editor diagnostics clean. User-run `npx jest`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01..S03 (Expo Go Android/iOS Cloud/Local + web export) remain pending per `AGENTS.md` §1.3. No commit.
+- Repair (lint-driven, user-pasted output): literal `{false && (` trips `no-constant-binary-expression` (`1387:14`). Replaced with module-scope `const SHOW_REPAIR_SECTION = false;` + `{SHOW_REPAIR_SECTION && (` — behavior-identical, still one-line revert, references intact. CON-03/ACC-01 wording + D-02 guard updated to the const gate (spec stays v1.0 FINAL — same normative intent). No commit.
