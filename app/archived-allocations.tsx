@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
-import { View, ScrollView, Alert } from "react-native";
-import { Appbar, Text, Card, IconButton, Snackbar, useTheme } from "react-native-paper";
+import { View, ScrollView } from "react-native";
+import { Appbar, Text, Card, IconButton, useTheme } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
 import { safeGoBack } from "../utils/backNavigation";
 import { useSavings } from "../hooks/useSavings";
@@ -16,7 +16,7 @@ export default function ArchivedAllocationsScreen() {
     const { formatAmount } = useCurrencyActions();
 
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [feedback, setFeedback] = useState<{ title: string; message: string; severity: "success" | "error" } | null>(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -37,9 +37,9 @@ export default function ArchivedAllocationsScreen() {
     const handleRestoreItem = async (id: string) => {
         try {
             await updateItem(id, { isArchived: false });
-            setToastMessage("Allocation restored");
+            setFeedback({ title: "Success", message: "Allocation restored", severity: "success" });
         } catch {
-            Alert.alert("Error", "Failed to restore allocation.");
+            setFeedback({ title: "Error", message: "Failed to restore allocation.", severity: "error" });
         }
     };
 
@@ -56,9 +56,9 @@ export default function ArchivedAllocationsScreen() {
 
         try {
             await deleteItem(id);
-            setToastMessage("Archived allocation deleted permanently");
+            setFeedback({ title: "Success", message: "Allocation deleted", severity: "success" });
         } catch {
-            Alert.alert("Error", "Failed to delete allocation.");
+            setFeedback({ title: "Error", message: "Failed to delete allocation. Please try again.", severity: "error" });
         }
     };
 
@@ -190,13 +190,17 @@ export default function ArchivedAllocationsScreen() {
                 onCancel={() => setDeleteTarget(null)}
             />
 
-            <Snackbar
-                visible={!!toastMessage}
-                onDismiss={() => setToastMessage(null)}
-                duration={3000}
-            >
-                {toastMessage}
-            </Snackbar>
+            <ConfirmDialog
+                visible={!!feedback}
+                title={feedback?.title ?? ""}
+                message={feedback?.message ?? ""}
+                confirmLabel="OK"
+                hideCancel
+                icon={feedback?.severity === "error" ? "alert-circle-outline" : "check-circle-outline"}
+                confirmColor={feedback?.severity === "error" ? theme.colors.error : theme.colors.primary}
+                onConfirm={() => setFeedback(null)}
+                onCancel={() => setFeedback(null)}
+            />
         </View>
     );
 }

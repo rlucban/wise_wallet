@@ -111,9 +111,12 @@ CREATE TABLE "savingsItems" (
   "userId" UUID REFERENCES "users"("id") ON DELETE CASCADE,
   "title" TEXT NOT NULL,
   "balance" NUMERIC DEFAULT 0,
+  "target_amount" NUMERIC,
   "icon" TEXT,
   "color" TEXT,
-  "createdAt" TIMESTAMPTZ DEFAULT NOW()
+  "isArchived" BOOLEAN NOT NULL DEFAULT FALSE,
+  "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- 7. Payment Methods (lookup)
@@ -241,3 +244,25 @@ FOR DELETE USING (
 );
 
 -- ─── DONE ───────────────────────────────────────────────────
+
+-- ============================================================
+-- SPEC-73 MIGRATION RUNBOOK (LIVE DATABASES — do NOT re-run this
+-- file; use the ALTER statements below against the deployed DB)
+--
+-- Existing live "savingsItems" tables predate isArchived,
+-- target_amount and updatedAt. Add them (idempotent), backfill
+-- updatedAt for rows created before this migration, then redeploy
+-- wallet-api (D-B-02) BEFORE shipping the client (SPEC-73 CON-08).
+--
+-- ALTER TABLE "savingsItems" ADD COLUMN IF NOT EXISTS "target_amount" NUMERIC;
+-- ALTER TABLE "savingsItems" ADD COLUMN IF NOT EXISTS "isArchived" BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE "savingsItems" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW();
+-- UPDATE "savingsItems" SET "updatedAt" = NOW() WHERE "updatedAt" IS NULL;
+--
+-- Rollback (loses archive/goal/updatedAt metadata; client merge
+-- guard keeps working — SPEC-73 CON-05):
+--
+-- ALTER TABLE "savingsItems" DROP COLUMN IF EXISTS "isArchived";
+-- ALTER TABLE "savingsItems" DROP COLUMN IF EXISTS "target_amount";
+-- ALTER TABLE "savingsItems" DROP COLUMN IF EXISTS "updatedAt";
+-- ============================================================

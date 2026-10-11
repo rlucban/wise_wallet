@@ -9,6 +9,8 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   icon?: string;
   loading?: boolean;
+  hideCancel?: boolean;
+  confirmColor?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -21,6 +23,8 @@ export default function ConfirmDialog({
   cancelLabel = "Cancel",
   icon = "alert-outline",
   loading = false,
+  hideCancel = false,
+  confirmColor,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -40,12 +44,14 @@ export default function ConfirmDialog({
         </Text>
       </Dialog.Content>
       <Dialog.Actions style={{ justifyContent: "center" }}>
-        <Button onPress={onCancel} disabled={loading}>
-          {cancelLabel}
-        </Button>
+        {!hideCancel && (
+          <Button onPress={onCancel} disabled={loading}>
+            {cancelLabel}
+          </Button>
+        )}
         <Button
           mode="contained"
-          buttonColor={theme.colors.error}
+          buttonColor={confirmColor ?? theme.colors.error}
           onPress={onConfirm}
           loading={loading}
           disabled={loading}

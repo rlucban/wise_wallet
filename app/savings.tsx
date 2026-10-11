@@ -8,6 +8,7 @@ import { useSavings } from "../hooks/useSavings";
 import { useCurrencyActions } from "../context/CurrencyContext";
 import { useTransactions } from "../hooks/useTransactions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
+import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 import { useUserProfile } from "../context/UserProfileContext";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -24,7 +25,9 @@ export default function SavingsScreen() {
     const totalReserved = useMemo(() => items.reduce((sum, g) => sum + g.balance, 0), [items]);
     const availableBalance = useMemo(() => {
         const initialBalance = Number(profile?.initialBalance || 0);
-        const totalIncome = transactions.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+        const totalIncome = transactions
+            .filter((t) => t.type === "income" && t.note !== "Initial account setup" && t.category?.id !== OPENING_BALANCE_CATEGORY_ID)
+            .reduce((s, t) => s + t.amount, 0);
         const totalExpense = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
         return initialBalance + totalIncome - totalExpense - totalReserved;
     }, [profile, transactions, totalReserved]);
@@ -55,6 +58,7 @@ export default function SavingsScreen() {
     const [transferAmount, setTransferAmount] = useState("");
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
+    const [feedback, setFeedback] = useState<{ title: string; message: string; severity: "success" | "error" } | null>(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -225,15 +229,20 @@ export default function SavingsScreen() {
         setDeleteTarget(null);
         if (!item) return;
 
-        await deleteItem(id);
+        try {
+            await deleteItem(id);
+            setFeedback({ title: "Success", message: "Allocation deleted", severity: "success" });
+        } catch {
+            setFeedback({ title: "Error", message: "Failed to delete allocation. Please try again.", severity: "error" });
+        }
     };
 
     const handleArchiveItem = async (id: string) => {
         try {
             await updateItem(id, { isArchived: true });
-            setToastMessage("Allocation archived");
+            setFeedback({ title: "Success", message: "Allocation archived", severity: "success" });
         } catch {
-            Alert.alert("Error", "Failed to archive allocation.");
+            setFeedback({ title: "Error", message: "Failed to archive allocation.", severity: "error" });
         }
     };
 
@@ -403,7 +412,7 @@ export default function SavingsScreen() {
                                                             </View>
                                                         </View>
                                                         <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 10 }}>
-                                                            {formatAmount(currentBalance)} / {formatAmount(target)} \u2022 100% Reached
+                                                            {formatAmount(currentBalance)} / {formatAmount(target)} 100% Reached
                                                         </Text>
 
                                                         {/* Full Progress Bar */}
@@ -464,7 +473,7 @@ export default function SavingsScreen() {
                     <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
                         <Card.Content style={{ padding: 20 }}>
                             <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Transfer Money In</Text>
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>This creates an expense transaction \u2014 money leaves your main balance.</Text>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Allocated money deducted and reserved from your main balance.</Text>
                             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
                                 Available Balance: {formatAmount(availableBalance)}
                             </Text>
@@ -501,7 +510,7 @@ export default function SavingsScreen() {
                                 <Text variant="titleLarge" style={{ color: theme.colors.onSurface }}>Transfer Money Out</Text>
                                 <IconButton icon="close" size={24} onPress={closeTransferOutModal} />
                             </View>
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>This creates an income transaction \u2014 money returns to your main balance.</Text>
+                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>Allocated money returns to your main balance.</Text>
                             <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
                                 Available balance: {formatAmount(selectedItem?.balance || 0)}
                             </Text>
@@ -536,6 +545,18 @@ export default function SavingsScreen() {
                     confirmLabel="Delete & Transfer"
                     onConfirm={confirmDelete}
                     onCancel={() => setDeleteTarget(null)}
+                />
+
+                <ConfirmDialog
+                    visible={!!feedback}
+                    title={feedback?.title ?? ""}
+                    message={feedback?.message ?? ""}
+                    confirmLabel="OK"
+                    hideCancel
+                    icon={feedback?.severity === "error" ? "alert-circle-outline" : "check-circle-outline"}
+                    confirmColor={feedback?.severity === "error" ? theme.colors.error : theme.colors.primary}
+                    onConfirm={() => setFeedback(null)}
+                    onCancel={() => setFeedback(null)}
                 />
             </Portal>
 
