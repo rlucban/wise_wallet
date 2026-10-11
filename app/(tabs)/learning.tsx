@@ -85,6 +85,15 @@ export default function LearningScreen() {
         });
     }, [activeFilter, searchQuery]);
 
+    const recommendedResources = useMemo(
+        () => filteredResources.filter((item) => item.topic !== "App Guide"),
+        [filteredResources]
+    );
+    const appGuideResources = useMemo(
+        () => filteredResources.filter((item) => item.topic === "App Guide"),
+        [filteredResources]
+    );
+
     const getPastelTagStyle = (topic: string, theme: ReturnType<typeof useThemeData>["theme"]) => {
         const colors = theme?.colors ?? {};
         const c = colors as unknown as Record<string, string>;
@@ -104,10 +113,71 @@ export default function LearningScreen() {
                 return { backgroundColor: secondaryBg, textColor: secondaryText };
             case "Debt":
                 return { backgroundColor: tertiaryBg, textColor: tertiaryText };
+            case "App Guide":
+                return { backgroundColor: "#FFDAB9", textColor: "#5D4037" };
             default:
                 return { backgroundColor: colors.surfaceVariant, textColor: colors.onSurfaceVariant };
         }
     };
+
+    const renderArticleList = (items: typeof LEARNING_RESOURCES) => (
+        <View style={isDesktop ? styles.desktopGrid : styles.mobileList}>
+            {items.map((item) => {
+                const tagStyle = getPastelTagStyle(item.topic, theme);
+                const isBookmarked = bookmarkedIds.has(item.id);
+
+                return (
+                    <View key={item.id} style={isDesktop ? styles.desktopCardWrapper : styles.mobileCardWrapper}>
+                        <Card
+                            style={styles.articleCard}
+                            onPress={() => router.push({ pathname: "/(tabs)/learning-detail", params: { id: item.id } })}
+                        >
+                            <Card.Content style={styles.articleRow}>
+                                <View style={[styles.iconBox, { backgroundColor: theme.colors.primaryContainer }]}>
+                                    <MaterialCommunityIcons name={item.icon as string} size={24} color={theme.colors.primary} />
+                                </View>
+                                <View style={styles.articleBody}>
+                                    <Text variant="bodyLarge" style={styles.articleTitle}>{item.title}</Text>
+                                    <Text variant="bodySmall" style={[styles.articleDesc, { color: theme.colors.onSurfaceVariant }]}>
+                                        {item.description}
+                                    </Text>
+                                    <View style={styles.badgeRow}>
+                                        <View style={[styles.badge, { backgroundColor: tagStyle.backgroundColor }]}>
+                                            <Text variant="labelSmall" style={{ color: tagStyle.textColor, fontWeight: "600" }}>
+                                                {item.topic}
+                                            </Text>
+                                        </View>
+                                        {item.audience && (
+                                            <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
+                                                <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600" }}>
+                                                    {item.audience}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+                                <View style={{ alignItems: "center" }}>
+                                    <IconButton
+                                        icon={activeArticleId === item.id ? "square" : "volume-high"}
+                                        iconColor={theme.colors.primary}
+                                        size={22}
+                                        style={activeArticleId === item.id ? { backgroundColor: theme.colors.primaryContainer } : undefined}
+                                        onPress={() => handlePlayAudio(item)}
+                                    />
+                                    <IconButton
+                                        icon={isBookmarked ? "bookmark" : "bookmark-outline"}
+                                        iconColor={isBookmarked ? theme.colors.primary : theme.colors.outline}
+                                        size={22}
+                                        onPress={() => toggleBookmark(item.id)}
+                                    />
+                                </View>
+                            </Card.Content>
+                        </Card>
+                    </View>
+                );
+            })}
+        </View>
+    );
 
     return (
         <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
@@ -172,11 +242,11 @@ export default function LearningScreen() {
                         <View style={styles.resultsHeader}>
                             <Text variant="titleMedium" style={styles.sectionTitle}>Recommended Reading</Text>
                             <Text variant="labelMedium" style={{ color: theme.colors.outline }}>
-                                Showing {filteredResources.length} {filteredResources.length === 1 ? "article" : "articles"}
+                                Showing {recommendedResources.length} {recommendedResources.length === 1 ? "article" : "articles"}
                             </Text>
                         </View>
 
-                        {filteredResources.length === 0 ? (
+                        {recommendedResources.length === 0 ? (
                             <Card style={[styles.emptyCard, { borderColor: theme.colors.outline, backgroundColor: theme.colors.surface }]}>
                                 <Card.Content style={styles.emptyContent}>
                                     <MaterialCommunityIcons name="book-open-page-variant-outline" size={40} color={theme.colors.outline} />
@@ -186,64 +256,22 @@ export default function LearningScreen() {
                                 </Card.Content>
                             </Card>
                         ) : (
-                            <View style={isDesktop ? styles.desktopGrid : styles.mobileList}>
-                                {filteredResources.map((item) => {
-                                    const tagStyle = getPastelTagStyle(item.topic, theme);
-                                    const isBookmarked = bookmarkedIds.has(item.id);
-
-                                    return (
-                                        <View key={item.id} style={isDesktop ? styles.desktopCardWrapper : styles.mobileCardWrapper}>
-                                            <Card
-                                                style={styles.articleCard}
-                                                onPress={() => router.push({ pathname: "/(tabs)/learning-detail", params: { id: item.id } })}
-                                            >
-                                                <Card.Content style={styles.articleRow}>
-                                                    <View style={[styles.iconBox, { backgroundColor: theme.colors.primaryContainer }]}>
-                                                        <MaterialCommunityIcons name={item.icon as string} size={24} color={theme.colors.primary} />
-                                                    </View>
-                                                    <View style={styles.articleBody}>
-                                                        <Text variant="bodyLarge" style={styles.articleTitle}>{item.title}</Text>
-                                                        <Text variant="bodySmall" style={[styles.articleDesc, { color: theme.colors.onSurfaceVariant }]}>
-                                                            {item.description}
-                                                        </Text>
-                                                        <View style={styles.badgeRow}>
-                                                            <View style={[styles.badge, { backgroundColor: tagStyle.backgroundColor }]}>
-                                                                <Text variant="labelSmall" style={{ color: tagStyle.textColor, fontWeight: "600" }}>
-                                                                    {item.topic}
-                                                                </Text>
-                                                            </View>
-                                                            {item.audience && (
-                                                                <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
-                                                                    <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600" }}>
-                                                                        {item.audience}
-                                                                    </Text>
-                                                                </View>
-                                                            )}
-                                                        </View>
-                                                    </View>
-                                                    <View style={{ alignItems: "center" }}>
-                                                        <IconButton
-                                                            icon={activeArticleId === item.id ? "square" : "volume-high"}
-                                                            iconColor={theme.colors.primary}
-                                                            size={22}
-                                                            style={activeArticleId === item.id ? { backgroundColor: theme.colors.primaryContainer } : undefined}
-                                                            onPress={() => handlePlayAudio(item)}
-                                                        />
-                                                        <IconButton
-                                                            icon={isBookmarked ? "bookmark" : "bookmark-outline"}
-                                                            iconColor={isBookmarked ? theme.colors.primary : theme.colors.outline}
-                                                            size={22}
-                                                            onPress={() => toggleBookmark(item.id)}
-                                                        />
-                                                    </View>
-                                                </Card.Content>
-                                            </Card>
-                                        </View>
-                                    );
-                                })}
-                            </View>
+                            renderArticleList(recommendedResources)
                         )}
                     </View>
+
+                    {/* App Guide Section */}
+                    {appGuideResources.length > 0 && (
+                        <View style={styles.section}>
+                            <View style={styles.resultsHeader}>
+                                <Text variant="titleMedium" style={styles.sectionTitle}>App Guide</Text>
+                                <Text variant="labelMedium" style={{ color: theme.colors.outline }}>
+                                    Showing {appGuideResources.length} {appGuideResources.length === 1 ? "article" : "articles"}
+                                </Text>
+                            </View>
+                            {renderArticleList(appGuideResources)}
+                        </View>
+                    )}
                 </View>
             </ScrollView>
         </View>
