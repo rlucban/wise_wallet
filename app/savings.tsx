@@ -412,7 +412,7 @@ export default function SavingsScreen() {
                                                             </View>
                                                         </View>
                                                         <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 10 }}>
-                                                            {formatAmount(currentBalance)} / {formatAmount(target)} \u2022 100% Reached
+                                                            {formatAmount(currentBalance)} / {formatAmount(target)} 100% Reached
                                                         </Text>
 
                                                         {/* Full Progress Bar */}
