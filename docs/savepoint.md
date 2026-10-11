@@ -1669,3 +1669,65 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-25** — `app/passcode-screen.tsx` ONLY (3 hunks on their file): import drops unused KAV/Platform + gains ScrollView (lint was red); `hiddenInput` gains `top: 0` (auto-scroll kill); ScrollView wrap inside the Pressable (scroll fallback, tap-area + look untouched). Their design byte-identical otherwise.
 - **D-26** — `utils/lockScreenEntryUi.test.ts` re-baselined to disk reality (all pins verified line-by-line against the adopted file first; two whitespace-trap asserts rewritten split-form). No new test file.
 - Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/lockScreenEntryUi.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S17/S18 (phone: centered always, keyboard-up reachable; Android + web). No commit.
+
+## 2026-10-11 — Spec 92 FINAL + implemented (Login PIN error centered)
+
+- **Spec.** `specs/92-login-pin-error-centered.md` FINAL per user call 2026-10-11 ("final" → "code this for me"; PIN only).
+- **D-01** — `app/login.tsx` ONLY: PIN `HelperText` gains `style={{ textAlign: "center" }}`. Strings, logic, email error, flow byte-identical.
+- **D-02** — new `utils/loginPinErrorCentered.test.ts`: ACC-01 (PIN centered, email unstyled, no left-align), ACC-02 (strings/logic/flow intact), ACC-03 (email + register link + input props intact) × android/ios/web. Self-caught pre-handoff: first-draft ACC-03 asserted no `Platform.select`, but login already uses it (SPEC-06) — replaced with input-prop pins.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/loginPinErrorCentered.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (centered readable error; Expo Go + web). No commit.
+
+## 2026-10-11 — Spec 93 FINAL + implemented (Make Online dialog centered)
+
+- **Spec.** `specs/93-make-online-dialog-centered.md` FINAL per user call 2026-10-11 ("final + code this for me").
+- **Why:** phone screenshot — bare Paper Dialog sat low/cut with keyboard open (no modal chrome at all).
+- **D-01** — `app/(tabs)/settings.tsx` `showPinVerificationDialog` block ONLY: NativeModal (transparent/fade/overFullScreen, close-only dismiss mirroring `onDismiss`) + scrim View + tap-outside Pressable + KAV (iOS-padding/else-height, flex) + ScrollView (flex/bounded/persistTaps) + `Surface` (Dialog root replaced — no modal-in-modal; Title/Content/Actions byte-identical).
+- **D-02** — new `utils/makeOnlineDialogCentered.test.ts`: ACC-01 (chrome pins), ACC-02 (both titles/copy/inputs/actions intact), ACC-03 (other dialogs + flows intact) × android/ios/web.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/makeOnlineDialogCentered.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (centered + reachable with keyboard up, both titles; Expo Go + web). No commit.
+
+## 2026-10-11 — Spec 94 FINAL + implemented (Create Cloud Account dialog centered)
+
+- **Spec.** `specs/94-create-cloud-account-dialog-centered.md` FINAL per user call 2026-10-11 ("mark SPEC-94 FINAL"). Sibling of SPEC-93: phone screenshot proved the `Create Cloud Account` dialog sat low/bottom-cut (bare Paper Dialog, same class SPEC-93 fixed for the verify dialog).
+- **D-01** — `app/(tabs)/settings.tsx` `showNewAccountDialog` block ONLY: NativeModal (transparent/fade/overFullScreen, close-only `onRequestClose` mirroring `onDismiss`) + scrim View + tap-outside Pressable + KAV (iOS-padding/else-height, flex) + ScrollView (flex/bounded/persistTaps) + `Surface` (Dialog root replaced — no modal-in-modal; both titles/copies/note/buttons/handlers byte-identical). No import change (all four already at line 2). Backup/conflict dialogs byte-identical.
+- **D-02** — new `utils/createCloudAccountDialogCentered.test.ts`: ACC-01 (chrome pins), ACC-02 (both titles/copies/note/actions intact), ACC-03 (verify/backup/conflict + handlers intact) × android/ios/web. `blockOf()` anchors via `lastIndexOf("<NativeModal", anchor)` (SPEC-93 test-harness lesson, also repaired in `makeOnlineDialogCentered.test.ts` the same session).
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/createCloudAccountDialogCentered.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (centered, both buttons reachable, both titles; Expo Go + web). No commit.
+
+## 2026-10-11 — Spec 95 FINAL + implemented (Sync Conflict dialog centered)
+
+- **Spec.** `specs/95-sync-conflict-dialog-centered.md` FINAL per user call 2026-10-11 ("mark SPEC-95 FINAL"). Sibling of SPEC-93/94: phone screenshot proved the `Sync Conflict` dialog sat low/bottom-cut (bare Paper Dialog, same class fixed for the verify + new-account dialogs).
+- **D-01** — `app/(tabs)/settings.tsx` `showConflictDialog` block ONLY: NativeModal (transparent/fade/overFullScreen, close-only `onRequestClose` mirroring `onDismiss`) + scrim View + tap-outside Pressable + KAV (iOS-padding/else-height, flex) + ScrollView (flex/bounded/persistTaps) + `Surface` (Dialog root replaced — no modal-in-modal; title/copy/column-Actions layout/handlers/loading/disabled byte-identical, odd indents preserved). No import change. Verify/new-account/backup dialogs byte-identical.
+- **D-02** — new `utils/syncConflictDialogCentered.test.ts`: ACC-01 (chrome pins), ACC-02 (title/copy/column layout/all four actions intact), ACC-03 (verify/new-account/backup + handlers intact) × android/ios/web. `blockOf()` anchors via `lastIndexOf("<NativeModal", anchor)` (SPEC-93 lesson).
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/syncConflictDialogCentered.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (centered, all four actions reachable; Expo Go + web). No commit. Remaining bare dialog: `showBackupDialog` (Enable Auto-save) — own spec when called.
+
+## 2026-10-11 — Spec 96 FINAL + implemented (Make-Online migration identity swap)
+
+- **Spec.** `specs/96-make-online-migration-identity-swap.md` FINAL per user call 2026-10-11 ("mark SPEC-96 FINAL"; silent-swap direction + draft authorized in the same turn).
+- **Why:** post-migrate console error `The screen '(tabs)' was removed natively but didn't get removed from JS state` (`useDismissedRouteError`) — `createNewAccountAndMigrate` ended with `await logout()` (`setActiveUserId(null)` → guard `router.replace('/login')` → native removes `(tabs)`) then `await login(...)` (guard `router.replace('/')` → JS re-adds it); the two `setTimeout(0)` replaces raced. Migration itself succeeded; the defect was navigation churn.
+- **D-01** — `context/AuthContext.tsx` ONLY (3 hunks): `AuthActions.switchIdentity` slot + memoized `switchIdentity` (login-identical writes, zero `setActiveUserId(null)` in path) + actions-memo entry. `login`/`logout`/restore/failure byte-identical.
+- **D-02** — `app/(tabs)/settings.tsx` ONLY (2 hunks): destructure gains `switchIdentity`; migrate block calls `await switchIdentity(newUserId, newToken)` at the old `logout()` site and drops the trailing `await login(...)`. All intermediate steps byte-identical.
+- **Disclosed ordering nuance (SPEC-35 precedent):** the swap sits at the old `logout()` site (top), not the old `login()` site (bottom) — required, since any null transition reintroduces the bug. Consequence: `setSetting('autoBackup','true')` now resolves under `user_{newId}_settings` instead of `default_settings` (old code wrote it while signed out). Strict improvement in the direction of correctness; final observable state unchanged (profile-merge path rewrites the same value). Uploads (pre-swap, old token) and refetches (post-swap, new id — same as post-`login()` before) identical.
+- **D-03** — new `utils/migrationIdentitySwap.test.ts`: ACC-01 (swap writes + no-null pin), ACC-02 (swap-in + steps intact + bounce lines absent), ACC-03 (login/logout/guard/other `logout()` callers intact, no `usePreventRemove`/LogBox) × android/ios/web.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/migrationIdentitySwap.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (migrate on phone → success alert, dashboard shows migrated data, LogBox clean; Expo Go + web). No commit.
+
+## 2026-10-11 — Spec 96 test repair (migrateBlockOf cut before the refetches; app untouched)
+
+- User-run jest: ACC-02 red ×3 (ACC-01/03 green — app already in FINAL state). `migrateBlockOf()` ended the slice at `"migrated successfully"`, but the refetch trio sits AFTER the success alert, so `refetchTx()` could never be in the block (same slice-trap family as the SPEC-93 `blockOf` repair; the received dump shows the swap + all steps correct on disk).
+- Repair (test-only, same normative intent — spec stays FINAL v1.0): slice now ends at the try's `} catch`, which follows the refetch trio. No app change. No commit.
+- Re-run pending per `AGENTS.md` §1.3: `npx jest utils/migrationIdentitySwap.test.ts` must go 9/9.
+
+## 2026-10-11 — Overlap repair #2 (stale count pins vs FINAL SPEC-93/94/95/96; app untouched)
+
+- User-run full `npx jest`: 61/63 suites green (1179/1188); ONLY `clearDataKeyboard` (6) + `getCache` (3) red — both stale literal counts overtaken by already-FINAL work, same overlap family as the SPEC-89 v1.2 repair. App correct throughout.
+- `clearDataKeyboard.test.ts`: pinned 2 KAV wrappers (Clear-Data PIN + change), but FINAL SPEC-93/94/95 added three more same-pattern wrappers (verify + new-account + conflict) → 5 on disk; pinned bare-`<Dialog visible=` > 3, but the three wraps replaced those roots → 2 left (backup + message). Repair (same normative intent): counts 2→5 / >3→exactly-2 (naming both remaining bare dialogs), plus block-scoped proof each of the three new wrappers lives ONLY in its own dialog (open+close+Surface); anti-sprawl intent preserved, now naming all five known dialogs. ACC-02 renamed (was "exactly one wrapper" since v1.0).
+- `getCache.test.ts` ACC-62-02: pinned `wipeGetCache();` ×2 in AuthContext (login + logout), but FINAL SPEC-96 added the third in `switchIdentity`. Repair (same normative intent — wipe on every identity transition): count 2→3 + `const switchIdentity` pin.
+- Disclosure (v1.2 precedent, §1.14): SPEC-57's + SPEC-62's documents still carry the old counts — stale text, left untouched; say the word and I'll formalize as SPEC-57 v1.5 / SPEC-62 v1.1. No app change. No commit.
+- Re-run pending per `AGENTS.md` §1.3: full `npx jest` must go 63/63 (worker force-exit note is a pre-existing teardown warning, unrelated).
+
+## 2026-10-11 — Spec 97 FINAL + implemented (Transaction Details header size parity)
+
+- **Spec.** `specs/97-transaction-details-header-size-parity.md` FINAL per user call 2026-10-11 ("mark SPEC-97 FINAL"; plain-string direction + draft authorized in the same turn).
+- **Why:** web screenshot — "Transaction Details" header title at body size while all 15 other headers render Paper's header size. Root cause: the ONLY custom-`<Text>` title in `app/` (`transaction-details.tsx:105-114`, weight-only style, no `fontSize`).
+- **D-01** — `app/transaction-details.tsx` ONLY (1 hunk): `Appbar.Content` title → plain string. Import unchanged (`Text` used across the body — DEC-02 verified, no import edit shipped).
+- **D-02** — new `utils/transactionDetailsHeaderSize.test.ts`: ACC-01 (plain-string pin + custom-element absence), ACC-02 (chrome/body intact + header-scoped no-`fontSize`), ACC-03 (import line + two peer headers intact) × android/ios/web.
+- **Self-caught pre-handoff (disclosed):** first-draft ACC-02 pinned file-wide no-`fontSize`, but the stylesheet holds two pre-existing values (`:300`, `:306`) — re-scoped to the header block and aligned the spec ACC-02 text before handoff (same normative intent).
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/transactionDetailsHeaderSize.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (title size matches Scheduled/Allocations/Transaction History side by side; Expo Go + web). No commit.

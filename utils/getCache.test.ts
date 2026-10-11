@@ -29,7 +29,10 @@ function runSuite(os: "android" | "ios" | "web"): void {
             expect(client).toContain("skipCache?: boolean");
             expect(client).toContain("!opts.skipCache");
             const auth = readRepo("context/AuthContext.tsx");
-            expect((auth.match(/wipeGetCache\(\);/g) ?? []).length).toBe(2);
+            // Wipe on every identity transition: login + logout (SPEC-62) +
+            // switchIdentity (SPEC-96, the null-free migration swap).
+            expect((auth.match(/wipeGetCache\(\);/g) ?? []).length).toBe(3);
+            expect(auth).toContain("const switchIdentity");
             const dues = readRepo("app/dues.tsx");
             expect(dues).toContain("onRefresh={() => refetch({ skipCache: true })}");
         });

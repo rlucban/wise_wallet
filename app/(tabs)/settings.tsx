@@ -138,7 +138,7 @@ export default function SettingsScreen() {
   const { isDarkMode, toggleTheme } = useAppTheme();
   const { profile, updateProfile, resetProfileToDefaults, refetch: refetchProfile } = useUserProfile();
   const { isPasscodeEnabled, setIsPasscodeEnabled, setPasscode, verifyPasscode, lastPinVerifiedAt, markPinVerified } = usePasscode();
-  const { activeUserId, logout, login } = useAuth();
+  const { activeUserId, logout, login, switchIdentity } = useAuth();
   const { refetch: refetchTx } = useTransactionsActions();
   const { refetch: refetchCats } = useCategoriesActions();
   const repos = useRepositories();
@@ -490,14 +490,15 @@ export default function SettingsScreen() {
          }).catch(() => {});
        }
 
-       await logout();
-        await addUser(newUserId, profile?.name || "", pinVerificationInput);
-        // SPEC-59 D-59-04: the new cloud identity is the migrated profile name.
-        await AsyncStorage.setItem("authName", profile?.name || "");
-       await saveUserProfile({ name: profile?.name || "", isFirstRun: false, initialBalance: 0 }, newUserId);
-       await initDb(newUserId);
-       await setSetting('autoBackup', 'true');
-       await login(newUserId, newToken);
+        // SPEC-96: null-free swap — same stored outcome as logout()+login()
+        // with no intermediate signed-out state (no guard trip, no navigation).
+        await switchIdentity(newUserId, newToken);
+         await addUser(newUserId, profile?.name || "", pinVerificationInput);
+         // SPEC-59 D-59-04: the new cloud identity is the migrated profile name.
+         await AsyncStorage.setItem("authName", profile?.name || "");
+        await saveUserProfile({ name: profile?.name || "", isFirstRun: false, initialBalance: 0 }, newUserId);
+        await initDb(newUserId);
+        await setSetting('autoBackup', 'true');
 
        alert("New cloud account created and data migrated successfully!");
        await Promise.all([
@@ -1599,7 +1600,25 @@ if (!serverOk && !localOk) {
           onCancel={() => setShowRestoreConfirm(false)}
         />
 
-        <Dialog visible={showPinVerificationDialog} onDismiss={() => setShowPinVerificationDialog(false)} style={styles.dialog}>
+        <NativeModal
+          visible={showPinVerificationDialog}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={() => setShowPinVerificationDialog(false)}
+        >
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.32)" }}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowPinVerificationDialog(false)} />
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={{ flex: 1, width: "100%" }}
+            >
+            <ScrollView
+              style={{ flex: 1, width: "100%" }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", width: "100%" }}
+              keyboardShouldPersistTaps="handled"
+            >
+            <Surface elevation={3} style={styles.dialog}>
           <Dialog.Title>{isLocal ? "Make Online" : "Verify Account PIN"}</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
@@ -1625,9 +1644,31 @@ if (!serverOk && !localOk) {
             <Button onPress={() => { setShowPinVerificationDialog(false); setPinVerificationInput(""); setVerificationError(""); }}>Cancel</Button>
             <Button onPress={verifyPinForSync} loading={isSyncing} disabled={isSyncing}>Verify & Sync</Button>
           </Dialog.Actions>
-        </Dialog>
+            </Surface>
+            </ScrollView>
+            </KeyboardAvoidingView>
+          </View>
+        </NativeModal>
 
-        <Dialog visible={showNewAccountDialog} onDismiss={() => setShowNewAccountDialog(false)} style={styles.dialog}>
+        <NativeModal
+          visible={showNewAccountDialog}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={() => setShowNewAccountDialog(false)}
+        >
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.32)" }}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowNewAccountDialog(false)} />
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={{ flex: 1, width: "100%" }}
+            >
+            <ScrollView
+              style={{ flex: 1, width: "100%" }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", width: "100%" }}
+              keyboardShouldPersistTaps="handled"
+            >
+            <Surface elevation={3} style={styles.dialog}>
           <Dialog.Title>{isLocal ? "Create Cloud Account" : "PIN Doesn't Match"}</Dialog.Title>
           <Dialog.Content>
             <Text style={{ marginBottom: 16 }}>
@@ -1644,7 +1685,11 @@ if (!serverOk && !localOk) {
             <Button onPress={() => setShowNewAccountDialog(false)}>Cancel</Button>
             <Button onPress={createNewAccountAndMigrate} loading={isSyncing} disabled={isSyncing}>Create New & Migrate</Button>
           </Dialog.Actions>
-        </Dialog>
+            </Surface>
+            </ScrollView>
+            </KeyboardAvoidingView>
+          </View>
+        </NativeModal>
 
         <Dialog visible={showBackupDialog} onDismiss={() => setShowBackupDialog(false)} style={styles.dialog}>
           <Dialog.Title>Enable Auto-save</Dialog.Title>
@@ -1657,7 +1702,25 @@ if (!serverOk && !localOk) {
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={showConflictDialog} onDismiss={() => setShowConflictDialog(false)} style={styles.dialog}>
+        <NativeModal
+          visible={showConflictDialog}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={() => setShowConflictDialog(false)}
+        >
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.32)" }}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowConflictDialog(false)} />
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={{ flex: 1, width: "100%" }}
+            >
+            <ScrollView
+              style={{ flex: 1, width: "100%" }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", width: "100%" }}
+              keyboardShouldPersistTaps="handled"
+            >
+            <Surface elevation={3} style={styles.dialog}>
           <Dialog.Title>Sync Conflict</Dialog.Title>
           <Dialog.Content>
             <Text>We found data for your account on the server. How would you like to resolve this?</Text>
@@ -1674,7 +1737,11 @@ if (!serverOk && !localOk) {
               </Button>
               <Button onPress={() => setShowConflictDialog(false)}>Cancel</Button>
             </Dialog.Actions>
-         </Dialog>
+            </Surface>
+            </ScrollView>
+            </KeyboardAvoidingView>
+          </View>
+        </NativeModal>
 
         {/* SPEC-57: conditional mount — an always-mounted KeyboardAvoidingView
             renders a full-height flex layer on web and swallows scroll/taps. */}

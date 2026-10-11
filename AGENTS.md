@@ -595,11 +595,25 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 
 - **2026-10-11 — Spec 91 v1.8 FINAL + implemented.** Adopted your hand rewrite as baseline (absoluteFill + tap-anywhere + styled Unlock); reconciled only: unused imports out + ScrollView in, `top: 0` on hidden input, ScrollView wrap; guards re-baselined to disk. D-25/D-26, docs in savepoint. See `docs/savepoint.md`.
 
+- **2026-10-11 — Spec 92 FINAL + implemented.** `specs/92-login-pin-error-centered.md`: D-01 PIN `HelperText` → centered (`textAlign`), strings/logic/email/flow byte-identical; D-02 new `utils/loginPinErrorCentered.test.ts` ACC-01..03 × android/ios/web (pre-existing `Platform.select` caught pre-handoff, ACC-03 repointed). See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 93 FINAL + implemented.** `specs/93-make-online-dialog-centered.md`: D-01 verify dialog → NativeModal + scrim + KAV + ScrollView + `Surface` (Dialog-root replaced, dismiss mirrors `onDismiss`, content byte-identical); D-02 new `utils/makeOnlineDialogCentered.test.ts` ACC-01..03 × android/ios/web. See `docs/savepoint.md`.
+
 - **2026-10-11 — Spec 89 v1.3 FINAL + implemented.** KAV-padding overshoot proven on phone (top flew past status bar) — ScrollView bounds the shift (register/login precedent, D-11); D-12 ACC-09 folded into the same test file. Sides confirmed fine as-is. See `docs/savepoint.md`.
 
 - **2026-10-11 — Spec 89 v1.4 FINAL + implemented.** v1.3 stretched the card full-screen on phone — bounded ScrollView pattern (KAV flex-only + ScrollView flex, D-14); D-15 ACC-10 folded into the same test file. See `docs/savepoint.md`.
 
 - **2026-10-11 — Spec 89 v1.5 FINAL + implemented.** Adopted your split modals (Modal-1 own Step-1 + Modal-2 Step-2); ScrollView safety in Modal-1, KAV-flex + ScrollView restored in Modal-2, dead old-Step-1 kept + recorded; guards repointed (pinVerify count 3, new ACC-11). See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 93 test repair (blockOf missed the opener; app untouched).** User-run jest: ACC-01 red ×3 — `blockOf()` sliced from `visible=` so `<NativeModal` (settings.tsx:1602, correct on disk) was never in the block. Repaired to `lastIndexOf("<NativeModal", anchor)`; standing rule for new guards. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 94 FINAL + implemented.** `specs/94-create-cloud-account-dialog-centered.md`: D-01 `showNewAccountDialog` block → NativeModal + scrim + KAV + ScrollView + `Surface` (SPEC-93 mirror, content byte-identical, no import change); D-02 new `utils/createCloudAccountDialogCentered.test.ts` ACC-01..03 × android/ios/web. Backup/conflict/verify dialogs intact. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 95 FINAL + implemented.** `specs/95-sync-conflict-dialog-centered.md`: D-01 `showConflictDialog` block → NativeModal + scrim + KAV + ScrollView + `Surface` (SPEC-93/94 mirror, column Actions layout byte-identical, no import change); D-02 new `utils/syncConflictDialogCentered.test.ts` ACC-01..03 × android/ios/web. Verify/new-account/backup dialogs intact. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 96 FINAL + implemented.** `specs/96-make-online-migration-identity-swap.md`: kills the post-migrate `(tabs)` native/JS desync (logout→login guard replaces raced). D-01 `AuthContext` additive `switchIdentity` (login-identical writes, no null); D-02 migrate block swaps at the old `logout()` site (autoBackup now correctly user-scoped — disclosed); D-03 new `utils/migrationIdentitySwap.test.ts` ACC-01..03 × android/ios/web. Guard/login/logout untouched. See `docs/savepoint.md`.
+
+- **2026-10-11 — Spec 97 FINAL + implemented.** `specs/97-transaction-details-header-size-parity.md`: D-01 header title → plain string (only custom-Text title in `app/`, weight-only style rendered body-size; import kept, body untouched); D-02 new `utils/transactionDetailsHeaderSize.test.ts` ACC-01..03 × android/ios/web (file-wide no-fontSize pin re-scoped to header block pre-handoff — stylesheet keeps 2 pre-existing values). See `docs/savepoint.md`.
 
 ---
 

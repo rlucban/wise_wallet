@@ -15,6 +15,7 @@ interface AuthData {
 interface AuthActions {
   login: (userId: string, token: string) => Promise<void>;
   logout: () => Promise<void>;
+  switchIdentity: (userId: string, token: string) => Promise<void>;
   clearAuthFailureReason: () => void;
   clearFailedUserId: () => void;
 }
@@ -76,6 +77,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     wipeGetCache(); // SPEC-62 DEC-62-04: never serve rows across sessions.
   }, []);
 
+  // SPEC-96: null-free identity transition for the Make-Online migration.
+  // Same stored outcome as logout()+login() with no intermediate signed-out
+  // state, so the nav guard never fires and zero navigation occurs.
+  const switchIdentity = useCallback(async (userId: string, token: string) => {
+    await setSecureItem('authToken', token);
+    await AsyncStorage.setItem('activeUserId', String(userId));
+    await AsyncStorage.setItem('lastActiveUserId', String(userId));
+    setActiveUserId(String(userId));
+    setCachedUserId(String(userId));
+    setToken(token);
+    resetAuthSessionWarningLatch();
+    wipeGetCache(); // SPEC-62 DEC-62-04: never serve rows across sessions.
+  }, []);
+
   const clearAuthFailureReason = useCallback(() => {
     setAuthFailureReason(null);
   }, []);
@@ -95,9 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const actionsValue = useMemo(() => ({
     login,
     logout,
+    switchIdentity,
     clearAuthFailureReason,
     clearFailedUserId,
-  }), [login, logout, clearAuthFailureReason, clearFailedUserId]);
+  }), [login, logout, switchIdentity, clearAuthFailureReason, clearFailedUserId]);
 
   return (
     <AuthDataContext.Provider value={dataValue}>
