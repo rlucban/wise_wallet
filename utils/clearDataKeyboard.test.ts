@@ -35,11 +35,13 @@ function runSuite(os: "android" | "ios" | "web"): void {
             expect(modal).toContain("<Pressable style={StyleSheet.absoluteFill}");
         });
 
-        it("ACC-02: exactly one wrapper, and it closes the showPinPrompt dialog", () => {
+        it("ACC-02: exactly the five known wrappers, and one closes the showPinPrompt dialog", () => {
             const settings = readRepo("app/(tabs)/settings.tsx");
             const wrappers = settings.match(/<KeyboardAvoidingView/g) ?? [];
-            // SPEC-89 v1.2 added the second, known wrapper (change dialog) — same mirror pattern.
-            expect(wrappers.length).toBe(2);
+            // Five known wrappers, all the same mirror pattern: Clear-Data PIN
+            // (SPEC-57) + change dialog (SPEC-89 v1.2) + verify (SPEC-93) +
+            // new-account (SPEC-94) + conflict (SPEC-95).
+            expect(wrappers.length).toBe(5);
             const start = settings.indexOf("{showPinPrompt && (");
             const modalOpen = settings.indexOf("<NativeModal", start);
             const modalClose = settings.indexOf("</NativeModal>", modalOpen);
@@ -54,7 +56,7 @@ function runSuite(os: "android" | "ios" | "web"): void {
             expect(inside).toContain("onPress={handleClearData}");
             // No stray closing tag outside the conditional.
             const total = settings.split("</KeyboardAvoidingView>").length - 1;
-            expect(total).toBe(2);
+            expect(total).toBe(5);
             // SPEC-89 v1.2: the second wrapper lives in the change dialog only.
             const chStart = settings.indexOf("visible={showChangePasscodeDialog && (!isPasscodeEnabled || pinStep === 2)}");
             const chClose = settings.indexOf("</NativeModal>", chStart);
@@ -62,16 +64,30 @@ function runSuite(os: "android" | "ios" | "web"): void {
             expect(chBlock).toContain("<KeyboardAvoidingView");
             expect(chBlock).toContain("</KeyboardAvoidingView>");
             expect(chBlock).toContain("<Surface");
+            // SPEC-93/94/95: the third/fourth/fifth wrappers live in the
+            // verify, new-account, and conflict dialogs only.
+            for (const anchor of ["visible={showPinVerificationDialog}", "visible={showNewAccountDialog}", "visible={showConflictDialog}"]) {
+                const bStart = settings.indexOf(anchor);
+                const bClose = settings.indexOf("</NativeModal>", bStart);
+                const block = settings.slice(bStart, bClose);
+                expect(block).toContain("<KeyboardAvoidingView");
+                expect(block).toContain("</KeyboardAvoidingView>");
+                expect(block).toContain("<Surface");
+            }
         });
 
         it("SPEC-57 scope: no other dialog gained a wrapper", () => {
             const settings = readRepo("app/(tabs)/settings.tsx");
-            // Only the Clear Data PIN card and the change dialog are wrapped (SPEC-89 v1.2).
+            // Five dialogs are wrapped (Clear Data PIN + change + verify +
+            // new-account + conflict); the only bare Paper dialogs left are
+            // the backup prompt and the shared message dialog.
             const dialogs = settings.match(/<Dialog visible=/g) ?? [];
-            expect(dialogs.length).toBeGreaterThan(3);
-            // Two open tags + two close tags only (import + comment don't count).
-            expect(settings.match(/<KeyboardAvoidingView/g)?.length).toBe(2);
-            expect(settings.match(/<\/KeyboardAvoidingView>/g)?.length).toBe(2);
+            expect(dialogs.length).toBe(2);
+            expect(settings).toContain("<Dialog visible={showBackupDialog}");
+            expect(settings).toContain("<Dialog visible={messageDialog.visible}");
+            // Five open tags + five close tags only (import + comment don't count).
+            expect(settings.match(/<KeyboardAvoidingView/g)?.length).toBe(5);
+            expect(settings.match(/<\/KeyboardAvoidingView>/g)?.length).toBe(5);
         });
 
         it("ACC-03: messageDialog paints last in the Portal", () => {

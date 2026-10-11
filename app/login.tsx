@@ -350,7 +350,7 @@ export default function LoginScreen() {
                                             />
                                         }
                                     />
-                                    <HelperText type="error" visible={!!pinError}>
+                                    <HelperText type="error" visible={!!pinError} style={{ textAlign: "center" }}>
                                         {pinError}
                                     </HelperText>
 

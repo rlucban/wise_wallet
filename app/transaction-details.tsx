@@ -102,16 +102,7 @@ export default function TransactionDetails() {
       >
         <View style={styles.appbarLeft}>
           <Appbar.BackAction onPress={() => safeGoBack(router)} />
-          <Appbar.Content
-            title={
-              <Text
-                numberOfLines={1}
-                style={{ fontWeight: "700", color: theme.colors.onSurface }}
-              >
-                Transaction Details
-              </Text>
-            }
-          />
+          <Appbar.Content title="Transaction Details" />
         </View>
         <View style={[styles.appbarRight, { flexShrink: 0, marginLeft: 8 }]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0 }}>
