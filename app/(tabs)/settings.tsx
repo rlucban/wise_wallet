@@ -1501,6 +1501,15 @@ if (!serverOk && !localOk) {
         >
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.32)" }}>
             <Pressable style={StyleSheet.absoluteFill} onPress={closeDeleteDialog} />
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={{ flex: 1, width: "100%" }}
+            >
+            <ScrollView
+              style={{ flex: 1, width: "100%" }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: "center", alignItems: "center", width: "100%" }}
+              keyboardShouldPersistTaps="handled"
+            >
             <Surface elevation={3} style={styles.dialog}>
           <Dialog.Title>Delete Account</Dialog.Title>
           <Dialog.Content>
@@ -1547,12 +1556,15 @@ if (!serverOk && !localOk) {
             )}
 
             {pinVerified ? (
-              <View style={{ marginTop: 8 }}>
-                <Checkbox.Item
-                  label="I understand this action is permanent and cannot be undone"
+              <View style={{ marginTop: 8, flexDirection: "row", alignItems: "center" }}>
+                <Text style={{ flex: 1, flexShrink: 1, fontSize: 13 }}>
+                  I understand this action is permanent and cannot be undone
+                </Text>
+                <Checkbox.Android
                   status={deleteConfirmed ? "checked" : "unchecked"}
                   onPress={() => setDeleteConfirmed(!deleteConfirmed)}
-                  labelStyle={{ fontSize: 13 }}
+                  color={paperTheme.colors.primary}
+                  uncheckedColor={paperTheme.colors.onSurfaceVariant}
                 />
               </View>
             ) : null}
@@ -1571,6 +1583,8 @@ if (!serverOk && !localOk) {
             </Button>
           </Dialog.Actions>
             </Surface>
+            </ScrollView>
+            </KeyboardAvoidingView>
           </View>
         </NativeModal>
 
