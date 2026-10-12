@@ -1811,3 +1811,9 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - User-run `npm test`: 1 failed suite (`clearDataKeyboard`, 6 tests = 2 pins × 3 platforms) after the SPEC-100 v1.1 repair went green (1245 passed). Cause: FINAL SPEC-102 added the sixth KAV wrapper (Delete Account dialog) while the SPEC-57 guard still pinned five — same overlap family as repair #2 (which bumped 2→5 for SPEC-93/94/95).
 - Repair (same normative intent — anti-sprawl now names all six known dialogs, test-only, no app change): `utils/clearDataKeyboard.test.ts` ACC-02 title/count/comment 5→6 + block-scoped proof the sixth wrapper lives ONLY in the delete-account dialog (anchor + `Delete Permanently`); scope-test counts 5→6 + comment. No spec document edited (§1.14 — SPEC-57/102 texts keep old counts as stale text, same as the v1.2 precedent).
 - Re-run pending per `AGENTS.md` §1.3: full `npx jest` must go 70/70. No commit.
+
+## 2026-10-12 — Forgot PIN button on Login Screen
+
+- **Implementation:** Added "Forgot PIN?" text button in `app/login.tsx` positioned below the "Login" button and above the "Don't have an account? Register" row.
+- **Behavior:** Pressing the button invokes `showAlert("Notice", "This feature is unavailable now.")`, displaying the standard system dialog across Android, iOS, and Web.
+- **Styling:** Added `forgotPinBtn` and `forgotPinLabel` to `styles` with `#3949ab` primary text color and centered alignment. Gated on `disabled={loading}`. Zero new dependencies.

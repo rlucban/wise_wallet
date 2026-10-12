@@ -367,6 +367,17 @@ export default function LoginScreen() {
                                         </Button>
                                     </View>
 
+                                    <Button
+                                        compact
+                                        mode="text"
+                                        onPress={() => showAlert("Notice", "This feature is unavailable now.")}
+                                        disabled={loading}
+                                        style={styles.forgotPinBtn}
+                                        labelStyle={styles.forgotPinLabel}
+                                    >
+                                        Forgot PIN?
+                                    </Button>
+
                                     <View style={styles.switchRow}>
                                         <Text style={styles.switchPrompt}>Don't have an account?</Text>
                                         <Button
@@ -504,5 +515,15 @@ const styles = StyleSheet.create({
     switchPrompt: { color: '#666', fontSize: 14 },
     switchLink: { margin: 0 },
     switchLinkLabel: { color: '#3949ab', fontWeight: '600', fontSize: 14 },
+    forgotPinBtn: {
+        alignSelf: 'center',
+        marginTop: 4,
+        marginBottom: 4,
+    },
+    forgotPinLabel: {
+        color: '#3949ab',
+        fontSize: 14,
+        fontWeight: '500',
+    },
     containedLabel: { color: "#fff" },
 });
