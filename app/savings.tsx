@@ -9,6 +9,7 @@ import { useCurrencyActions } from "../context/CurrencyContext";
 import { useTransactions } from "../hooks/useTransactions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
 import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
+import { isGoalBelowInitial } from "../utils/allocationGoal";
 import { useUserProfile } from "../context/UserProfileContext";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -55,6 +56,7 @@ export default function SavingsScreen() {
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [title, setTitle] = useState("");
     const [goalAmount, setGoalAmount] = useState("");
+    const [editSaving, setEditSaving] = useState(false); // SPEC-99: Edit Allocation save flight flag.
     const [transferAmount, setTransferAmount] = useState("");
     const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -68,6 +70,7 @@ export default function SavingsScreen() {
 
     const handleEditItem = async () => {
         if (!selectedItemId) return;
+        if (editSaving) return; // SPEC-99: ignore re-taps while a save is in flight.
         const cleanGoal = parseFloat(goalAmount.toString().replace(/[^0-9.]/g, "")) || 0;
         if (goalAmount && (isNaN(cleanGoal) || cleanGoal <= 0)) {
             Alert.alert("Invalid Goal", "Please enter a valid goal amount.");
@@ -77,6 +80,14 @@ export default function SavingsScreen() {
             Alert.alert("Invalid Goal", "Goal amount must not exceed 10,000,000.");
             return;
         }
+        // SPEC-98: an edited goal below the current balance is rejected on Save
+        // (strictly less-than, so equal is allowed; empty stays allowed).
+        const selectedBalance = items.find((g) => g.id === selectedItemId)?.balance ?? 0;
+        if (isGoalBelowInitial(goalAmount, selectedBalance)) {
+            Alert.alert("Invalid Goal", "Goal amount is too low.");
+            return;
+        }
+        setEditSaving(true); // SPEC-99: spinner on only after all guards pass.
 
         try {
             await updateItem(selectedItemId, {
@@ -90,6 +101,8 @@ export default function SavingsScreen() {
         } catch (e) {
             console.error("Failed to update savings item:", e);
             setToastMessage("Failed to update allocation. Please try again.");
+        } finally {
+            setEditSaving(false);
         }
     };
 
@@ -97,6 +110,7 @@ export default function SavingsScreen() {
         setSelectedItemId(item.id);
         setTitle(item.title);
         setGoalAmount(item.target_amount ? String(item.target_amount) : "");
+        setEditSaving(false); // SPEC-99: never reopen stranded on a stale spinner.
         setEditModalVisible(true);
     };
 
@@ -178,6 +192,9 @@ export default function SavingsScreen() {
     };
 
     const selectedItem = items.find(g => g.id === selectedItemId);
+    // SPEC-98 v1.1: live below-balance flag for the Edit Allocation modal
+    // (create-parity inline error + disabled Save; Alert backstop stays in handleEditItem).
+    const editGoalBelowBalance = isGoalBelowInitial(goalAmount, selectedItem?.balance ?? 0);
     const transferOutAmount = parseAmount(transferAmount);
     const transferOutAmountValid =
         selectedItem != null &&
@@ -431,12 +448,12 @@ export default function SavingsScreen() {
                                                         width: 48,
                                                         height: 48,
                                                         borderRadius: 24,
-                                                        backgroundColor: ec.successContainer || theme.colors.tertiaryContainer,
+                                                        backgroundColor: theme.colors.surfaceVariant,
                                                         justifyContent: "center",
                                                         alignItems: "center",
                                                         marginRight: 12,
                                                     }}>
-                                                        <MaterialCommunityIcons name="checkmark-circle" size={28} color={ec.onSuccessContainer || theme.colors.onTertiaryContainer} />
+                                                        <MaterialCommunityIcons name="check-circle" size={28} color={theme.colors.primary} />
                                                     </View>
 
                                                     {/* Far Right: Only Delete */}
@@ -463,7 +480,12 @@ export default function SavingsScreen() {
                             <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Edit Allocation</Text>
                             <TextInput label="Name" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
                             <TextInput label="Goal Amount (Optional)" value={goalAmount} onChangeText={(t) => setGoalAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} placeholder="e.g. 10,000" />
-                            <Button mode="contained" onPress={handleEditItem} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Save Changes</Button>
+                            {editGoalBelowBalance && (
+                                <Text variant="bodySmall" style={{ color: theme.colors.error, marginTop: 4, marginBottom: 8 }}>
+                                    Goal amount is too low.
+                                </Text>
+                            )}
+                            <Button mode="contained" onPress={handleEditItem} loading={editSaving} disabled={editGoalBelowBalance || editSaving} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Save Changes</Button>
                         </Card.Content>
                     </Card>
                 </Modal>

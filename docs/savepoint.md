@@ -1731,3 +1731,83 @@ All 3 deliverables from `specs/07-completed-due-locking-and-auto-progression.md`
 - **D-02** — new `utils/transactionDetailsHeaderSize.test.ts`: ACC-01 (plain-string pin + custom-element absence), ACC-02 (chrome/body intact + header-scoped no-`fontSize`), ACC-03 (import line + two peer headers intact) × android/ios/web.
 - **Self-caught pre-handoff (disclosed):** first-draft ACC-02 pinned file-wide no-`fontSize`, but the stylesheet holds two pre-existing values (`:300`, `:306`) — re-scoped to the header block and aligned the spec ACC-02 text before handoff (same normative intent).
 - Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/transactionDetailsHeaderSize.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (title size matches Scheduled/Allocations/Transaction History side by side; Expo Go + web). No commit.
+
+## 2026-10-12 — Spec 98 FINAL + implemented (Edit Allocation goal-below-balance guard)
+
+- **Spec.** `specs/98-edit-allocation-goal-below-balance.md` FINAL per user call 2026-10-12 (current-balance basis + equal-allowed + Alert-on-Save-only, all three "Recommended" options taken; draft authorized in the same turn).
+- **Why:** user-reported `₱80.00 / ₱10.00 100% Reached` — the Edit Allocation modal (`handleEditItem`, `savings.tsx:70-94`) never compared the edited goal against the balance (SPEC-78 CON-08 left the modal untouched), so a ₱10 goal saved onto a ₱80 balance and the `completedItems` filter instantly marked it complete.
+- **D-01** — `app/savings.tsx` ONLY (2 hunks): `isGoalBelowInitial` import + below-balance guard after the cap guard, before `try` (live `items.find(...selectedItemId)?.balance ?? 0` lookup; `Alert.alert("Invalid Goal", "Goal amount is too low.")` + return; modal stays open, no reset). Existing guards, `updateItem`, catch/toast, transfer/archive/delete/completed flows, and modal JSX byte-identical. Supersedes SPEC-78 CON-08 for this guard only (§1.14; SPEC-78 document unedited).
+- **D-02** — new `utils/editAllocationGoal.test.ts`: ACC-01 (branch values incl. equal/empty), ACC-02 (guard placement/order + exact copy + neighbors + no-`disabled` on Save Changes), ACC-03 (import-only delta, no `Platform.OS`) × android/ios/web.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/editAllocationGoal.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (goal 10 on ₱80 → inline error + disabled Save + Alert backstop, modal stays open; 80 saves; cleared goal saves; Expo Go + web). No commit.
+
+## 2026-10-12 — Spec 98 v1.1 FINAL + implemented (live inline error + disabled Save)
+
+- **Amendment (user call 2026-10-12):** v1.0 shipped Alert-on-Save only, but the user wants the validation VISIBLE while typing (create-parity). CON-06 reversed: the edit modal now derives live `editGoalBelowBalance` beside `selectedItem`, renders conditional `Goal amount is too low.` (`<Text variant="bodySmall">`, `theme.colors.error`) below the Goal Amount input, and passes `disabled={editGoalBelowBalance}` to Save Changes (Paper-default disabled styling, no custom colors). The `Alert.alert` backstop stays (zero-cost defense). ACC-02/D-01 updated; `utils/editAllocationGoal.test.ts` ACC-02 re-pinned (inline + disabled); ACC-01/ACC-03 unchanged.
+- Verification pending per `AGENTS.md` §1.3: re-run `npx jest utils/editAllocationGoal.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus amended ACC-S01/S02 (red line appears live under the Goal input, Save disables/enables accordingly; Expo Go + web). No commit.
+
+## 2026-10-12 — Spec 99 FINAL v1.0 + implemented (Edit Allocation saving indicator)
+
+- **Spec.** `specs/99-edit-allocation-saving-indicator.md` FINAL per user call 2026-10-12 (DRAFT authorized then FINAL marked in the same session; fix direction pre-called as loading indicator, delay class >5s).
+- **Why:** Save Changes showed zero feedback while awaiting the save (web: full server PUT before the modal closes; native: local write chain) — taps felt dead, and double-taps could duplicate `updateItem` (no busy guard).
+- **D-01** — `app/savings.tsx` ONLY (5 hunks, read-back verified): `editSaving` state; `handleEditItem` early-return + `setEditSaving(true)` after all three guards + `finally` reset; `openEditModal` reset; Save Changes `loading={editSaving}` + `disabled={editGoalBelowBalance || editSaving}` (Paper-default styling). Success/failure/validation lines byte-identical; `useSavings` untouched.
+- **D-02** — new `utils/editAllocationSaving.test.ts` ACC-01..03 × android/ios/web (flag lifecycle incl. set-true/set-false counts, button wiring, no new import/dep/branch/hook change).
+- **Disclosed test repair (same intent, test-only):** SPEC-98 ACC-02 `disabled={editGoalBelowBalance}` pin widened to `disabled={editGoalBelowBalance || editSaving}` per FINAL SPEC-99 (overlap family precedent).
+- **Disclosure (CON-04/DEC-04):** indicator only — a consistently >5s PUT on a warm API is a `wallet-api` backend issue (own investigation); ACC-S02 asks the reviewer to note warm-vs-cold timing.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/editAllocationSaving.test.ts`, `npx jest utils/editAllocationGoal.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (spinner + disabled + no double-save; Expo Go + web). No commit.
+
+## 2026-10-12 — Spec 100 FINAL v1.0 + implemented (Completed card check icon "?")
+
+- **Spec.** `specs/100-completed-allocation-check-icon.md` FINAL per user call 2026-10-12 (screenshot-proven on web `/savings`; check-icon direction pre-called, DRAFT + FINAL + implement authorized across two turns).
+- **Why:** the Completed card's green circle showed `?` — `app/savings.tsx:456` used `name="checkmark-circle"`, an Ionicons name absent from the MaterialCommunityIcons glyph map (missing names render `?`). Correct MC name is `check-circle`; grep-verified sole repo-wide occurrence.
+- **D-01** — `app/savings.tsx` ONLY (1 prop, read-back verified): `name="checkmark-circle"` → `name="check-circle"`. Size/color/container/badge/copy/layout byte-identical.
+- **D-02** — new `utils/completedCheckIcon.test.ts` ACC-01..03 × android/ios/web (correct name + zero `checkmark-circle` in file and repo-wide across `app/` + `components/`, full-line pin).
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/completedCheckIcon.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (check glyph in the green circle, no `?`; Expo Go + web). No commit.
+
+## 2026-10-12 — Spec 100 v1.1 FINAL + implemented (stale ACC-03 pin repair)
+
+- **Trigger:** user-run `npm test` (70 suites): 2 failed suites / 9 failed tests. One confirmed from the pasted tail: `completedCheckIcon.test.ts` ACC-03 ×3 — stale pin expecting the pre-SPEC-101 color expression (`ec.onSuccessContainer || ...`), broken since the SPEC-101 v1.0/v1.1 recolors (missed at that time — disclosed).
+- **Repair (test-only, same normative intent, no app change):** ACC-03 narrowed to tag + `name="check-circle"` + `size={28}`; color ownership formally moved to SPEC-101 (`completedCircleColors.test.ts` ACC-01). Spec amended to v1.1 FINAL per user call 2026-10-12 ("SPEC-100 ACC-03").
+- **Open:** the second failing suite (6 remaining failures) is still unidentified — the pasted output was tail-only. Awaiting the user's `FAIL`/test-name list (extraction command provided) before scoping that repair. No commit.
+
+## 2026-10-12 — Spec 101 FINAL v1.0 + implemented (Completed circle system colors)
+
+- **Spec.** `specs/101-completed-circle-system-colors.md` FINAL per user call 2026-10-12 (icon black + green-disc removal; onSurface + surfaceVariant pre-called, DRAFT + FINAL + implement authorized across two turns).
+- **D-01** — `app/savings.tsx` ONLY (2 props, same Completed circle block, read-back verified): container `backgroundColor` → `theme.colors.surfaceVariant` (Active-card match), icon `color` → `theme.colors.onSurface` (black light / white dark). Badge, full progress bar, glyph, size, geometry, copy byte-identical; `ec` stays (badge + bar still use it — CON-05 held, no lint break).
+- **D-02** — new `utils/completedCircleColors.test.ts` ACC-01..03 × android/ios/web (block-scoped color pins + neighbor pins + no new import/dep/branch).
+- **Self-caught pre-handoff (disclosed):** first-draft ACC-01 pinned file-wide absence of `ec.successContainer`, but the `Goal Reached` badge reuses that token — re-scoped to the circle block (comment anchors), same normative intent.
+- **Adjacent rot noted (§1.11, untouched):** the `{/* Middle: Green Checkmark Circle */}` comment is now stale (disc is gray) — left byte-identical per D-01; own micro-spec if it bothers.
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/completedCircleColors.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01/S02 (gray disc + black check light mode, badge/bar still green; dark-mode check visible; Expo Go + web). No commit.
+
+## 2026-10-12 — Spec 101 v1.1 FINAL + implemented (check → system blue)
+
+- **Amendment (user call 2026-10-12):** the v1.0 `onSurface` black did not read as intended on-device — user wants the system's blue. One prop in the same block: icon `color` → `theme.colors.primary` (FAB/archive precedent, visible on gray in both modes). CON-03/DEC-01/matrix/ACC-01/ACC-S01/S02/D-01 amended; `utils/completedCircleColors.test.ts` ACC-01 re-pinned (`primary` in-block, `onSurface` absent in-block); ACC-02/03 unchanged.
+- Verification pending per `AGENTS.md` §1.3: re-run `npx jest utils/completedCircleColors.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus amended ACC-S01/S02 (gray disc + blue check; dark-mode contrast spot-check; Expo Go + web). No commit.
+
+## 2026-10-12 — Spec 102 FINAL v1.0 + implemented (Delete Account dialog keyboard avoidance)
+
+- **Spec.** `specs/102-delete-dialog-keyboard-avoidance.md` FINAL per user call 2026-10-12 (Verify-PIN-covered-on-keyboard-open, Android + iPhone; DRAFT + FINAL + implement authorized across two turns).
+- **Why:** Settings → Delete Account → tap PIN field → keyboard covered the Verify PIN button on phones. `showDeleteDialog` was the only center dialog in settings without KAV + ScrollView (verify/new-account/conflict got theirs via SPEC-93/94/95).
+- **D-01** — `app/(tabs)/settings.tsx` ONLY (2 hunks, read-back verified): the `showDeleteDialog` `Surface` wrapped in the exact SPEC-93 KAV (`padding` iOS / `height` else) + ScrollView (`keyboardShouldPersistTaps="handled"`, centered `contentContainerStyle`) structure. Content, copies, handlers, disabled/loading, modal chrome, sibling dialogs byte-identical; no new import (line 2 already carries all three).
+- **D-02** — new `utils/deleteDialogKeyboard.test.ts` ACC-01..03 × android/ios/web (wrapper shape + nesting order, frozen content + sibling count, import/chrome pins).
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/deleteDialogKeyboard.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01 (Android + iPhone: keyboard-open reachability of Verify PIN → checkbox → Delete Permanently) / S02 (web no-regression, no console error). No commit.
+
+## 2026-10-12 — Spec 103 FINAL v1.0 + implemented (Delete-confirm checkbox box)
+
+- **Spec.** `specs/103-delete-confirm-checkbox-box.md` FINAL per user call 2026-10-12 (iPhone screenshots: no box unchecked, detached check checked; explicit-row direction pre-called, DRAFT + FINAL + implement authorized across two turns).
+- **Why:** Paper `Checkbox.Item` internals swallowed/misplaced the box on narrow phones. Ruled out statically: theme `onSurfaceVariant #3A3E4A` is dark-on-white (visible) and the checked state proves font + trailing slot render.
+- **D-01** — `app/(tabs)/settings.tsx` ONLY (1 block, read-back verified): `Checkbox.Item` → explicit row (`View` row + `Text` label flex-1 + standalone `Checkbox` trailing) with pinned `color={primary}` / `uncheckedColor={onSurfaceVariant}`. Copy, toggle, `deleteConfirmed` state, Delete Permanently gate byte-identical; no new import.
+- **D-02** — new `utils/deleteConfirmCheckbox.test.ts` ACC-01..03 × android/ios/web (explicit control + pinned colors + zero `Checkbox.Item` file-wide — was the sole occurrence; copy/gate/import pins; no-branch + sibling-KAV-count pins).
+- Verification pending per `AGENTS.md` §1.3: user-run `npx jest utils/deleteConfirmCheckbox.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus ACC-S01 (iPhone + Android: box visible both states, in-place toggle, gate logic) / S02 (web, no console error). No commit.
+
+## 2026-10-12 — Spec 103 v1.1 FINAL + implemented (force Checkbox.Android)
+
+- **Correction (user-proven after v1.0 shipped, phone reloaded):** web showed the box, iPhone stayed text-only — so v1.0's diagnosis (Item layout) was wrong. Library-source trace: `Checkbox.tsx:66-70` picks `CheckboxIOS` on iOS / `CheckboxAndroid` elsewhere; `CheckboxIOS.tsx:62-63` renders unchecked at `opacity: 0` (Apple-style, no box) and ignores `uncheckedColor` (absent from its Props); `CheckboxAndroid.tsx:116-120` renders the `checkbox-blank-outline` box. This also explains the original `Checkbox.Item` symptom (same platform Checkbox underneath; the "detached check" was the iOS checked style).
+- **D-01 (1 token, grep-verified):** `<Checkbox` → `<Checkbox.Android` in the delete-confirm row (same props — all supported by the Android variant; same `Checkbox` import, no new import). Zero `Checkbox.Item` and zero bare control remain in the file.
+- **D-02:** `utils/deleteConfirmCheckbox.test.ts` ACC-01 re-pinned (`<Checkbox.Android` + single-`<Checkbox` count); ACC-02/03 unchanged.
+- Verification pending per `AGENTS.md` §1.3: re-run `npx jest utils/deleteConfirmCheckbox.test.ts`, `npm run lint`, `npx tsc --noEmit`, plus amended ACC-S01 (iPhone now shows the empty box unchecked + boxed check checked, in place) / S02 (web + Android unchanged). No commit.
+
+## 2026-10-12 — Overlap repair #3 (KAV wrapper count 5→6; app untouched)
+
+- User-run `npm test`: 1 failed suite (`clearDataKeyboard`, 6 tests = 2 pins × 3 platforms) after the SPEC-100 v1.1 repair went green (1245 passed). Cause: FINAL SPEC-102 added the sixth KAV wrapper (Delete Account dialog) while the SPEC-57 guard still pinned five — same overlap family as repair #2 (which bumped 2→5 for SPEC-93/94/95).
+- Repair (same normative intent — anti-sprawl now names all six known dialogs, test-only, no app change): `utils/clearDataKeyboard.test.ts` ACC-02 title/count/comment 5→6 + block-scoped proof the sixth wrapper lives ONLY in the delete-account dialog (anchor + `Delete Permanently`); scope-test counts 5→6 + comment. No spec document edited (§1.14 — SPEC-57/102 texts keep old counts as stale text, same as the v1.2 precedent).
+- Re-run pending per `AGENTS.md` §1.3: full `npx jest` must go 70/70. No commit.

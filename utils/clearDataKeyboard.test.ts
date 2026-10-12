@@ -35,13 +35,13 @@ function runSuite(os: "android" | "ios" | "web"): void {
             expect(modal).toContain("<Pressable style={StyleSheet.absoluteFill}");
         });
 
-        it("ACC-02: exactly the five known wrappers, and one closes the showPinPrompt dialog", () => {
+        it("ACC-02: exactly the six known wrappers, and one closes the showPinPrompt dialog", () => {
             const settings = readRepo("app/(tabs)/settings.tsx");
             const wrappers = settings.match(/<KeyboardAvoidingView/g) ?? [];
-            // Five known wrappers, all the same mirror pattern: Clear-Data PIN
+            // Six known wrappers, all the same mirror pattern: Clear-Data PIN
             // (SPEC-57) + change dialog (SPEC-89 v1.2) + verify (SPEC-93) +
-            // new-account (SPEC-94) + conflict (SPEC-95).
-            expect(wrappers.length).toBe(5);
+            // new-account (SPEC-94) + conflict (SPEC-95) + delete-account (SPEC-102).
+            expect(wrappers.length).toBe(6);
             const start = settings.indexOf("{showPinPrompt && (");
             const modalOpen = settings.indexOf("<NativeModal", start);
             const modalClose = settings.indexOf("</NativeModal>", modalOpen);
@@ -56,7 +56,7 @@ function runSuite(os: "android" | "ios" | "web"): void {
             expect(inside).toContain("onPress={handleClearData}");
             // No stray closing tag outside the conditional.
             const total = settings.split("</KeyboardAvoidingView>").length - 1;
-            expect(total).toBe(5);
+            expect(total).toBe(6);
             // SPEC-89 v1.2: the second wrapper lives in the change dialog only.
             const chStart = settings.indexOf("visible={showChangePasscodeDialog && (!isPasscodeEnabled || pinStep === 2)}");
             const chClose = settings.indexOf("</NativeModal>", chStart);
@@ -74,20 +74,30 @@ function runSuite(os: "android" | "ios" | "web"): void {
                 expect(block).toContain("</KeyboardAvoidingView>");
                 expect(block).toContain("<Surface");
             }
+            // SPEC-102: the sixth wrapper lives in the delete-account dialog only.
+            {
+                const dStart = settings.indexOf("visible={showDeleteDialog}");
+                const dClose = settings.indexOf("</NativeModal>", dStart);
+                const dBlock = settings.slice(dStart, dClose);
+                expect(dBlock).toContain("<KeyboardAvoidingView");
+                expect(dBlock).toContain("</KeyboardAvoidingView>");
+                expect(dBlock).toContain("<Surface");
+                expect(dBlock).toContain("Delete Permanently");
+            }
         });
 
         it("SPEC-57 scope: no other dialog gained a wrapper", () => {
             const settings = readRepo("app/(tabs)/settings.tsx");
-            // Five dialogs are wrapped (Clear Data PIN + change + verify +
-            // new-account + conflict); the only bare Paper dialogs left are
-            // the backup prompt and the shared message dialog.
+            // Six dialogs are wrapped (Clear Data PIN + change + verify +
+            // new-account + conflict + delete-account); the only bare Paper
+            // dialogs left are the backup prompt and the shared message dialog.
             const dialogs = settings.match(/<Dialog visible=/g) ?? [];
             expect(dialogs.length).toBe(2);
             expect(settings).toContain("<Dialog visible={showBackupDialog}");
             expect(settings).toContain("<Dialog visible={messageDialog.visible}");
-            // Five open tags + five close tags only (import + comment don't count).
-            expect(settings.match(/<KeyboardAvoidingView/g)?.length).toBe(5);
-            expect(settings.match(/<\/KeyboardAvoidingView>/g)?.length).toBe(5);
+            // Six open tags + six close tags only (import + comment don't count).
+            expect(settings.match(/<KeyboardAvoidingView/g)?.length).toBe(6);
+            expect(settings.match(/<\/KeyboardAvoidingView>/g)?.length).toBe(6);
         });
 
         it("ACC-03: messageDialog paints last in the Portal", () => {
