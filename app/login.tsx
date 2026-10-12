@@ -10,6 +10,7 @@ import { isLocalAccountToken } from '../utils/authMode';
 import * as Crypto from 'expo-crypto';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ForgotPinFlow from '../components/ForgotPinFlow';
 
 const PING_TIMEOUT = 3000;
 const MAX_RETRIES = 2;
@@ -36,6 +37,7 @@ export default function LoginScreen() {
     const [pinError, setPinError] = useState("");
     const [showPin, setShowPin] = useState(false);
     const [offlineNotice, setOfflineNotice] = useState(false);
+    const [showForgotPin, setShowForgotPin] = useState(false);
 
     const [dialog, setDialog] = useState<{
         visible: boolean;
@@ -367,6 +369,18 @@ export default function LoginScreen() {
                                         </Button>
                                     </View>
 
+                                    <View style={styles.forgotRow}>
+                                        <Button
+                                            compact
+                                            mode="text"
+                                            onPress={() => setShowForgotPin(true)}
+                                            disabled={loading}
+                                            labelStyle={styles.forgotLinkLabel}
+                                        >
+                                            Forgot PIN?
+                                        </Button>
+                                    </View>
+
                                     <View style={styles.switchRow}>
                                         <Text style={styles.switchPrompt}>Don't have an account?</Text>
                                         <Button
@@ -395,6 +409,15 @@ export default function LoginScreen() {
                     </ScrollView>
                 </KeyboardAvoidingView>
             </LinearGradient>
+            <ForgotPinFlow
+                visible={showForgotPin}
+                from="login"
+                onClose={() => setShowForgotPin(false)}
+                onResetSuccess={(email) => {
+                    setName(email);
+                    setPasscode("");
+                }}
+            />
         </>
     );
 }
@@ -501,6 +524,11 @@ const styles = StyleSheet.create({
         marginTop: 4,
         marginBottom: 8,
     },
+    forgotRow: {
+        alignItems: 'center',
+        marginTop: 2,
+    },
+    forgotLinkLabel: { color: '#3949ab', fontWeight: '600', fontSize: 14 },
     switchPrompt: { color: '#666', fontSize: 14 },
     switchLink: { margin: 0 },
     switchLinkLabel: { color: '#3949ab', fontWeight: '600', fontSize: 14 },
