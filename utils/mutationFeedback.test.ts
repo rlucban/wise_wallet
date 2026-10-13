@@ -23,8 +23,13 @@ function runSuite(os: "android" | "ios" | "web") {
 
         it("ACC-04: delete result dialog matches the confirm design, toast gone", () => {
             const source = readRepo("app/transaction-details.tsx");
-            expect(source).toContain('maxWidth: 480, width: "90%", alignSelf: "center", marginHorizontal: 0');
-            expect(source).toContain('resultDialog.ok ? "check-circle-outline" : "alert-circle-outline"');
+            // SPEC-85 pinned the inline single-line style; the 2026-10-13 centering work moved
+            // it into `styles.dialog` one key per line, so the pins are per-line here now.
+            expect(source).toContain("maxWidth: 480,");
+            expect(source).toContain('width: "90%",');
+            expect(source).toContain('alignSelf: "center",');
+            expect(source).toContain("marginHorizontal: 0,");
+            expect(source).toContain('resultDialog.ok ? "check-circle-outline" :');
             expect(source).toContain('"Deleted Successfully"');
             expect(source).toContain('"Delete Failed"');
             expect(source).toContain("The transaction has been deleted.");
@@ -36,8 +41,12 @@ function runSuite(os: "android" | "ios" | "web") {
 
         it("ACC-05: edit result dialog matches, validations intact, toast gone", () => {
             const source = readRepo("app/edit-transaction.tsx");
-            expect(source).toContain('maxWidth: 480, width: "90%", alignSelf: "center", marginHorizontal: 0');
-            expect(source).toContain('resultDialog.ok ? "check-circle-outline" : "alert-circle-outline"');
+            // Per-line pins: this file also moved its dialog style into `styles.dialog`.
+            expect(source).toContain("maxWidth: 480,");
+            expect(source).toContain('width: "90%",');
+            expect(source).toContain('alignSelf: "center",');
+            expect(source).toContain("marginHorizontal: 0,");
+            expect(source).toContain('resultDialog.ok ? "check-circle-outline" :');
             expect(source).toContain('"Saved Successfully"');
             expect(source).toContain('"Save Failed"');
             expect(source).toContain("Your changes have been saved.");

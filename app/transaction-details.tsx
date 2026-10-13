@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { View, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
-import { Appbar, Text, Card, Dialog, Button, useTheme } from "react-native-paper";
+import { View, ScrollView, StyleSheet, TouchableOpacity, Modal as NativeModal, Pressable } from "react-native";
+import { Appbar, Text, Card, Dialog, Button, Surface, useTheme } from "react-native-paper";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -215,26 +215,33 @@ export default function TransactionDetails() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteDialogVisible(false)}
       />
-      <Dialog
+      <NativeModal
         visible={resultDialog.visible}
-        onDismiss={handleResultOk}
-        style={{ maxWidth: 480, width: "90%", alignSelf: "center", marginHorizontal: 0 }}
+        transparent
+        animationType="fade"
+        presentationStyle="overFullScreen"
+        onRequestClose={handleResultOk}
       >
-        <Dialog.Icon icon={resultDialog.ok ? "check-circle-outline" : "alert-circle-outline"} />
-        <Dialog.Title style={{ textAlign: "center" }}>
-          {resultDialog.ok ? "Deleted Successfully" : "Delete Failed"}
-        </Dialog.Title>
-        <Dialog.Content>
-          <Text variant="bodyMedium" style={{ textAlign: "center" }}>
-            {resultDialog.message}
-          </Text>
-        </Dialog.Content>
-        <Dialog.Actions style={{ justifyContent: "center" }}>
-          <Button mode="contained" onPress={handleResultOk}>
-            OK
-          </Button>
-        </Dialog.Actions>
-      </Dialog>
+        <View style={styles.scrim}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={handleResultOk} />
+          <Surface elevation={3} style={styles.dialog}>
+            <Dialog.Icon icon={resultDialog.ok ? "check-circle-outline" : "alert-circle-outline"} />
+            <Dialog.Title style={{ textAlign: "center" }}>
+              {resultDialog.ok ? "Deleted Successfully" : "Delete Failed"}
+            </Dialog.Title>
+            <Dialog.Content>
+              <Text variant="bodyMedium" style={{ textAlign: "center" }}>
+                {resultDialog.message}
+              </Text>
+            </Dialog.Content>
+            <Dialog.Actions style={{ justifyContent: "center" }}>
+              <Button mode="contained" onPress={handleResultOk}>
+                OK
+              </Button>
+            </Dialog.Actions>
+          </Surface>
+        </View>
+      </NativeModal>
     </View>
   );
 }
@@ -307,5 +314,19 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#64748b",
     marginLeft: 8,
+  },
+  scrim: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.32)",
+  },
+  dialog: {
+    maxWidth: 480,
+    width: "90%",
+    alignSelf: "center",
+    marginHorizontal: 0,
+    borderRadius: 16,
+    overflow: "hidden",
   },
 });

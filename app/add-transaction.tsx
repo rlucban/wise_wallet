@@ -33,6 +33,14 @@ import { formatNumberInput, parseAmount } from "../utils/amount";
 import { OPENING_BALANCE_CATEGORY_ID } from "../utils/onboardingPayload";
 import { useSavings } from "../hooks/useSavings";
 
+const PAYMENT_TYPE_LABELS: Record<string, string> = {
+  cash: "Cash",
+  card: "Card",
+  bank: "Bank",
+  e_wallet: "E-Wallet",
+  other: "Other",
+};
+
 export default function AddTransaction() {
   const router = useRouter();
   const { addTransaction, transactions } = useTransactions();
@@ -44,7 +52,7 @@ export default function AddTransaction() {
   const [type, setType] = useState<TransactionType>("expense");
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [customCategory, setCustomCategory] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
   const [establishment, setEstablishment] = useState("");
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [date, setDate] = useState(new Date());
@@ -53,7 +61,7 @@ export default function AddTransaction() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const numAmount = amount ? parseAmount(amount) : 0;
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethodInfo[]>([]);
-  const [selectedMethodType, setSelectedMethodType] = useState<string>("cash");
+  const [selectedMethodType, setSelectedMethodType] = useState<string | null>(null);
   const [alertDialog, setAlertDialog] = useState<{ visible: boolean; title: string; message: string }>({
     visible: false,
     title: "",
@@ -84,9 +92,6 @@ export default function AddTransaction() {
       const { ok, data } = await authFetch<PaymentMethodInfo[]>(`paymentMethods`);
       if (ok && data && Array.isArray(data)) {
         setAvailablePaymentMethods(data);
-        if (data.length > 0) {
-          setPaymentMethod(data[0].name);
-        }
       }
     } catch (error) {
       console.error("Error fetching payment methods:", error);
@@ -152,8 +157,9 @@ export default function AddTransaction() {
     }
 
     setErrors(next);
-    const firstKey = Object.keys(next)[0];
-    return firstKey || null;
+    // Return the first message, not the key: the caller must alert the exact
+    // per-field copy (and cannot read `errors` in the same tick).
+    return Object.values(next)[0] || null;
   };
 
   const clearError = (field: string) => {
@@ -167,17 +173,20 @@ export default function AddTransaction() {
   };
 
   const handleSubmit = async () => {
-    const firstErrorKey = validate();
-    if (firstErrorKey) {
-      const msgs: Record<string, string> = {
-        amount: "Please check the amount field.",
-        category: "Please select a category.",
-        note: "Please shorten your note.",
-      };
+    const firstError = validate();
+    if (firstError) {
       setAlertDialog({
         visible: true,
         title: "Validation Error",
-        message: msgs[firstErrorKey] || "Please fix the highlighted fields.",
+        message: firstError,
+      });
+      return;
+    }
+    if (!paymentMethod) {
+      setAlertDialog({
+        visible: true,
+        title: "Invalid Payment Source",
+        message: "Please select a payment source.",
       });
       return;
     }
@@ -331,7 +340,7 @@ export default function AddTransaction() {
         <Text variant="labelLarge" style={{ marginBottom: 8 }}>Payment Source</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
           {["cash", "card", "bank", "e_wallet", "other"].map((t) => {
-            const isSelected = selectedMethodType.toLowerCase() === t.toLowerCase();
+            const isSelected = selectedMethodType !== null && selectedMethodType.toLowerCase() === t.toLowerCase();
             return (
               <Chip
                 key={t}
@@ -339,12 +348,8 @@ export default function AddTransaction() {
                 onPress={() => {
                   setSelectedMethodType(t);
                   // Find the first default method for this type
-                  const firstOfColor = availablePaymentMethods.find(m => m.type.toLowerCase() === t.toLowerCase());
-                  if (firstOfColor) {
-                    setPaymentMethod(firstOfColor.name);
-                  } else if (t === "cash") {
-                    setPaymentMethod("Cash");
-                  }
+                  const firstOfType = availablePaymentMethods.find(m => m.type.toLowerCase() === t.toLowerCase());
+                  setPaymentMethod(firstOfType ? firstOfType.name : (PAYMENT_TYPE_LABELS[t] ?? t));
                 }}
                 mode="outlined"
                 style={{
@@ -358,12 +363,12 @@ export default function AddTransaction() {
           })}
         </View>
 
-        {selectedMethodType.toLowerCase() !== "cash" && (
+        {selectedMethodType !== null && selectedMethodType.toLowerCase() !== "cash" && (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: theme.colors.primaryContainer }}>
             {availablePaymentMethods
               .filter(m => m.type.toLowerCase() === selectedMethodType.toLowerCase())
               .map((method) => {
-                const isMethodSelected = paymentMethod.toLowerCase() === method.name.toLowerCase();
+                const isMethodSelected = paymentMethod !== null && paymentMethod.toLowerCase() === method.name.toLowerCase();
                 return (
                   <Chip
                     key={method.id}

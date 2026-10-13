@@ -32,6 +32,11 @@ const ALLOWED_EXCEPTIONS = [
   "shadowColor", // React Native shadow property
   "boxShadow", // CSS box-shadow property
   "SPEC-87 pinned", // SPEC-74 peach badge (learning.tsx:117 only; see SPEC-87)
+  "modal scrim", // translucent overlay for NativeModal dialogs (dues.tsx:820, savings.tsx:635).
+  // A scrim is a neutral overlay, not a theme color, and it is a module-level StyleSheet
+  // value in both files so the theme is unreachable there. rgba(0, 0, 0, 0.32) is the shared
+  // scrim across ConfirmDialog / login / settings / edit-transaction / transaction-details;
+  // only these two files are enumerated above. Line-scoped - nothing else is exempted.
 ];
 
 function hasHardcodedColor(content, _filePath) {

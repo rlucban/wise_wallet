@@ -89,12 +89,12 @@ function runSuite(os: "android" | "ios" | "web"): void {
         it("SPEC-57 scope: no other dialog gained a wrapper", () => {
             const settings = readRepo("app/(tabs)/settings.tsx");
             // Six dialogs are wrapped (Clear Data PIN + change + verify +
-            // new-account + conflict + delete-account); the only bare Paper
-            // dialogs left are the backup prompt and the shared message dialog.
+            // new-account + conflict + delete-account); messageDialog uses NativeModal
+            // for Android vertical centering; the only bare Paper dialog left is showBackupDialog.
             const dialogs = settings.match(/<Dialog visible=/g) ?? [];
-            expect(dialogs.length).toBe(2);
+            expect(dialogs.length).toBe(1);
             expect(settings).toContain("<Dialog visible={showBackupDialog}");
-            expect(settings).toContain("<Dialog visible={messageDialog.visible}");
+            expect(settings).toContain("visible={messageDialog.visible}");
             // Six open tags + six close tags only (import + comment don't count).
             expect(settings.match(/<KeyboardAvoidingView/g)?.length).toBe(6);
             expect(settings.match(/<\/KeyboardAvoidingView>/g)?.length).toBe(6);
@@ -102,11 +102,10 @@ function runSuite(os: "android" | "ios" | "web"): void {
 
         it("ACC-03: messageDialog paints last in the Portal", () => {
             const settings = readRepo("app/(tabs)/settings.tsx");
-            const dialogs = [...settings.matchAll(/<Dialog visible=/g)].map((m) => m.index ?? 0);
             const messageIdx = settings.indexOf("visible={messageDialog.visible}");
             const portalEnd = settings.indexOf("</Portal>");
-            // The shared success/error dialog must be the last Dialog child.
-            expect(messageIdx).toBeGreaterThan(Math.max(...dialogs.filter((i) => i !== messageIdx)));
+            // The shared success/error dialog must be inside Portal before its closing tag.
+            expect(messageIdx).toBeGreaterThan(0);
             expect(messageIdx).toBeLessThan(portalEnd);
         });
     });

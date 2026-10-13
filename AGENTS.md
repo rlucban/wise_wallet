@@ -634,6 +634,79 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
 - **2026-10-12 — Spec 103 FINAL v1.0 + implemented.** `specs/103-delete-confirm-checkbox-box.md`: delete-confirm `Checkbox.Item` showed no box unchecked + detached check checked (iPhone screenshots; theme/glyph ruled out statically). D-01 `app/(tabs)/settings.tsx` one block → explicit trailing `Checkbox` + label row with pinned primary/onSurfaceVariant colors (copy/toggle/gate byte-identical, no new import); D-02 new `utils/deleteConfirmCheckbox.test.ts` ACC-01..03 × android/ios/web. See `docs/savepoint.md`.
 
 - **2026-10-12 — Spec 103 v1.1 FINAL + implemented.** v1.0 diagnosis was wrong (user proof post-ship: web box OK, reloaded iPhone text-only) — library trace proves Paper picks box-less `CheckboxIOS` (`opacity: 0` unchecked) on iPhone. D-01 one token `<Checkbox` → `<Checkbox.Android>` (same props/import); ACC-01 re-pinned. See `docs/savepoint.md`.
+- **2026-10-13 — Dialog Vertical Centering on Android.** Converted "Login Failed" (`login.tsx`), "Cleared Successfully" (`settings.tsx`), "Saved Successfully" (`edit-transaction.tsx`), and "Delete Transaction?" / "Deleted Successfully" (`ConfirmDialog.tsx`, `transaction-details.tsx`) to `NativeModal` with centered scrim and `Surface elevation={3} style={styles.dialog}`. Fixes bottom anchoring on Android while keeping Web and iOS parity. Zero new dependencies. See `docs/savepoint.md`.
+- **2026-10-13 — Allocations Modal Centering (Savings) & Login Lint Clean.** Removed unused `Portal` import from `app/login.tsx` (clears `@typescript-eslint/no-unused-vars` warning). Converted Edit Allocation, Transfer Money In, and Transfer Money Out modals in `app/savings.tsx` to `NativeModal` with centered scrim, fixing bottom-anchoring on Android while preserving test constraints (no `Platform.OS`). See `docs/savepoint.md`.
+
+- **2026-10-13 — Spec 104 FINAL v1.0 + implemented.** `specs/104-dues-alert-dialog-centered.md`:
+  the Dues `Transaction Recorded` dialog was the last result dialog in `app/` still on the bare
+  Paper `<Dialog>`-in-`<Portal>` pattern (bottom-anchored on Android — user screenshot). D-01
+  `app/dues.tsx` (3 hunks): the `alertDialog` block → `NativeModal` + scrim + `Surface
+  elevation={3} style={styles.dialog}`, mirroring `ConfirmDialog.tsx` (no KAV/ScrollView — no
+  `TextInput`, DEC-02); dead `<Portal>` for this block removed; two import lines widened; new
+  `styles.scrim`/`styles.dialog` (SPEC-65 `marginHorizontal: 0`, SPEC-71 `borderRadius: 16`).
+  Content, icon ternary, copies, and all three dismiss handlers byte-identical. D-02
+  `utils/duesAlertDialogCentered.test.ts` ACC-01..05 × android/ios/web. Adjacent rot (own specs):
+  the same pattern remains at `add-due.tsx:255`, `add-transaction.tsx:512`, `settings.tsx:1708`,
+  `register.tsx:169`. Open: user-run jest/lint/tsc + ACC-S01..S03. See `docs/savepoint.md`.
+
+- **2026-10-13 — Spec 105 FINAL v1.0 + implemented.** `specs/105-edit-transaction-required-fields.md`:
+  editing a transaction required a selected Payment Source and Category, but neither was observable. Source-traced root causes: (1) the
+  payment source always had a value yet *looked* unselected — `types/index.ts:3` is `PaymentMethod = string`, `add-transaction.tsx` persists
+  the API method **name** (`"Cash"`, `"GCash"`), and `edit-transaction.tsx:264` compared case-sensitively against a hardcoded five;
+  (2) the category guard was a silent `if (!selectedCategory || !id) return;` with `!id` folded into the category copy; (3) the state could
+  never be empty, so a source guard would be dead code. D-01 `app/edit-transaction.tsx` ONLY (7 hunks): `paymentMethod` → nullable
+  (`tx.paymentMethod || null` seed), real payment sources fetched via `authFetch("paymentMethods")` with the exact Add-Transaction posture
+  in the existing mount effect, chips match case-insensitively off a memo that prefers the fetched list, falls back to the hardcoded five
+  (Local/offline) and appends an echo chip for an unmatched value (`"GCash"` stays selected, SPEC-46/49 echo-wins), and six ordered
+  `Alert.alert` guards (`Transaction Not Found` / `Invalid Category` / `Invalid Payment Source` / the two unchanged amount copies /
+  `Please specify a category.`) with the payload sending the narrowed value — no `HelperText`, per SPEC-85 ACC-05. D-02
+  `utils/editTransactionRequiredFields.test.ts` ACC-01..08 × android/ios/web. No new dependency. Open: user-run jest/lint/tsc +
+  ACC-S01..S04. **2026-10-13 test repair (app untouched, 2 guard defects):** ACC-06's whitespace-sensitive payload pin →
+  per-line trimmed match; ACC-07 had copied SPEC-85's single-line `styles.dialog` literal, which cannot match this file's
+  one-key-per-line style — re-pinned to the four individual lines. Re-run pending (24/24). See `docs/savepoint.md`.
+
+- **2026-10-13 — Spec 106 FINAL v1.0 + implemented.** `specs/106-add-transaction-required-source.md`:
+  Add Transaction never offered a real payment-source choice, so the same "must select before proceeding" rule was
+  unenforceable. `useState<PaymentMethod>("cash")` (`:47`) plus an implicit `setPaymentMethod(data[0].name)` in
+  `fetchPaymentMethods` (`:87-89`) always left a value, and the type-chip `onPress` (`:339-348`) only wrote a source in its
+  `firstOfColor`/`t === "cash"` branches — so tapping CARD/BANK/E-WALLET with no API method of that type kept the **old**
+  value behind a freshly selected chip (unreachable entirely on Local/offline), and the validation alert showed the
+  hardcoded `"Please select a category."` even when the real error was the Others-copy `"Please specify a category."`.
+  D-01 `app/add-transaction.tsx` ONLY (7 hunks): `paymentMethod`/`selectedMethodType` both nullable and seeded `null`
+  (no pre-selected chip to contradict the guard), auto-select deleted, both `selectedMethodType` call sites null-safe,
+  two-branch `onPress` using the new `PAYMENT_TYPE_LABELS` (`Cash`/`Card`/`Bank`/`E-Wallet`/`Other` — the SPEC-105/SPEC-80
+  vocabulary) so no tap can no-op, `validate()` returns the first **message** and `handleSubmit` alerts it directly with the
+  redundant `msgs` map deleted, plus a new `Invalid Payment Source` / `Please select a payment source.` guard ordered after
+  the validation branch and before the balance check; payload carries the narrowed bare `paymentMethod` (never
+  `?? undefined` — `TransactionsContext.tsx:45` would turn that into the `""` that 400s per SPEC-47). D-02 SPEC-105 ACC-08
+  re-pinned from one screen to two (same copies, confined vocabulary, test-only). D-03
+  `utils/addTransactionRequiredSource.test.ts` ACC-01..09 × android/ios/web. Late-caught + disclosed: the drafted
+  `errors[firstErrorKey]` read was inert under React batching, so the message is routed through `validate()`'s return
+  instead. No new dependency. Open: user-run jest/lint/tsc + ACC-S01..S05. **2026-10-13 test repair (app untouched, 1 guard
+  defect):** ACC-06's whole-payload `not.toContain('?? undefined')` also hit the legitimate pre-existing
+  `category: category ?? undefined` line — re-scoped to the `paymentMethod` token. Re-run pending (27/27).
+  **2026-10-13 lint + tsc repairs (one real app fix):** making `paymentMethod` nullable left the method-chip compare
+  unguarded, so `app/add-transaction.tsx:371` failed `tsc` with TS18047 — fixed to `paymentMethod !== null && …` (mirrors
+  `edit-transaction.tsx:303`), all five sites re-verified, and ACC-03 widened to pin the null-safe compare. Test-only: removed
+  the dead `details` assignment left by the ACC-08 re-pin (lint warning). Re-run pending (51/51, 0 warnings, 0 errors).
+  See `docs/savepoint.md`.
+
+- **2026-10-13 — Spec 107 FINAL v1.0 + implemented.** `specs/107-edit-transaction-category-feedback.md`:
+  the Edit Transaction Category row showed **no selected chip** with "Specify Category" already expanded and nothing said the
+  field was required (user screenshot, web). Root cause: the prefill's `if (!isKnown && tx.category.name !== "Others")`
+  skipped the branch for an unknown-id `"Others"` — which is exactly what `TransactionsContext.tsx:47-49` synthesises
+  (`{id:'uncategorized', name:'Others'}`) for a transaction with no category. So `isOthersCategory()` was true (field
+  expanded), no chip matched by id (nothing looked selected), and `selectedCategory` was **non-null** so SPEC-105's
+  `Invalid Category` guard never fired and **Save proceeded** with a category the user could not see. D-01
+  `app/edit-transaction.tsx` (3 hunks): that branch now clears the selection (`name === "Others"` → `selectedCategory = null`,
+  `customCategory = ""`) while `} else if (!isKnown)` keeps the data-preserving path for a real custom name; a **persistent**
+  `HelperText type="error" visible={!selectedCategory}` row in the Category section (Paper returns `null` when hidden, so no
+  gap regression) with copy `"Please select a category."` identical to the guard's; and one `HelperText` import token.
+  D-02 `utils/editTransactionCategoryFeedback.test.ts` ACC-01..08 × android/ios/web. D-03 re-pins SPEC-105 ACC-07 from
+  `not.toContain("HelperText")` to `countOf(source, "<HelperText")).toBe(1)` (test-only; intent kept — one helper row, on
+  Category only; SPEC-85 ACC-05 pins unaffected). SPEC-105's guards, the Payment Source row, `categoryOptions.ts`,
+  `TransactionsContext.tsx`, and the Add screen are untouched. Open: user-run jest/lint/tsc + the web repro and Expo Go
+  matrix. See `docs/savepoint.md`.
 
 ---
 

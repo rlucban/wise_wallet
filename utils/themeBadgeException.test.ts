@@ -55,6 +55,10 @@ const EXPECTED_EXCEPTIONS = [
     "shadowColor",
     "boxShadow",
     "SPEC-87 pinned",
+    // 2026-10-13: second named exception for the NativeModal scrim in dues.tsx:820 /
+    // savings.tsx:635. Same class as "SPEC-87 pinned" — a neutral translucent overlay,
+    // not a theme color, and unreachable from the module-level StyleSheet in both files.
+    "modal scrim",
 ];
 
 function runSuite(os: "android" | "ios" | "web") {
@@ -71,7 +75,7 @@ function runSuite(os: "android" | "ios" | "web") {
             expect(source.match(/#5D4037/g) || []).toHaveLength(1);
         });
 
-        it("ACC-02: ONE guard entry, scan list and rest intact", () => {
+        it("ACC-02: exact guard exception list and scan list (one named entry per exception)", () => {
             const guard = readRepo(GUARD_FILE);
             expect(guard.match(/SPEC-87 pinned/g) || []).toHaveLength(1);
             const scanBlock = guard.slice(

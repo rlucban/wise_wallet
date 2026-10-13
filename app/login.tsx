@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { Text, TextInput, Button, Card, HelperText, Dialog, Portal } from 'react-native-paper';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Modal as NativeModal, Pressable } from 'react-native';
+import { Text, TextInput, Button, Card, HelperText, Dialog, Surface } from 'react-native-paper';
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuthData, useAuthActions } from '../context/AuthContext';
@@ -255,39 +255,48 @@ export default function LoginScreen() {
 
     return (
         <>
-            <Portal>
-                <Dialog visible={dialog.visible} onDismiss={() => setDialog({ ...dialog, visible: false })}>
-                    <Dialog.Icon icon="alert-circle-outline" />
-                    <Dialog.Title style={{ textAlign: 'center' }}>{dialog.title}</Dialog.Title>
-                    <Dialog.Content>
-                        <Text variant="bodyMedium" style={{ textAlign: 'center', lineHeight: 22 }}>
-                            {dialog.message}
-                        </Text>
-                    </Dialog.Content>
-                    <Dialog.Actions style={{ justifyContent: 'center' }}>
-                        {dialog.buttons && dialog.buttons.length > 0 ? (
-                            dialog.buttons.map((btn, i) => (
-                                <Button
-                                    key={i}
-                                    mode={btn.style === "cancel" ? "text" : "contained"}
-                                    labelStyle={btn.style === "cancel" ? undefined : styles.containedLabel}
-                                    onPress={() => {
-                                        setDialog({ ...dialog, visible: false });
-                                        btn.onPress?.();
-                                    }}
-                                    style={{ marginHorizontal: 4 }}
-                                >
-                                    {btn.text}
+            <NativeModal
+                visible={dialog.visible}
+                transparent
+                animationType="fade"
+                presentationStyle="overFullScreen"
+                onRequestClose={() => setDialog({ ...dialog, visible: false })}
+            >
+                <View style={styles.scrim}>
+                    <Pressable style={StyleSheet.absoluteFill} onPress={() => setDialog({ ...dialog, visible: false })} />
+                    <Surface elevation={3} style={styles.dialog}>
+                        <Dialog.Icon icon="alert-circle-outline" />
+                        <Dialog.Title style={{ textAlign: 'center' }}>{dialog.title}</Dialog.Title>
+                        <Dialog.Content>
+                            <Text variant="bodyMedium" style={{ textAlign: 'center', lineHeight: 22 }}>
+                                {dialog.message}
+                            </Text>
+                        </Dialog.Content>
+                        <Dialog.Actions style={{ justifyContent: 'center' }}>
+                            {dialog.buttons && dialog.buttons.length > 0 ? (
+                                dialog.buttons.map((btn, i) => (
+                                    <Button
+                                        key={i}
+                                        mode={btn.style === "cancel" ? "text" : "contained"}
+                                        labelStyle={btn.style === "cancel" ? undefined : styles.containedLabel}
+                                        onPress={() => {
+                                            setDialog({ ...dialog, visible: false });
+                                            btn.onPress?.();
+                                        }}
+                                        style={{ marginHorizontal: 4 }}
+                                    >
+                                        {btn.text}
+                                    </Button>
+                                ))
+                            ) : (
+                                <Button mode="contained" labelStyle={styles.containedLabel} onPress={() => setDialog({ ...dialog, visible: false })}>
+                                    OK
                                 </Button>
-                            ))
-                        ) : (
-                            <Button mode="contained" labelStyle={styles.containedLabel} onPress={() => setDialog({ ...dialog, visible: false })}>
-                                OK
-                            </Button>
-                        )}
-                    </Dialog.Actions>
-                </Dialog>
-            </Portal>
+                            )}
+                        </Dialog.Actions>
+                    </Surface>
+                </View>
+            </NativeModal>
             <LinearGradient colors={["#1a237e", "#283593", "#3949ab"]} style={styles.gradient}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -526,4 +535,18 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     containedLabel: { color: "#fff" },
+    scrim: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "rgba(0, 0, 0, 0.32)",
+    },
+    dialog: {
+        maxWidth: 480,
+        width: "90%",
+        alignSelf: "center",
+        marginHorizontal: 0,
+        borderRadius: 16,
+        overflow: "hidden",
+    },
 });

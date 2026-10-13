@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
-import { View, ScrollView, Alert } from "react-native";
+import { View, ScrollView, Alert, Modal as NativeModal, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
-import { Appbar, TextInput, Button, SegmentedButtons, Text, Chip, IconButton, useTheme, Card, Portal, Modal, Dialog } from "react-native-paper";
+import { Appbar, TextInput, Button, SegmentedButtons, Text, Chip, IconButton, useTheme, Card, Portal, Modal, Dialog, Surface, HelperText } from "react-native-paper";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { safeGoBack } from "../utils/backNavigation";
 import * as ImagePicker from "expo-image-picker";
 import { Calendar } from "react-native-calendars";
 import { useTransactions } from "../hooks/useTransactions";
-import { TransactionType, PaymentMethod, Category } from "../types";
+import { TransactionType, PaymentMethod, PaymentMethodInfo, Category } from "../types";
+import { authFetch } from "../utils/apiClient";
 import { getTimeOfMonthTip } from "../utils/financialLiteracy";
 import { ensureOthersOption, isOthersCategory } from "../utils/categoryOptions";
 import { formatNumberInput, parseAmount } from "../utils/amount";
@@ -32,6 +33,12 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: string }[] =
   { value: "other", label: "Other", icon: "dots-horizontal" },
 ];
 
+interface PaymentSourceOption {
+  key: string;
+  label: string;
+  icon: string;
+}
+
 export default function EditTransaction() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,7 +49,8 @@ export default function EditTransaction() {
   const [type, setType] = useState<TransactionType>("expense");
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [customCategory, setCustomCategory] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PaymentMethodInfo[]>([]);
   const [establishment, setEstablishment] = useState("");
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [date, setDate] = useState(new Date());
@@ -53,7 +61,19 @@ export default function EditTransaction() {
 
   useEffect(() => {
     fetchCategories();
+    fetchPaymentMethods();
   }, []);
+
+  const fetchPaymentMethods = async () => {
+    try {
+      const { ok, data } = await authFetch<PaymentMethodInfo[]>(`paymentMethods`);
+      if (ok && data && Array.isArray(data)) {
+        setAvailablePaymentMethods(data);
+      }
+    } catch (error) {
+      console.error("Error fetching payment methods:", error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -77,14 +97,17 @@ export default function EditTransaction() {
       setNote(tx.note || "");
       setType(tx.type);
       setSelectedCategory(tx.category || null);
-      setPaymentMethod(tx.paymentMethod || "cash");
+      setPaymentMethod(tx.paymentMethod || null);
       setEstablishment(tx.establishment || "");
       setReceiptImage(tx.receiptUrl || null);
       setDate(new Date(tx.date));
 
       if (tx.category && availableCategories.length > 0) {
         const isKnown = availableCategories.some((c) => c.id === tx.category?.id);
-        if (!isKnown && tx.category.name !== "Others") {
+        if (!isKnown && tx.category.name === "Others") {
+          setSelectedCategory(null);
+          setCustomCategory("");
+        } else if (!isKnown) {
           const others = ensureOthersOption(availableCategories, tx.type).find((c) => c.name === "Others") || null;
           setSelectedCategory(others);
           setCustomCategory(tx.category.name);
@@ -127,6 +150,17 @@ export default function EditTransaction() {
 
   const categoryOptions = useMemo(() => ensureOthersOption(availableCategories, type), [availableCategories, type]);
 
+  const paymentSourceOptions = useMemo<PaymentSourceOption[]>(() => {
+    const base: PaymentSourceOption[] = availablePaymentMethods.length > 0
+      ? availablePaymentMethods.map((m) => ({ key: m.id, label: m.name, icon: m.icon || "wallet" }))
+      : PAYMENT_METHODS.map((m) => ({ key: m.value, label: m.label, icon: m.icon }));
+    const current = paymentMethod?.trim();
+    if (current && !base.some((m) => m.label.toLowerCase() === current.toLowerCase())) {
+      base.push({ key: `current-${current}`, label: current, icon: "wallet" });
+    }
+    return base;
+  }, [availablePaymentMethods, paymentMethod]);
+
   const handleSave = async () => {
     const numAmount = parseAmount(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
@@ -137,7 +171,18 @@ export default function EditTransaction() {
       Alert.alert("Invalid Amount", "Amount must not exceed 10,000,000.");
       return;
     }
-    if (!selectedCategory || !id) return;
+    if (!id) {
+      Alert.alert("Transaction Not Found", "This transaction no longer exists.");
+      return;
+    }
+    if (!selectedCategory) {
+      Alert.alert("Invalid Category", "Please select a category.");
+      return;
+    }
+    if (!paymentMethod) {
+      Alert.alert("Invalid Payment Source", "Please select a payment source.");
+      return;
+    }
     if (isOthersCategory(selectedCategory) && !customCategory.trim()) {
       Alert.alert("Invalid Category", "Please specify a category.");
       return;
@@ -236,6 +281,9 @@ export default function EditTransaction() {
               </Chip>
             ))}
         </View>
+        <HelperText type="error" visible={!selectedCategory} style={{ marginBottom: 16 }}>
+          Please select a category.
+        </HelperText>
         {isOthersCategory(selectedCategory) && (
           <TextInput
             label="Specify Category"
@@ -257,19 +305,22 @@ export default function EditTransaction() {
 
         <Text variant="labelLarge" style={{ marginBottom: 8 }}>Payment Source</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-          {PAYMENT_METHODS.map((method) => (
-            <Chip
-              key={method.value}
-              icon={method.icon}
-              selected={paymentMethod === method.value}
-              onPress={() => setPaymentMethod(method.value)}
-              mode="outlined"
-              selectedColor={paymentMethod === method.value ? "#6200ee" : undefined}
-              style={{ backgroundColor: paymentMethod === method.value ? "#e8def8" : "transparent" }}
-            >
-              {method.label}
-            </Chip>
-          ))}
+          {paymentSourceOptions.map((method) => {
+            const isSelected = paymentMethod !== null && paymentMethod.toLowerCase() === method.label.toLowerCase();
+            return (
+              <Chip
+                key={method.key}
+                icon={method.icon}
+                selected={isSelected}
+                onPress={() => setPaymentMethod(method.label)}
+                mode="outlined"
+                selectedColor={isSelected ? "#6200ee" : undefined}
+                style={{ backgroundColor: isSelected ? "#e8def8" : "transparent" }}
+              >
+                {method.label}
+              </Chip>
+            );
+          })}
         </View>
 
         <TextInput
@@ -354,29 +405,51 @@ export default function EditTransaction() {
             </Card>
           </Modal>
         </Portal>
-        <Portal>
-          <Dialog
-            visible={resultDialog.visible}
-            onDismiss={handleResultOk}
-            style={{ maxWidth: 480, width: "90%", alignSelf: "center", marginHorizontal: 0 }}
-          >
-            <Dialog.Icon icon={resultDialog.ok ? "check-circle-outline" : "alert-circle-outline"} />
-            <Dialog.Title style={{ textAlign: "center" }}>
-              {resultDialog.ok ? "Saved Successfully" : "Save Failed"}
-            </Dialog.Title>
-            <Dialog.Content>
-              <Text variant="bodyMedium" style={{ textAlign: "center" }}>
-                {resultDialog.message}
-              </Text>
-            </Dialog.Content>
-            <Dialog.Actions style={{ justifyContent: "center" }}>
-              <Button mode="contained" onPress={handleResultOk}>
-                OK
-              </Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
+        <NativeModal
+          visible={resultDialog.visible}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={handleResultOk}
+        >
+          <View style={styles.scrim}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={handleResultOk} />
+            <Surface elevation={3} style={styles.dialog}>
+              <Dialog.Icon icon={resultDialog.ok ? "check-circle-outline" : "alert-circle-outline"} />
+              <Dialog.Title style={{ textAlign: "center" }}>
+                {resultDialog.ok ? "Saved Successfully" : "Save Failed"}
+              </Dialog.Title>
+              <Dialog.Content>
+                <Text variant="bodyMedium" style={{ textAlign: "center" }}>
+                  {resultDialog.message}
+                </Text>
+              </Dialog.Content>
+              <Dialog.Actions style={{ justifyContent: "center" }}>
+                <Button mode="contained" onPress={handleResultOk}>
+                  OK
+                </Button>
+              </Dialog.Actions>
+            </Surface>
+          </View>
+        </NativeModal>
         </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  scrim: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.32)",
+  },
+  dialog: {
+    maxWidth: 480,
+    width: "90%",
+    alignSelf: "center",
+    marginHorizontal: 0,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+});
