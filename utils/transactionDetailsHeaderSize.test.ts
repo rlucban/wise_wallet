@@ -53,7 +53,9 @@ function runSuite(os: "android" | "ios" | "web") {
 
         it("ACC-03: scope confined", () => {
             const source = readRepo(SCREEN);
-            expect(source).toContain('import { Appbar, Text, Card, Dialog, Button, useTheme } from "react-native-paper";');
+            // SPEC-97 pinned the pre-centering import line; the 2026-10-13 centering work
+            // added `Surface` (NativeModal wrapper), so the pin carries it now.
+            expect(source).toContain('import { Appbar, Text, Card, Dialog, Button, Surface, useTheme } from "react-native-paper";');
             expect(source).toContain('<Appbar.Content title="Transaction Details"');
             const peers = readRepo("app/dues.tsx");
             expect(peers).toContain('<Appbar.Content title="Scheduled"');

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { View, Pressable } from "react-native";
+import { View, Pressable, StyleSheet, Modal as NativeModal } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { Appbar, Text, Card, FAB, Portal, Modal, TextInput, Button, Checkbox, useTheme, Chip, IconButton, SegmentedButtons, Dialog } from "react-native-paper";
+import { Appbar, Text, Card, FAB, Portal, Modal, TextInput, Button, Checkbox, useTheme, Chip, IconButton, SegmentedButtons, Dialog, Surface } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
 import { safeGoBack } from "../utils/backNavigation";
 import { Calendar } from "react-native-calendars";
@@ -719,22 +719,31 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
           </Modal>
         </Portal>
 
-       <Portal>
-         <Dialog visible={alertDialog.visible} onDismiss={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
-           <Dialog.Icon icon={alertDialog.title === "Error" || alertDialog.title === "Insufficient Balance" ? "alert-circle-outline" : "check-circle-outline"} />
-           <Dialog.Title style={{ textAlign: "center" }}>{alertDialog.title}</Dialog.Title>
-           <Dialog.Content>
-             <Text variant="bodyMedium" style={{ textAlign: "center", lineHeight: 22 }}>
-               {alertDialog.message}
-             </Text>
-           </Dialog.Content>
-           <Dialog.Actions style={{ justifyContent: "center" }}>
-             <Button mode="contained" onPress={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
-               OK
-             </Button>
-           </Dialog.Actions>
-         </Dialog>
-       </Portal>
+        <NativeModal
+          visible={alertDialog.visible}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}
+        >
+          <View style={styles.scrim}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setAlertDialog((prev) => ({ ...prev, visible: false }))} />
+            <Surface elevation={3} style={styles.dialog}>
+              <Dialog.Icon icon={alertDialog.title === "Error" || alertDialog.title === "Insufficient Balance" ? "alert-circle-outline" : "check-circle-outline"} />
+              <Dialog.Title style={{ textAlign: "center" }}>{alertDialog.title}</Dialog.Title>
+              <Dialog.Content>
+                <Text variant="bodyMedium" style={{ textAlign: "center", lineHeight: 22 }}>
+                  {alertDialog.message}
+                </Text>
+              </Dialog.Content>
+              <Dialog.Actions style={{ justifyContent: "center" }}>
+                <Button mode="contained" onPress={() => setAlertDialog((prev) => ({ ...prev, visible: false }))}>
+                  OK
+                </Button>
+              </Dialog.Actions>
+            </Surface>
+          </View>
+        </NativeModal>
 
        <Portal>
          <Modal
@@ -798,7 +807,24 @@ const renderItem = useCallback(({ item }: { item: ListItem }) => {
              style={{ position: "absolute", margin: 24, right: 0, bottom: 24, borderRadius: 999, backgroundColor: theme.colors.primary }}
              color={theme.colors.onPrimary}
             onPress={() => router.push("/add-due")}
-          />
+           />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  scrim: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.32)", // modal scrim
+  },
+  dialog: {
+    maxWidth: 480,
+    width: "90%",
+    alignSelf: "center",
+    marginHorizontal: 0,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+});

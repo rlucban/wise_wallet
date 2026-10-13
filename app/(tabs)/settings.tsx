@@ -2168,19 +2168,30 @@ if (!serverOk && !localOk) {
 
         {/* SPEC-58 D-58-03: last Portal child, so this shared success/error
             dialog always paints above whichever dialog raised it. */}
-        <Dialog visible={messageDialog.visible} onDismiss={closeMessage} style={styles.dialog}>
-          <Dialog.Icon
-            icon={messageDialog.type === "success" ? "check-circle-outline" : "alert-circle-outline"}
-            color={messageDialog.type === "success" ? paperTheme.colors.tertiary : paperTheme.colors.error}
-          />
-          <Dialog.Title style={{ textAlign: "center" }}>{messageDialog.title}</Dialog.Title>
-          <Dialog.Content>
-            <Text style={{ textAlign: "center" }}>{messageDialog.message}</Text>
-          </Dialog.Content>
-          <Dialog.Actions style={{ justifyContent: "center" }}>
-            <Button mode="contained" onPress={closeMessage}>OK</Button>
-          </Dialog.Actions>
-        </Dialog>
+        <NativeModal
+          visible={messageDialog.visible}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          onRequestClose={closeMessage}
+        >
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0, 0, 0, 0.32)" }}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeMessage} />
+            <Surface elevation={3} style={styles.dialog}>
+              <Dialog.Icon
+                icon={messageDialog.type === "success" ? "check-circle-outline" : "alert-circle-outline"}
+                color={messageDialog.type === "success" ? paperTheme.colors.tertiary : paperTheme.colors.error}
+              />
+              <Dialog.Title style={{ textAlign: "center" }}>{messageDialog.title}</Dialog.Title>
+              <Dialog.Content>
+                <Text style={{ textAlign: "center" }}>{messageDialog.message}</Text>
+              </Dialog.Content>
+              <Dialog.Actions style={{ justifyContent: "center" }}>
+                <Button mode="contained" onPress={closeMessage}>OK</Button>
+              </Dialog.Actions>
+            </Surface>
+          </View>
+        </NativeModal>
       </Portal>
     </View>
   );

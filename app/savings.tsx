@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import EmptyState from "../components/EmptyState";
-import { View, ScrollView, Alert } from "react-native";
-import { Appbar, Text, FAB, Portal, Modal, TextInput, Button, Card, IconButton, Snackbar, useTheme } from "react-native-paper";
+import { View, ScrollView, Alert, Modal as NativeModal, Pressable, StyleSheet } from "react-native";
+import { Appbar, Text, FAB, Portal, TextInput, Button, Card, IconButton, Snackbar, useTheme } from "react-native-paper";
 import { useRouter, useFocusEffect } from "expo-router";
 import { safeGoBack } from "../utils/backNavigation";
 import { useSavings } from "../hooks/useSavings";
@@ -474,87 +474,114 @@ export default function SavingsScreen() {
 
             <Portal>
                 {/* Edit Allocation Modal */}
-                <Modal visible={editModalVisible} onDismiss={() => setEditModalVisible(false)} contentContainerStyle={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", padding: 20 }}>
-                    <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
-                        <Card.Content style={{ padding: 20 }}>
-                            <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Edit Allocation</Text>
-                            <TextInput label="Name" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
-                            <TextInput label="Goal Amount (Optional)" value={goalAmount} onChangeText={(t) => setGoalAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} placeholder="e.g. 10,000" />
-                            {editGoalBelowBalance && (
-                                <Text variant="bodySmall" style={{ color: theme.colors.error, marginTop: 4, marginBottom: 8 }}>
-                                    Goal amount is too low.
-                                </Text>
-                            )}
-                            <Button mode="contained" onPress={handleEditItem} loading={editSaving} disabled={editGoalBelowBalance || editSaving} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Save Changes</Button>
-                        </Card.Content>
-                    </Card>
-                </Modal>
+                <NativeModal
+                    visible={editModalVisible}
+                    transparent
+                    animationType="fade"
+                    presentationStyle="overFullScreen"
+                    onRequestClose={() => setEditModalVisible(false)}
+                >
+                    <View style={styles.scrim}>
+                        <Pressable style={StyleSheet.absoluteFill} onPress={() => setEditModalVisible(false)} />
+                        <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
+                            <Card.Content style={{ padding: 20 }}>
+                                <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Edit Allocation</Text>
+                                <TextInput label="Name" value={title} onChangeText={setTitle} mode="outlined" style={{ marginBottom: 12 }} />
+                                <TextInput label="Goal Amount (Optional)" value={goalAmount} onChangeText={(t) => setGoalAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))} keyboardType="numeric" mode="outlined" style={{ marginBottom: 16 }} left={<TextInput.Affix text="₱" />} placeholder="e.g. 10,000" />
+                                {editGoalBelowBalance && (
+                                    <Text variant="bodySmall" style={{ color: theme.colors.error, marginTop: 4, marginBottom: 8 }}>
+                                        Goal amount is too low.
+                                    </Text>
+                                )}
+                                <Button mode="contained" onPress={handleEditItem} loading={editSaving} disabled={editGoalBelowBalance || editSaving} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Save Changes</Button>
+                            </Card.Content>
+                        </Card>
+                    </View>
+                </NativeModal>
 
                 {/* Transfer In Modal */}
-                <Modal visible={transferInModalVisible} onDismiss={() => setTransferInModalVisible(false)} contentContainerStyle={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", padding: 20 }}>
-                    <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
-                        <Card.Content style={{ padding: 20 }}>
-                            <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Transfer Money In</Text>
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Allocated money deducted and reserved from your main balance.</Text>
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
-                                Available Balance: {formatAmount(availableBalance)}
-                            </Text>
-                            {transferInItem?.target_amount ? (
+                <NativeModal
+                    visible={transferInModalVisible}
+                    transparent
+                    animationType="fade"
+                    presentationStyle="overFullScreen"
+                    onRequestClose={() => setTransferInModalVisible(false)}
+                >
+                    <View style={styles.scrim}>
+                        <Pressable style={StyleSheet.absoluteFill} onPress={() => setTransferInModalVisible(false)} />
+                        <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
+                            <Card.Content style={{ padding: 20 }}>
+                                <Text variant="titleLarge" style={{ marginBottom: 16, color: theme.colors.onSurface }}>Transfer Money In</Text>
+                                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 8 }}>Allocated money deducted and reserved from your main balance.</Text>
                                 <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
-                                    Remaining Goal: {formatAmount(Math.max(0, transferInItem.target_amount - transferInItem.balance))}
+                                    Available Balance: {formatAmount(availableBalance)}
                                 </Text>
-                            ) : null}
-                            <TextInput
-                                label="Amount"
-                                value={transferAmount}
-                                onChangeText={(t) => setTransferAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
-                                keyboardType="numeric"
-                                mode="outlined"
-                                style={{ marginBottom: 8 }}
-                                left={<TextInput.Affix text="₱" />}
-                                error={!!transferInError}
-                            />
-                            {transferInError && (
-                                <Text variant="bodySmall" style={{ color: theme.colors.error, marginBottom: 8 }}>
-                                    {transferInError}
-                                </Text>
-                            )}
-                            <Button mode="contained" onPress={handleTransferIn} disabled={!transferInValid} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Confirm</Button>
-                        </Card.Content>
-                    </Card>
-                </Modal>
+                                {transferInItem?.target_amount ? (
+                                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
+                                        Remaining Goal: {formatAmount(Math.max(0, transferInItem.target_amount - transferInItem.balance))}
+                                    </Text>
+                                ) : null}
+                                <TextInput
+                                    label="Amount"
+                                    value={transferAmount}
+                                    onChangeText={(t) => setTransferAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
+                                    keyboardType="numeric"
+                                    mode="outlined"
+                                    style={{ marginBottom: 8 }}
+                                    left={<TextInput.Affix text="₱" />}
+                                    error={!!transferInError}
+                                />
+                                {transferInError && (
+                                    <Text variant="bodySmall" style={{ color: theme.colors.error, marginBottom: 8 }}>
+                                        {transferInError}
+                                    </Text>
+                                )}
+                                <Button mode="contained" onPress={handleTransferIn} disabled={!transferInValid} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Confirm</Button>
+                            </Card.Content>
+                        </Card>
+                    </View>
+                </NativeModal>
 
                 {/* Transfer Out Modal */}
-                <Modal visible={transferOutModalVisible} onDismiss={closeTransferOutModal} contentContainerStyle={{ backgroundColor: "transparent", justifyContent: "center", alignItems: "center", padding: 20 }}>
-                    <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
-                        <Card.Content style={{ padding: 20 }}>
-                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                                <Text variant="titleLarge" style={{ color: theme.colors.onSurface }}>Transfer Money Out</Text>
-                                <IconButton icon="close" size={24} onPress={closeTransferOutModal} />
-                            </View>
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>Allocated money returns to your main balance.</Text>
-                            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
-                                Available balance: {formatAmount(selectedItem?.balance || 0)}
-                            </Text>
-                            <TextInput
-                                label="Amount"
-                                value={transferAmount}
-                                onChangeText={(t) => setTransferAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
-                                keyboardType="numeric"
-                                mode="outlined"
-                                style={{ marginBottom: 8 }}
-                                left={<TextInput.Affix text="₱" />}
-                                error={!!transferOutError}
-                            />
-                            {transferOutError && (
-                                <Text variant="bodySmall" style={{ color: theme.colors.error, marginBottom: 8 }}>
-                                    {transferOutError}
+                <NativeModal
+                    visible={transferOutModalVisible}
+                    transparent
+                    animationType="fade"
+                    presentationStyle="overFullScreen"
+                    onRequestClose={closeTransferOutModal}
+                >
+                    <View style={styles.scrim}>
+                        <Pressable style={StyleSheet.absoluteFill} onPress={closeTransferOutModal} />
+                        <Card style={{ width: "100%", maxWidth: 400, borderRadius: 16, backgroundColor: theme.colors.surface }}>
+                            <Card.Content style={{ padding: 20 }}>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                                    <Text variant="titleLarge" style={{ color: theme.colors.onSurface }}>Transfer Money Out</Text>
+                                    <IconButton icon="close" size={24} onPress={closeTransferOutModal} />
+                                </View>
+                                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>Allocated money returns to your main balance.</Text>
+                                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 12 }}>
+                                    Available balance: {formatAmount(selectedItem?.balance || 0)}
                                 </Text>
-                            )}
-                            <Button mode="contained" onPress={handleTransferOut} disabled={!transferOutAmountValid} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Confirm</Button>
-                        </Card.Content>
-                    </Card>
-                </Modal>
+                                <TextInput
+                                    label="Amount"
+                                    value={transferAmount}
+                                    onChangeText={(t) => setTransferAmount(formatNumberInput(t.length > 12 ? t.slice(0, 12) : t))}
+                                    keyboardType="numeric"
+                                    mode="outlined"
+                                    style={{ marginBottom: 8 }}
+                                    left={<TextInput.Affix text="₱" />}
+                                    error={!!transferOutError}
+                                />
+                                {transferOutError && (
+                                    <Text variant="bodySmall" style={{ color: theme.colors.error, marginBottom: 8 }}>
+                                        {transferOutError}
+                                    </Text>
+                                )}
+                                <Button mode="contained" onPress={handleTransferOut} disabled={!transferOutAmountValid} buttonColor={theme.colors.primary} color={theme.colors.onPrimary}>Confirm</Button>
+                            </Card.Content>
+                        </Card>
+                    </View>
+                </NativeModal>
 
                 <ConfirmDialog
                     visible={!!deleteTarget}
@@ -599,3 +626,13 @@ export default function SavingsScreen() {
         </View>
     );
 }
+
+const styles = StyleSheet.create({
+    scrim: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "rgba(0, 0, 0, 0.32)", // modal scrim
+        padding: 20,
+    },
+});
