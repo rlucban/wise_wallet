@@ -76,6 +76,7 @@ export interface UserProfile {
   currency: string;
   decimalPoints: number;
   autoBackup: boolean;
+  pendingLogin?: PendingLoginRequest | null;
 }
 
 export interface SystemAlert extends TimestampedEntity {
@@ -88,5 +89,12 @@ export interface SystemAlert extends TimestampedEntity {
   balanceAtTrigger?: number;
   categoryId?: string;
   monthKey?: string;
+}
+
+export interface PendingLoginRequest {
+  userId: string;
+  deviceId?: string;
+  timestamp: number;
+  status: "pending" | "approved" | "rejected";
 }
 

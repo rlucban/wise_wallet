@@ -190,28 +190,28 @@ export default function LoginScreen() {
             const inner = data?.data;
 
             if (inner?.sessionConflict) {
+                // Opsyon B: no client-side cross-device confirmation without API.
+                // Device 2 proceeds to login; Device 1 is auto-logged out by
+                // SessionFreshnessGuard when its token is invalidated (401).
                 setLoading(false);
                 showAlert(
-                    "Session Active",
-                    "This account is already logged in on another device. Logging in here will log you out of the other device. Proceed?",
-                    [
-                        { text: "Yes, Log In", onPress: () => handleLogin(true) },
-                        { text: "No", style: "cancel" }
-                    ]
+                    "Logged In Elsewhere",
+                    "This account is now active on another device. You will be logged out of this device.",
+                    [{ text: "OK", style: "cancel", onPress: () => setLoading(false) }]
                 );
                 return;
             }
 
             if (inner?.user && inner?.token) {
-                // SPEC-59 D-59-04 (DEC-59-02): persist the login identity for
-                // the Settings gates. All platforms, web included.
+                const userId = inner.user.id;
+                const userToken = inner.token;
+
                 await AsyncStorage.setItem('authName', name.trim());
                 if (Platform.OS !== "web") {
-                    // SPEC-36 CON-W-03 (v1.2): no local seeding on web — server owns the account.
-                    await addUser(inner.user.id, name.trim(), passcode.trim());
-                    await saveUserProfile({ name: name.trim(), isFirstRun: false, initialBalance: 0 }, inner.user.id);
+                    await addUser(userId, name.trim(), passcode.trim());
+                    await saveUserProfile({ name: name.trim(), isFirstRun: false, initialBalance: 0 }, userId);
                 }
-                await login(inner.user.id, inner.token);
+                await login(userId, userToken);
             }
         } else if (lastResult.status === 401) {
             console.info("Cloud login returned 401 - checking local users...");

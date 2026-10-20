@@ -706,9 +706,60 @@ local notifications lazy-loaded so Expo Go never evaluates the native module.
   `not.toContain("HelperText")` to `countOf(source, "<HelperText")).toBe(1)` (test-only; intent kept — one helper row, on
   Category only; SPEC-85 ACC-05 pins unaffected). SPEC-105's guards, the Payment Source row, `categoryOptions.ts`,
   `TransactionsContext.tsx`, and the Add screen are untouched. Open: user-run jest/lint/tsc + the web repro and Expo Go
-  matrix. See `docs/savepoint.md`.
+   matrix. See `docs/savepoint.md`.
+
+- **2026-10-16 — Spec 108 DRAFT (closed, no implementation).** `specs/108-balance-breakdown-missing-income.md`:
+  Breakdown showed Income ₱0 / Total ₱1,523 while History listed +₱360 (expenses 929 reconciled).
+  Closed as H2 stale-read after user refetch showed the correct Income ₱360 / Total ₱1,883;
+  no predicate changed. See `docs/savepoint.md`.
+
+- **2026-10-16 — Spec 109 FINAL v1.0 + implemented.** `specs/109-session-kick-draft-guard.md`:
+  mobile 1 kicked mid-draft gets Save draft / Disregard (CON-02: dead token never posts —
+  Save = preserve under `user_{failedUserId}_pending_tx_draft` + restore after re-login).
+  D-01 new `utils/pendingTxDraft.ts` (pure helpers); D-02 `app/add-transaction.tsx` ONLY
+  (kill effect + latch, mount-time Restore/Discard, two dialogs); D-03
+  `utils/pendingTxDraft.test.ts` ACC-01..04 × android/ios/web. `login.tsx`, kill flow,
+  SPEC-05/44 untouched. Open: user-run jest/lint/tsc + two-device matrix.
+  See `docs/savepoint.md`.
+
+- **2026-10-16 — Spec 110 FINAL v1.0 + implemented client-side.** `specs/110-single-session-auto-reject.md`:
+  credentials-as-proof (correct email+PIN on mobile 2 IS the verification; pre-approval
+  stays rejected). D-02 `app/login.tsx` (409-break + 409 branch with FINAL-pinned copies;
+  unknown-409 → Login Failed; never retries/falls back); D-03
+  `utils/singleSessionAuth.test.ts` ACC-01..03 × android/ios/web. D-01 server contract
+  (`wallet-api`) still user-implemented, shape unconfirmed. Open: user-run jest/lint/tsc
+  + ACC-04/S01..S03. See `docs/savepoint.md`.
+
+- **2026-10-16 — Spec 111 FINAL v1.0 + implemented.** `specs/111-foreground-session-check.md`:
+  foreground (background/inactive → active) fires one cache-bypass
+  `GET userProfiles?userId=` probe — kicked device logs out with NO refresh
+  (401 → existing kill flow + SPEC-109 draft prompt if dirty; offline silent;
+  Local/signed-out zero API). D-01 new `components/SessionFreshnessGuard.tsx`
+  (null render, in-flight latch, zero timers); D-02 one render line in
+  `app/_layout.tsx` (SPEC-30 pins intact); D-03 `utils/sessionFreshness.test.ts`
+  ACC-01..03 × android/ios/web. Open: user-run jest/lint/tsc + ACC-S01..S03.
+  See `docs/savepoint.md`.
+
+- **2026-10-16 — Specs 109/110/111 REVERTED per user call ("revert the 109-111 and delete").**
+  `app/add-transaction.tsx`, `app/login.tsx`, `app/_layout.tsx` restored byte-identical
+  (verified zero-trace scans); deleted 8 files (`utils/pendingTxDraft.ts` + test,
+  `components/SessionFreshnessGuard.tsx`, `utils/sessionFreshness.test.ts`,
+  `utils/singleSessionAuth.test.ts`, `specs/109/110/111.md`). SPEC-108 kept.
+  Reason: multi-device validation never fires because `wallet-api` silently
+  overwrites `currentSessionId` (proven: B-login `success/conflict:false` + A-token
+  `401`); client machinery was green but dormant without the server kick.
+  Server-side session validation (conflict/409) still open whenever the user
+  takes up `wallet-api` again. See `docs/savepoint.md`.
 
 ---
+
+- **2026-10-20 — Spec 109 FINAL v1.0 implemented (Cross-Device Login Confirmation).**
+  `specs/109-cross-device-login-confirmation.md`: D-01 `utils/isSameDeviceSession.ts`
+  with storage helpers for pending login requests; D-02 `components/DeviceLoginPrompt.tsx`
+  Material 3 Allow/Cancel dialog; D-03 `context/AuthContext.tsx` with `pendingLogin`
+  state, 2s reactive poll, and `approveLogin`/`rejectLogin` actions; D-04 `app/login.tsx`
+  records pending request on session conflict; D-05 `utils/crossDeviceLogin.test.ts`
+  cross-platform unit tests; D-07 `types/index.ts` `PendingLoginRequest` type.
 
 ## 4. Spec: Connection Status vs Offline (Local-Only) Account Mode
 
