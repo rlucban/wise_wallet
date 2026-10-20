@@ -4,12 +4,16 @@ import { resetAuthSessionWarningLatch, setAuthFailureCallback, wipeGetCache } fr
 import { setCachedUserId } from "../utils/cache";
 import { setSecureItem, getSecureItem, removeSecureItem } from "../utils/secureStorage";
 
+import { PendingLoginRequest } from "../types";
+import { getPendingLogin, clearPendingLogin, approvePendingLogin, rejectPendingLogin } from "../utils/isSameDeviceSession";
+
 interface AuthData {
   activeUserId: string | null;
   token: string | null;
   isLoading: boolean;
   authFailureReason: string | null;
   failedUserId: string | null;
+  pendingLogin: PendingLoginRequest | null;
 }
 
 interface AuthActions {
@@ -18,6 +22,9 @@ interface AuthActions {
   switchIdentity: (userId: string, token: string) => Promise<void>;
   clearAuthFailureReason: () => void;
   clearFailedUserId: () => void;
+  approveLogin: () => Promise<void>;
+  rejectLogin: () => Promise<void>;
+  checkPendingLogin: () => Promise<void>;
 }
 
 const AuthDataContext = createContext<AuthData | undefined>(undefined);
@@ -29,6 +36,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [authFailureReason, setAuthFailureReason] = useState<string | null>(null);
   const [failedUserId, setFailedUserId] = useState<string | null>(null);
+  const [pendingLogin, setPendingLoginState] = useState<PendingLoginRequest | null>(null);
+
+  const checkPendingLogin = useCallback(async () => {
+    if (activeUserId) {
+      const req = await getPendingLogin(activeUserId, token);
+      if (req && req.status === "pending") {
+        setPendingLoginState(req);
+      } else if (!req || req.status !== "pending") {
+        setPendingLoginState(null);
+      }
+    } else {
+      setPendingLoginState(null);
+    }
+  }, [activeUserId, token]);
+
+  useEffect(() => {
+    checkPendingLogin();
+    if (!activeUserId) return;
+    const interval = setInterval(() => {
+      checkPendingLogin();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [activeUserId, checkPendingLogin]);
 
   useEffect(() => {
     Promise.all([
@@ -48,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (activeUserId) setFailedUserId(activeUserId);
     setActiveUserId(null);
     setToken(null);
+    setPendingLoginState(null);
     if (reason) setAuthFailureReason(reason);
   }, [activeUserId]);
 
@@ -65,17 +96,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(token);
     resetAuthSessionWarningLatch();
     wipeGetCache(); // SPEC-62 DEC-62-04: never serve rows across sessions.
+    await clearPendingLogin(String(userId));
+    setPendingLoginState(null);
   }, []);
 
   const logout = useCallback(async () => {
+    if (activeUserId) {
+      await clearPendingLogin(activeUserId);
+    }
     await AsyncStorage.removeItem('activeUserId');
     await removeSecureItem('authToken');
     setActiveUserId(null);
     setCachedUserId(null);
     setToken(null);
+    setPendingLoginState(null);
     resetAuthSessionWarningLatch();
     wipeGetCache(); // SPEC-62 DEC-62-04: never serve rows across sessions.
-  }, []);
+  }, [activeUserId]);
+
+  const approveLogin = useCallback(async () => {
+    if (activeUserId) {
+      await approvePendingLogin(activeUserId, token);
+      // Device 1 explicitly allowed device 2 to take over this session,
+      // so log out this device before device 2 completes its login.
+      await logout();
+    }
+  }, [activeUserId, token, logout]);
+
+  const rejectLogin = useCallback(async () => {
+    if (activeUserId) {
+      await rejectPendingLogin(activeUserId, token);
+      setPendingLoginState(null);
+    }
+  }, [activeUserId, token]);
 
   // SPEC-96: null-free identity transition for the Make-Online migration.
   // Same stored outcome as logout()+login() with no intermediate signed-out
@@ -105,7 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     authFailureReason,
     failedUserId,
-  }), [activeUserId, token, isLoading, authFailureReason, failedUserId]);
+    pendingLogin,
+  }), [activeUserId, token, isLoading, authFailureReason, failedUserId, pendingLogin]);
 
   const actionsValue = useMemo(() => ({
     login,
@@ -113,7 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     switchIdentity,
     clearAuthFailureReason,
     clearFailedUserId,
-  }), [login, logout, switchIdentity, clearAuthFailureReason, clearFailedUserId]);
+    approveLogin,
+    rejectLogin,
+    checkPendingLogin,
+  }), [login, logout, switchIdentity, clearAuthFailureReason, clearFailedUserId, approveLogin, rejectLogin, checkPendingLogin]);
 
   return (
     <AuthDataContext.Provider value={dataValue}>

@@ -35,6 +35,8 @@ export function SystemAlertsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   const fetchAlerts = useCallback(async () => {
+    // Belt-and-suspenders: never wipe in-memory alerts when signed out.
+    // Alerts only clear via the explicit "Clear all alerts" action (clearAlerts).
     if (!activeUserId) return;
     setLoading(true);
     try {

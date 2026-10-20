@@ -1,6 +1,6 @@
 import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { View, Text, Platform, StyleSheet } from "react-native";
+import { View, Text, Platform, StyleSheet, AppState, AppStateStatus } from "react-native";
 import { initMasterDb, initDb } from "../utils/db";
 import { PaperProvider, Banner } from "react-native-paper";
 import { ThemeProvider, useThemeData } from "../context/ThemeContext";
@@ -25,6 +25,8 @@ import { useRepositories } from "../context/RepositoryContext";
 import { useIsLocalAccount } from "../utils/authMode";
 import { getPrefixedKey, getItem } from "../utils/storage";
 import type { Due } from "../types";
+import { DeviceLoginPrompt } from "../components/DeviceLoginPrompt";
+import { authFetch } from "../utils/apiClient";
 
 function OfflineIndicator() {
   const { isOnline, checkConnectivity } = useNetwork();
@@ -149,6 +151,48 @@ function SystemResetManager() {
   return null;
 }
 
+function SessionFreshnessGuard() {
+  const { activeUserId } = useAuthData();
+  const isLocal = useIsLocalAccount();
+
+  useEffect(() => {
+    if (!activeUserId || isLocal) return;
+
+    let inFlight = false;
+    const verifySession = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        await authFetch(`userProfiles?userId=${activeUserId}`, {}, { skipCache: true });
+      } catch {
+        // network errors handled silently inside authFetch
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    // Immediate check on mount
+    verifySession();
+
+    // AppState listener: when mobile app returns from background to foreground, immediately verify session
+    const appStateSubscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+      if (nextAppState === "active") {
+        verifySession();
+      }
+    });
+
+    // Check periodically every 3 seconds to catch concurrent logins in real-time without needing a manual refresh
+    const interval = setInterval(verifySession, 3000);
+
+    return () => {
+      appStateSubscription.remove();
+      clearInterval(interval);
+    };
+  }, [activeUserId, isLocal]);
+
+  return null;
+}
+
 function MainLayout() {
   const { theme } = useThemeData();
   const { isPasscodeEnabled, isUnlocked } = usePasscode();
@@ -217,6 +261,7 @@ function MainLayout() {
       <NetworkProvider>
         <View style={{ flex: 1 }}>
           <OfflineIndicator />
+          <DeviceLoginPrompt />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="intro" options={{ animation: "fade" }} />
             <Stack.Screen name="login" options={{ animation: "fade" }} />
@@ -351,6 +396,7 @@ export default function RootLayout() {
           <UserProfileProvider>
             <ColdStartSessionGuard />
             <SystemResetManager />
+            <SessionFreshnessGuard />
               <ProviderComposer
                 providers={[
                   ThemeProvider,

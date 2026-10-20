@@ -287,9 +287,8 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
     }, [txRepo, activeUserId, isLocal, refreshFromApi]);
 
         const deleteTransaction = useCallback(async (id: string) => {
-            try {
-                if (!activeUserId) throw new Error("Not authenticated");
-                if (isLocal) {
+            if (!activeUserId) throw new Error("Not authenticated");
+            if (isLocal) {
                 await txRepo.deleteById(id);
                 await pruneDueLinks(id, activeUserId);
                 setTransactions((prev) => prev.filter(t => t.id !== id));
@@ -315,11 +314,7 @@ export function TransactionsProvider({ children }: { children: ReactNode }) {
             await refreshFromApi();
             await pruneDueLinks(id, activeUserId);
             return;
-        } catch (error) {
-            console.error("Error deleting transaction:", error);
-            throw error;
-        }
-    }, [txRepo, isLocal, refreshFromApi, activeUserId]);
+        }, [txRepo, isLocal, refreshFromApi, activeUserId]);
 
     const dataValue = useMemo(() => ({
         transactions,
